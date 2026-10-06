@@ -515,3 +515,32 @@ test('a hook report beats the output guess and badges the dock', async () => {
     await app.close()
   }
 })
+
+test('flags worktrees that changed the same files', async () => {
+  const repo = gitRepo('troy-overlap-')
+  const git = (...args: string[]): Buffer =>
+    execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+  writeFileSync(join(repo, 'api.ts'), 'one\n')
+  writeFileSync(join(repo, 'db.ts'), 'one\n')
+  git('add', '.')
+  git('commit', '-qm', 'init')
+  git('worktree', 'add', '-q', '-b', 'feat-a', `${repo}.feat-a`)
+  git('worktree', 'add', '-q', '-b', 'feat-b', `${repo}.feat-b`)
+  writeFileSync(join(`${repo}.feat-a`, 'api.ts'), 'a\n')
+  writeFileSync(join(`${repo}.feat-b`, 'api.ts'), 'b\n')
+  writeFileSync(join(`${repo}.feat-b`, 'db.ts'), 'b\n')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const card = (branch: string) => page.locator(`.worktree[title="${repo}.${branch}"]`)
+    await expect(card('feat-a').locator('.card-overlap')).toHaveText('⚠ Same files as feat-b (1)')
+    await expect(card('feat-a').locator('.card-overlap')).toHaveAttribute('title', 'api.ts')
+    await expect(card('feat-b').locator('.card-overlap')).toHaveText('⚠ Same files as feat-a (1)')
+    await expect(page.locator(`.worktree[title="${repo}"] .card-overlap`)).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})

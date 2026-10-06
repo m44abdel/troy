@@ -3,7 +3,7 @@ import { execFileSync } from 'child_process'
 import { mkdtempSync, realpathSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { commitAll, diffAgainst, push } from './finish'
+import { changedFiles, commitAll, diffAgainst, push } from './finish'
 
 function repoWithRemote(): { repo: string; remote: string; git: (...a: string[]) => string } {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'troy-finish-')))
@@ -64,5 +64,26 @@ describe('commitAll / push', () => {
     expect(execFileSync('git', ['-C', remote, 'log', '-1', '--format=%s', 'feat']).toString()).toBe(
       'add new\n'
     )
+  })
+})
+
+describe('changedFiles', () => {
+  it('lists committed, edited and untracked files since the base, but not the base moving on', async () => {
+    const { repo, git } = repoWithRemote()
+    writeFileSync(join(repo, 'b.txt'), 'b\n')
+    git('add', '.')
+    git('commit', '-qm', 'b')
+    git('switch', '-qc', 'feat')
+    git('switch', '-q', 'main')
+    writeFileSync(join(repo, 'main-only.txt'), 'later\n')
+    git('add', '.')
+    git('commit', '-qm', 'main moves on')
+    git('switch', '-q', 'feat')
+    writeFileSync(join(repo, 'a.txt'), 'one\ntwo\n')
+    git('commit', '-qam', 'two')
+    writeFileSync(join(repo, 'b.txt'), 'edited\n')
+    writeFileSync(join(repo, 'new.txt'), 'fresh\n')
+
+    expect(await changedFiles(repo, 'main')).toEqual(['a.txt', 'b.txt', 'new.txt'])
   })
 })

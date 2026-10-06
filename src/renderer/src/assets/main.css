@@ -407,6 +407,14 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   white-space: nowrap;
 }
 
+.card-overlap {
+  font-size: 11.5px;
+  color: var(--waiting);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card-status {
   font-size: 11.5px;
   color: var(--muted);

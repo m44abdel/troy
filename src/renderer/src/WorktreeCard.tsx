@@ -26,6 +26,8 @@ interface Props {
   /** Waiting and not yet looked at. */
   needsYou: boolean
   usage?: ContextUsage | null
+  /** Other worktrees that changed some of the same files. */
+  overlaps?: { name: string; files: string[] }[]
   onSelect: () => void
 }
 
@@ -36,6 +38,7 @@ export function WorktreeCard({
   status,
   needsYou,
   usage,
+  overlaps = [],
   onSelect
 }: Props): React.JSX.Element {
   const branch = wt.branch ?? 'detached'
@@ -58,6 +61,11 @@ export function WorktreeCard({
         {wt.title && <AgentBadge agent={wt.agent} />}
         {usage && <ContextRing usage={usage} />}
       </span>
+      {overlaps.map((o) => (
+        <span key={o.name} className="card-overlap" title={o.files.join('\n')}>
+          ⚠ Same files as {o.name} ({o.files.length})
+        </span>
+      ))}
     </button>
   )
 }

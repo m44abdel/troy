@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
+import type { Overlap } from '../../shared/overlap'
 import { isAlive, type AgentStatus } from '../../shared/status'
 import type { ContextUsage, Knowledge, Repo, Settings as SettingsData } from '../../shared/types'
 import type { VimCommand } from '../../shared/vim'
@@ -32,6 +33,7 @@ function App(): React.JSX.Element {
   const [firstRuns, setFirstRuns] = useState<Record<string, FirstRun>>({})
   const [showColumn, setShowColumn] = useState(true)
   const [tab, setTab] = useState<ColumnTab>('shell')
+  const [overlaps, setOverlaps] = useState<Record<string, Overlap[]>>({})
   const [contexts, setContexts] = useState<Record<string, ContextUsage | null>>({})
   const [comments, setComments] = useState<Record<string, ReviewComment[]>>({})
   // Keyed by repo: knowledge and its review queue are shared by all of a repo's worktrees.
@@ -67,6 +69,10 @@ function App(): React.JSX.Element {
     window.api.getSettings().then(setSettings)
     window.api.installedAgents().then(setInstalled)
   }, [])
+
+  // Recomputed when worktrees come or go and whenever an agent stops working.
+  const refreshOverlaps = useCallback(() => void window.api.overlaps().then(setOverlaps), [])
+  useEffect(refreshOverlaps, [repos, refreshOverlaps])
 
   const watched = worktrees.filter((wt) => visited.includes(wt.path))
   const watchKey = watched.map((wt) => `${wt.path}\0${wt.agent}`).join('\n')
@@ -203,11 +209,12 @@ function App(): React.JSX.Element {
       setStatuses((s) => ({ ...s, [path]: status }))
       const watching = path === currentPath.current && document.hasFocus()
       setSeen((s) => ({ ...s, [path]: watching }))
+      if (status !== 'running') refreshOverlaps()
       if (watching || !certain || status === 'running') return
       const note = new Notification(basename(path), { body: `Agent ${STATUS_LABELS[status]}` })
       note.onclick = () => select(path)
     },
-    [select]
+    [select, refreshOverlaps]
   )
 
   // Coming back to Troy acknowledges the worktree that is open.
@@ -219,6 +226,11 @@ function App(): React.JSX.Element {
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [])
+
+  const nameOf = (path: string): string => {
+    const wt = worktrees.find((w) => w.path === path)
+    return wt?.title ?? wt?.branch ?? basename(path)
+  }
 
   const needsYou = (path: string): boolean => statuses[path] === 'waiting' && !seen[path]
   const waiting = worktrees.filter((wt) => needsYou(wt.path))
@@ -273,6 +285,10 @@ function App(): React.JSX.Element {
                   selected={wt === current}
                   status={statuses[wt.path] ?? 'idle'}
                   needsYou={needsYou(wt.path)}
+                  overlaps={overlaps[wt.path]?.map((o) => ({
+                    name: nameOf(o.other),
+                    files: o.files
+                  }))}
                   usage={contexts[wt.path]}
                   onSelect={() => select(wt.path)}
                 />
