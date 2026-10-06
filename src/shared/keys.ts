@@ -1,7 +1,16 @@
 // App shortcuts live on Cmd (macOS) or Ctrl+Shift (elsewhere) so that every
 // Ctrl and Alt chord reaches the terminal untouched.
 
-export type AppAction = 'addRepo' | 'prev' | 'next' | `jump:${number}`
+export type AppAction =
+  | 'addRepo'
+  | 'newWorktree'
+  | 'archive'
+  | 'focusAgent'
+  | 'focusShell'
+  | 'toggleShell'
+  | 'prev'
+  | 'next'
+  | `jump:${number}`
 
 export interface KeyInput {
   type: string
@@ -14,6 +23,11 @@ export interface KeyInput {
 
 const BINDINGS: Record<string, AppAction> = {
   KeyO: 'addRepo',
+  KeyN: 'newWorktree',
+  KeyW: 'archive',
+  KeyJ: 'focusAgent',
+  KeyE: 'focusShell',
+  Backslash: 'toggleShell',
   BracketLeft: 'prev',
   BracketRight: 'next'
 }

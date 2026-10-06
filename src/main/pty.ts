@@ -16,8 +16,11 @@ function send(target: WebContents, channel: string, ...args: unknown[]): void {
 }
 
 export function registerPty(): void {
-  ipcMain.handle('pty:spawn', (event, cwd: unknown, cols: unknown, rows: unknown) => {
+  ipcMain.handle('pty:spawn', (event, cwd: unknown, cols: unknown, rows: unknown, env: unknown) => {
     if (typeof cwd !== 'string' || !existsSync(cwd)) throw new Error(`Not a directory: ${cwd}`)
+    const extraEnv = Object.fromEntries(
+      Object.entries(env ?? {}).filter(([, v]) => typeof v === 'string')
+    )
     const { file, args } = defaultShell()
     const id = String(++nextId)
     const proc = pty.spawn(file, args, {
@@ -25,7 +28,7 @@ export function registerPty(): void {
       cwd,
       cols: Number(cols) || 80,
       rows: Number(rows) || 24,
-      env: { ...process.env, TERM_PROGRAM: 'troy' } as Record<string, string>
+      env: { ...process.env, ...extraEnv, TERM_PROGRAM: 'troy' } as Record<string, string>
     })
     proc.onData((data) => send(event.sender, `pty:data:${id}`, data))
     proc.onExit(({ exitCode }) => {
