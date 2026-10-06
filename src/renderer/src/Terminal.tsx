@@ -3,7 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { shellQuote } from '../../shared/shell'
-import { trackStatus, type AgentStatus } from '../../shared/status'
+import { parseHookStatus, STATUS_OSC, trackStatus, type StatusListener } from '../../shared/status'
 import { terminals } from './terminals'
 
 // Matches the --surface and status tokens in main.css.
@@ -43,7 +43,7 @@ interface Props {
   args?: string
   /** Typed into a plain shell on its first launch only. */
   initialInput?: string
-  onStatus?: (status: AgentStatus) => void
+  onStatus?: StatusListener
 }
 
 export function Terminal({
@@ -57,7 +57,9 @@ export function Terminal({
   onStatus
 }: Props): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null)
-  const reportStatus = useEffectEvent((status: AgentStatus) => onStatus?.(status))
+  const reportStatus = useEffectEvent<StatusListener>((status, certain) =>
+    onStatus?.(status, certain)
+  )
 
   useEffect(() => {
     const xterm = new XTerm({
@@ -86,7 +88,8 @@ export function Terminal({
     const start = (): void => {
       const firstRun = launches++ === 0
       const input = command
-        ? `exec ${command}${firstRun && prompt ? ` ${shellQuote(prompt)}` : ''}${args}\r`
+        ? // TROY_TTY tells the agent's hooks where to report status.
+          `TROY_TTY=$(tty) exec ${command}${firstRun && prompt ? ` ${shellQuote(prompt)}` : ''}${args}\r`
         : firstRun
           ? initialInput
           : undefined
@@ -122,6 +125,11 @@ export function Terminal({
       else if (data === '\r' && !starting) start()
     })
     const bell = xterm.onBell(() => tracker?.bell())
+    const hook = xterm.parser.registerOscHandler(STATUS_OSC, (data) => {
+      const status = parseHookStatus(data)
+      if (status) tracker?.hook(status)
+      return true
+    })
     const resize = xterm.onResize(({ cols, rows }) => {
       if (!ptyId) return
       tracker?.resize()
@@ -138,6 +146,7 @@ export function Terminal({
       observer.disconnect()
       input.dispose()
       bell.dispose()
+      hook.dispose()
       resize.dispose()
       tracker?.dispose()
       unsubscribe.forEach((fn) => fn())

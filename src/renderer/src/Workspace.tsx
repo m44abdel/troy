@@ -31,7 +31,7 @@ interface Props {
   onToggleColumn: () => void
   firstRun?: FirstRun
   status?: AgentStatus
-  onStatus: (path: string, status: AgentStatus) => void
+  onStatus: (path: string, status: AgentStatus, certain: boolean) => void
   comments: ReviewComment[]
   onComments: (path: string, comments: ReviewComment[]) => void
   onSend: (path: string) => void
@@ -105,7 +105,7 @@ export function Workspace({
           command={wt.agent}
           args={wt.agentArgs}
           prompt={firstRun?.prompt || undefined}
-          onStatus={(s) => onStatus(wt.path, s)}
+          onStatus={(s, certain) => onStatus(wt.path, s, certain)}
         />
       </div>
       <div className="column" style={{ display: showColumn ? 'flex' : 'none' }}>

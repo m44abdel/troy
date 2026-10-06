@@ -477,3 +477,41 @@ test('a session that starts waiting while you are elsewhere is highlighted until
     await app.close()
   }
 })
+
+test('a hook report beats the output guess and badges the dock', async () => {
+  const repos = [gitRepo('troy-h1-'), gitRepo('troy-h2-')]
+  const userData = tempDir('troy-profile-')
+  const script = join(tempDir('troy-agent-'), 'agent.sh')
+  const meta = { agent: `sh ${script}`, port: 3100 }
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos, worktrees: { [repos[0]]: meta, [repos[1]]: { ...meta, port: 3200 } } })
+  )
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const first = page.locator(`.worktree[title="${repos[0]}"]`)
+    await expect(first.locator('.status-label')).toHaveText('not started')
+
+    // The agent runs Troy's real Stop hook, then keeps printing, which alone would read as working.
+    const hooks = JSON.parse(readFileSync(join(userData, 'claude-hooks.json'), 'utf8'))
+    const stop: string = hooks.hooks.Stop[0].hooks[0].command
+    writeFileSync(script, `sleep 1\n${stop}\nwhile true; do echo tick; sleep 0.5; done\n`)
+
+    await page.locator('.workspace:visible .pane-agent .xterm').click()
+    await page.keyboard.press('Enter')
+    await chord(app, '2', 'meta')
+
+    await expect(first.locator('.status-label')).toHaveText('waiting', { timeout: 10_000 })
+    await expect(first).toHaveClass(/needs-you/)
+    await expect.poll(() => app.evaluate(({ app }) => app.getBadgeCount())).toBe(1)
+
+    await chord(app, '1', 'meta')
+    await expect(first).not.toHaveClass(/needs-you/)
+    await expect(first.locator('.status-label')).toHaveText('waiting')
+    await expect.poll(() => app.evaluate(({ app }) => app.getBadgeCount())).toBe(0)
+  } finally {
+    await app.close()
+  }
+})

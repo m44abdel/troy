@@ -7,7 +7,7 @@ import { listDocs, readDoc } from './docs'
 import { commitAll, diffAgainst, openPullRequest, push } from './finish'
 import { stripInstructions, writeInstructions } from './instructions'
 import { approve, readKnowledge, reject } from './knowledge'
-import { mcpFlags } from './mcp-config'
+import { hookFlags, mcpFlags } from './mcp-config'
 import {
   createWorktree,
   findWorktree,
@@ -68,7 +68,13 @@ async function describeRepos(state: State): Promise<Repo[]> {
           const meta = state.worktrees[wt.path]
           const agent = meta?.agent ?? DEFAULT_AGENT
           const title = typeof meta?.title === 'string' ? meta.title : undefined
-          return { ...wt, agent, agentArgs: mcpFlags(agent), port: meta?.port, title }
+          return {
+            ...wt,
+            agent, // --mcp-config swallows every argument after it, so it goes last.
+            agentArgs: hookFlags(agent) + mcpFlags(agent),
+            port: meta?.port,
+            title
+          }
         })
         return { path, worktrees }
       } catch (err) {

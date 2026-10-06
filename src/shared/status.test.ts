@@ -1,14 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { trackStatus, type AgentStatus } from './status'
+import { parseHookStatus, trackStatus, type AgentStatus } from './status'
 
 describe('trackStatus', () => {
   let seen: AgentStatus[]
+  let certain: boolean[]
   let tracker: ReturnType<typeof trackStatus>
 
   beforeEach(() => {
     vi.useFakeTimers()
     seen = []
-    tracker = trackStatus((s) => seen.push(s), 1000)
+    certain = []
+    tracker = trackStatus((s, sure) => {
+      seen.push(s)
+      certain.push(sure)
+    }, 1000)
   })
 
   afterEach(() => {
@@ -67,5 +72,39 @@ describe('trackStatus', () => {
     tracker.output()
     tracker.exit(127)
     expect(seen).toEqual(['running', 'done', 'running', 'error'])
+  })
+  it('trusts hook reports over the silence timer once one arrives', () => {
+    tracker.hook('running')
+    tracker.output()
+    vi.advanceTimersByTime(5000)
+    expect(seen).toEqual(['running'])
+
+    tracker.hook('waiting')
+    tracker.output()
+    tracker.bell()
+    vi.advanceTimersByTime(5000)
+    expect(seen).toEqual(['running', 'waiting'])
+  })
+
+  it('marks hook, bell and exit changes as certain but a quiet spell as a guess', () => {
+    tracker.output()
+    vi.advanceTimersByTime(1000)
+    tracker.bell()
+    tracker.output()
+    tracker.exit(0)
+    expect(seen).toEqual(['running', 'waiting', 'running', 'done'])
+    expect(certain).toEqual([false, false, false, true])
+
+    tracker.hook('waiting')
+    expect(certain.at(-1)).toBe(true)
+  })
+})
+
+describe('parseHookStatus', () => {
+  it('accepts only the statuses a hook may report', () => {
+    expect(parseHookStatus('waiting')).toBe('waiting')
+    expect(parseHookStatus('running')).toBe('running')
+    expect(parseHookStatus('done')).toBeNull()
+    expect(parseHookStatus('waiting;rm -rf')).toBeNull()
   })
 })
