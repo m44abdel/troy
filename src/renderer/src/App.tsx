@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
 import { isAlive, type AgentStatus } from '../../shared/status'
-import type { Repo } from '../../shared/types'
+import type { ContextUsage, Repo } from '../../shared/types'
 import { formatComments, type ReviewComment } from './comments'
+import { CONTEXT_WARN_PERCENT, contextPercent, describeContext } from './context'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { MOD } from './platform'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
+
+// ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
+const CONTEXT_POLL_MS = 5000
 
 const basename = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
 
@@ -21,6 +25,7 @@ function App(): React.JSX.Element {
   const [firstRuns, setFirstRuns] = useState<Record<string, FirstRun>>({})
   const [showColumn, setShowColumn] = useState(true)
   const [tab, setTab] = useState<ColumnTab>('shell')
+  const [contexts, setContexts] = useState<Record<string, ContextUsage | null>>({})
   const [comments, setComments] = useState<Record<string, ReviewComment[]>>({})
   const [dialogRepo, setDialogRepo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +40,21 @@ function App(): React.JSX.Element {
   useEffect(() => {
     window.api.listRepos().then(setRepos)
   }, [])
+
+  const watched = worktrees.filter((wt) => visited.includes(wt.path))
+  const watchKey = watched.map((wt) => `${wt.path}\0${wt.agent}`).join('\n')
+  useEffect(() => {
+    const targets = watchKey ? watchKey.split('\n').map((line) => line.split('\0')) : []
+    const poll = (): void =>
+      targets.forEach(([path, agent]) =>
+        window.api
+          .contextUsage(path, agent)
+          .then((usage) => setContexts((c) => ({ ...c, [path]: usage })))
+      )
+    poll()
+    const timer = setInterval(poll, CONTEXT_POLL_MS)
+    return () => clearInterval(timer)
+  }, [watchKey])
 
   useEffect(() => {
     if (current) focusTerminal(agentId(current.path))
@@ -143,6 +163,7 @@ function App(): React.JSX.Element {
               {repo.worktrees.map((wt) => {
                 const i = worktrees.indexOf(wt)
                 const status = statuses[wt.path] ?? 'idle'
+                const usage = contexts[wt.path]
                 return (
                   <button
                     key={wt.path}
@@ -154,6 +175,14 @@ function App(): React.JSX.Element {
                     <span className="branch">{wt.branch ?? 'detached'}</span>
                     <span className="agent">{wt.agent}</span>
                     {i < 9 && <kbd>{`${MOD}${i + 1}`}</kbd>}
+                    {usage && (
+                      <span
+                        className={`ctx-bar ${contextPercent(usage) >= CONTEXT_WARN_PERCENT ? 'warn' : ''}`}
+                        title={describeContext(usage)}
+                      >
+                        <span style={{ width: `${contextPercent(usage)}%` }} />
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -185,6 +214,7 @@ function App(): React.JSX.Element {
                 onTab={setTab}
                 firstRun={firstRuns[wt.path]}
                 status={statuses[wt.path]}
+                context={contexts[wt.path]}
                 onStatus={onStatus}
                 comments={comments[wt.path] ?? []}
                 onComments={onComments}

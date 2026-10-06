@@ -1,6 +1,6 @@
 import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test'
 import { execFileSync } from 'child_process'
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'fs'
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -197,6 +197,57 @@ test('reviews the diff, sends comments to the agent and commits', async () => {
     await expect(diff.getByText('No changes yet.')).toBeVisible()
     expect(git('log', '-1', '--format=%s')).toBe('add two')
     expect(git('status', '--porcelain')).toBe('')
+  } finally {
+    await app.close()
+  }
+})
+
+test('shows context usage from the Claude Code session log', async () => {
+  const repo = gitRepo('troy-ctx-')
+  const claudeHome = tempDir('troy-claude-')
+  const logDir = join(claudeHome, 'projects', repo.replace(/[^a-zA-Z0-9]/g, '-'))
+  mkdirSync(logDir, { recursive: true })
+  const turn = (cacheRead: number): string =>
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        model: 'claude-sonnet-5-5',
+        usage: {
+          input_tokens: 0,
+          cache_read_input_tokens: cacheRead,
+          cache_creation_input_tokens: 0
+        }
+      }
+    }) + '\n'
+  const log = join(logDir, 'session.jsonl')
+  writeFileSync(log, turn(150_000))
+  const userData = tempDir('troy-profile-')
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos: [repo], worktrees: { [repo]: { agent: 'claude', port: 3100 } } })
+  )
+
+  const app = await electron.launch({
+    args: ['.'],
+    env: { ...shellEnv, TROY_USER_DATA: userData, CLAUDE_CONFIG_DIR: claudeHome }
+  })
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.worktree.selected .ctx-bar')).toHaveAttribute(
+      'title',
+      '75% of context used (150k / 200k)'
+    )
+
+    const workspace = page.locator('.workspace:visible')
+    await workspace.getByRole('button', { name: 'Context' }).click()
+    await expect(workspace.locator('.context-figure')).toHaveText('75%')
+    await expect(workspace.locator('.context-pane')).toContainText('claude-sonnet-5-5')
+    await expect(workspace.locator('.context-pane .error')).toHaveCount(0)
+
+    appendFileSync(log, turn(170_000))
+    await expect(workspace.locator('.context-figure')).toHaveText('85%', { timeout: 10_000 })
+    await expect(workspace.locator('.context-pane .error')).toContainText('85% full')
+    await expect(page.locator('.worktree.selected .ctx-bar')).toHaveClass(/warn/)
   } finally {
     await app.close()
   }

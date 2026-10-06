@@ -25,3 +25,9 @@ export interface CreateRequest {
   base: string
   agent: string
 }
+
+export interface ContextUsage {
+  used: number
+  window: number
+  model: string | null
+}

@@ -2,6 +2,7 @@ import { app, dialog, ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'el
 import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import type { CreateRequest, Repo, ReposResult } from '../shared/types'
+import { readContext } from './context'
 import { commitAll, diffAgainst, openPullRequest, push } from './finish'
 import {
   createWorktree,
@@ -190,6 +191,14 @@ async function attempt<T extends object>(fn: () => Promise<T>): Promise<T | { er
 }
 
 export function registerRepos(): void {
+  // Only paths derived from these are read, inside the agents' own log folders.
+  ipcMain.handle('context:get', (_e, path, agent) => {
+    if (typeof path !== 'string' || typeof agent !== 'string') return null
+    return readContext(path, agent).catch((err) => {
+      console.warn(`Could not read context usage for ${path}`, err)
+      return null
+    })
+  })
   ipcMain.handle('worktree:diff', (_e, path) =>
     attempt(async () => {
       const wt = await locate(path)

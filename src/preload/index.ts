@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AppAction } from '../shared/keys'
-import type { CreateRequest, Repo, ReposResult } from '../shared/types'
+import type { ContextUsage, CreateRequest, Repo, ReposResult } from '../shared/types'
 
 function subscribe<T extends unknown[]>(channel: string, cb: (...args: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, ...args: unknown[]): void => cb(...(args as T))
@@ -18,6 +18,8 @@ const api = {
     ipcRenderer.invoke('worktree:create', repo, req),
   archiveWorktree: (repo: string, path: string): Promise<ReposResult> =>
     ipcRenderer.invoke('worktree:archive', repo, path),
+  contextUsage: (path: string, agent: string): Promise<ContextUsage | null> =>
+    ipcRenderer.invoke('context:get', path, agent),
   diff: (path: string): Promise<{ diff?: string; error?: string }> =>
     ipcRenderer.invoke('worktree:diff', path),
   commit: (path: string, message: string): Promise<{ error?: string }> =>
