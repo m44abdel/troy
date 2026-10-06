@@ -5,6 +5,7 @@ import { overlaps, type Overlap } from '../shared/overlap'
 import type { CreateRequest, Repo, ReposResult, Worktree } from '../shared/types'
 import { runCheck } from './check'
 import { readContext } from './context'
+import { buildGraph, graphDependencies, graphServer } from './graph'
 import { listDocs, readDoc } from './docs'
 import { changedFiles, commitAll, diffAgainst, openPullRequest, push } from './finish'
 import { stripInstructions, writeInstructions } from './instructions'
@@ -66,6 +67,8 @@ async function describeRepos(state: State): Promise<Repo[]> {
   return Promise.all(
     state.repos.map(async (path) => {
       try {
+        // ponytail: a graph built after this listing reaches agents on the next one.
+        const graph = graphServer(path)
         const worktrees = (await listWorktrees(path)).map((wt) => {
           const meta = state.worktrees[wt.path]
           const agent = meta?.agent ?? DEFAULT_AGENT
@@ -73,7 +76,7 @@ async function describeRepos(state: State): Promise<Repo[]> {
           return {
             ...wt,
             agent, // --mcp-config swallows every argument after it, so it goes last.
-            agentArgs: hookFlags(agent) + mcpFlags(agent),
+            agentArgs: hookFlags(agent) + mcpFlags(agent, undefined, undefined, graph ?? undefined),
             port: meta?.port,
             title
           }
@@ -113,6 +116,7 @@ async function addRepo(event: IpcMainInvokeEvent): Promise<ReposResult & { added
 
   const next = { ...state, repos: [...state.repos, top] }
   await saveState(next)
+  void buildGraph(top)
   return { repos: await describeRepos(next), added: top }
 }
 
@@ -141,6 +145,8 @@ async function create(
     const repo = await knownRepo(repoArg)
     const req = parseCreateRequest(reqArg)
     const { path, base } = await createWorktree(repo, req.branch, req.base)
+    // The base was just fetched, so this is a good moment to refresh the graph.
+    void buildGraph(repo)
     await writeInstructions(path, req.agent).catch((err) =>
       console.warn(`Could not add the knowledge block to ${path}`, err)
     )
@@ -231,7 +237,7 @@ async function findOverlaps(): Promise<Record<string, Overlap[]>> {
           await changedFiles(wt.path, await baseOf(repo, wt, state)).catch(() => [])
         ])
       )
-      return overlaps(Object.fromEntries(changes))
+      return overlaps(Object.fromEntries(changes), await graphDependencies(repo))
     })
   )
   return Object.assign({}, ...perRepo)
@@ -246,6 +252,7 @@ async function attempt<T extends object>(fn: () => Promise<T>): Promise<T | { er
 }
 
 export function registerRepos(): void {
+  void loadState().then((state) => state.repos.forEach((repo) => void buildGraph(repo)))
   // Only paths derived from these are read, inside the agents' own log folders.
   ipcMain.handle('context:get', (_e, path, agent) => {
     if (typeof path !== 'string' || typeof agent !== 'string') return null

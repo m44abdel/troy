@@ -1,3 +1,4 @@
+import type { OverlapKind } from '../../shared/overlap'
 import type { AgentStatus } from '../../shared/status'
 import type { CheckResult, ContextUsage, WorktreeView } from '../../shared/types'
 import { ContextRing } from './ContextRing'
@@ -17,6 +18,12 @@ export function AgentBadge({ agent }: { agent: string }): React.JSX.Element {
   )
 }
 
+const OVERLAP_TEXT: Record<OverlapKind, (name: string) => string> = {
+  same: (name) => `⚠ Same files as ${name}`,
+  uses: (name) => `↳ Uses code ${name} changed`,
+  usedBy: (name) => `↳ ${name} uses code this changed`
+}
+
 interface Props {
   wt: WorktreeView
   /** Position in the sidebar, for the ⌘1–9 hint. */
@@ -27,8 +34,8 @@ interface Props {
   needsYou: boolean
   usage?: ContextUsage | null
   check?: CheckResult
-  /** Other worktrees that changed some of the same files. */
-  overlaps?: { name: string; files: string[] }[]
+  /** Other worktrees whose changes meet this one's. */
+  overlaps?: { name: string; kind: OverlapKind; files: string[] }[]
   onSelect: () => void
 }
 
@@ -72,8 +79,12 @@ export function WorktreeCard({
         {usage && <ContextRing usage={usage} />}
       </span>
       {overlaps.map((o) => (
-        <span key={o.name} className="card-overlap" title={o.files.join('\n')}>
-          ⚠ Same files as {o.name} ({o.files.length})
+        <span
+          key={`${o.kind}:${o.name}`}
+          className={`card-overlap ${o.kind}`}
+          title={o.files.join('\n')}
+        >
+          {OVERLAP_TEXT[o.kind](o.name)} ({o.files.length})
         </span>
       ))}
     </button>

@@ -125,6 +125,21 @@ describe('mcpFlags', () => {
     )
     expect(mcpFlags('aider', '', server)).toBe('')
   })
+
+  it('adds the code graph server next to Troy when the repo has one', () => {
+    const graph = {
+      config: '/g/mcp.json',
+      server: { command: '/py', args: ['-m', 'graphify.serve', '/g/graph.json'], env: {} }
+    }
+    expect(mcpFlags('claude', '/troy.json', server, graph)).toBe(
+      ` --mcp-config '/troy.json' '/g/mcp.json'`
+    )
+    expect(mcpFlags('codex', '', server, graph)).toContain(
+      ` -c 'mcp_servers.graph.command="/py"'` +
+        ` -c 'mcp_servers.graph.args=["-m","graphify.serve","/g/graph.json"]'` +
+        ` -c 'mcp_servers.graph.env={}'`
+    )
+  })
 })
 
 describe('hookSettings', () => {

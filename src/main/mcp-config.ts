@@ -59,16 +59,26 @@ export const hookFlags = (agent: string, path = hooksPath()): string =>
  * Flags appended to the agent's command line so it starts Troy's MCP server.
  * They go last: Claude's --mcp-config takes every argument after it.
  */
-export function mcpFlags(agent: string, config = configPath(), server = launch()): string {
+export function mcpFlags(
+  agent: string,
+  config = configPath(),
+  server = launch(),
+  graph?: { config: string; server: McpLaunch }
+): string {
   const cli = commandName(agent)
-  if (cli === 'claude') return ` --mcp-config ${shellQuote(config)}`
+  if (cli === 'claude')
+    return ` --mcp-config ${[config, ...(graph ? [graph.config] : [])].map(shellQuote).join(' ')}`
   if (cli !== 'codex') return ''
+  return codexServer('troy', server) + (graph ? codexServer('graph', graph.server) : '')
+}
+
+function codexServer(name: string, server: McpLaunch): string {
   const env = Object.entries(server.env).map(([k, v]) => `${k}=${JSON.stringify(v)}`)
   return [
     `command=${JSON.stringify(server.command)}`,
     `args=${JSON.stringify(server.args)}`,
     `env={${env.join(',')}}`
   ]
-    .map((setting) => ` -c ${shellQuote(`mcp_servers.troy.${setting}`)}`)
+    .map((setting) => ` -c ${shellQuote(`mcp_servers.${name}.${setting}`)}`)
     .join('')
 }

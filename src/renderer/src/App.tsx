@@ -319,6 +319,7 @@ function App(): React.JSX.Element {
                   needsYou={needsYou(wt.path)}
                   overlaps={overlaps[wt.path]?.map((o) => ({
                     name: nameOf(o.other),
+                    kind: o.kind,
                     files: o.files
                   }))}
                   usage={contexts[wt.path]}

@@ -11,6 +11,8 @@ const BLOCK = `${START}
 \`.troy/knowledge.md\` lists facts about this repository that a person approved, each with its source. Read it before exploring.
 
 If the \`troy\` MCP server is available, \`knowledge_search\` searches the latest approved facts and flags entries whose source file changed since. To record a fact, call \`knowledge_propose\` with the fact and a source (\`path:line\`, a commit hash or \`session:<id>\`); a person reviews it first. Don't edit \`.troy/knowledge.md\` yourself.
+
+If the \`graph\` MCP server is available, it holds a code graph of this repository. Ask it how code connects (\`query_graph\`, \`get_neighbors\`, \`shortest_path\`) before grepping through files. It reflects the base branch, not your uncommitted changes.
 ${END}`
 
 const FILES = ['CLAUDE.md', 'AGENTS.md']

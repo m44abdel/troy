@@ -600,3 +600,52 @@ test('runs .troy/check when the agent stops and sends a failure back to it', asy
     await app.close()
   }
 })
+
+test('links worktrees through the code graph when one uses code another changed', async () => {
+  const repo = gitRepo('troy-graph-')
+  const git = (...args: string[]): Buffer =>
+    execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+  writeFileSync(join(repo, 'api.ts'), 'export const get = 1\n')
+  writeFileSync(join(repo, 'ui.ts'), "import { get } from './api'\n")
+  git('add', '.')
+  git('commit', '-qm', 'init')
+  git('worktree', 'add', '-q', '-b', 'api-work', `${repo}.api-work`)
+  git('worktree', 'add', '-q', '-b', 'ui-work', `${repo}.ui-work`)
+  writeFileSync(join(`${repo}.api-work`, 'api.ts'), 'export const get = 2\n')
+  writeFileSync(join(`${repo}.ui-work`, 'ui.ts'), "import { get } from './api'\nget\n")
+
+  // A stand-in for graphify: `graphify extract <repo> --code-only --out <dir>` writes the graph.
+  const bin = tempDir('troy-bin-')
+  const graph = {
+    nodes: [
+      { id: 'ui', source_file: 'ui.ts' },
+      { id: 'api', source_file: 'api.ts' }
+    ],
+    links: [{ source: 'ui', target: 'api', relation: 'imports_from' }]
+  }
+  writeFileSync(
+    join(bin, 'graphify'),
+    `#!/bin/sh\nmkdir -p "$5/graphify-out"\necho '${JSON.stringify(graph)}' > "$5/graphify-out/graph.json"\n`,
+    { mode: 0o755 }
+  )
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({
+    ...shellEnv,
+    PATH: `${bin}:${process.env.PATH}`,
+    TROY_USER_DATA: userData
+  })
+  try {
+    const page = await app.firstWindow()
+    const card = (branch: string): Locator => page.locator(`.worktree[title="${repo}.${branch}"]`)
+    await expect(card('ui-work').locator('.card-overlap')).toHaveText(
+      '↳ Uses code api-work changed (1)'
+    )
+    await expect(card('api-work').locator('.card-overlap')).toHaveText(
+      '↳ ui-work uses code this changed (1)'
+    )
+  } finally {
+    await app.close()
+  }
+})
