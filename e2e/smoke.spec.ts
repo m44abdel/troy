@@ -391,3 +391,49 @@ test('vim keys move through the sidebar only when enabled, and keybindings.json 
     await app.close()
   }
 })
+
+test('renders the docs tab with Mermaid diagrams and follows relative links', async () => {
+  const repo = gitRepo('troy-docs-')
+  mkdirSync(join(repo, 'docs'))
+  writeFileSync(
+    join(repo, 'README.md'),
+    [
+      '# Project',
+      '',
+      'See [the guide](docs/guide.md).',
+      '',
+      '| a | b |',
+      '| - | - |',
+      '| 1 | 2 |',
+      '',
+      '```mermaid',
+      'graph LR',
+      '  Agent --> Worktree',
+      '```',
+      ''
+    ].join('\n')
+  )
+  writeFileSync(join(repo, 'docs', 'guide.md'), '# Guide\n\nHello from the guide.\n')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  try {
+    const page = await app.firstWindow()
+    const workspace = page.locator('.workspace:visible')
+    await workspace.getByRole('button', { name: 'Docs' }).click()
+    const docs = workspace.locator('.docs-pane')
+
+    await expect(docs.locator('select')).toHaveValue('README.md')
+    await expect(docs.getByRole('heading', { name: 'Project' })).toBeVisible()
+    await expect(docs.locator('td')).toHaveText(['1', '2'])
+    await expect(docs.locator('.mermaid svg')).toBeVisible({ timeout: 10_000 })
+    await expect(docs.locator('.mermaid svg')).toContainText('Worktree')
+
+    await docs.getByRole('link', { name: 'the guide' }).click()
+    await expect(docs.locator('select')).toHaveValue('docs/guide.md')
+    await expect(docs).toContainText('Hello from the guide.')
+  } finally {
+    await app.close()
+  }
+})

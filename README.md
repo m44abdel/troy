@@ -29,6 +29,10 @@ Agents share what they learn through `.troy/knowledge.md`, a plain file in your 
 
 Proposals wait in the repository's git directory (`.git/troy/proposals`), so they are shared by all worktrees and never committed.
 
+## Docs
+
+The **Docs** tab renders the worktree's markdown files (README first), including tables and ` ```mermaid ` diagrams. Relative links between docs open in the tab; web links open in your browser.
+
 ## Review and finish
 
 The **Diff** tab (**⌘D**) shows everything the worktree changed since it branched off its base: commits, uncommitted edits and new files. Click a line number to leave a comment; **⌘Enter** pastes all comments into the agent as one message for you to send. The toolbar commits everything, pushes the branch, or opens its pull request in the browser via the [GitHub CLI](https://cli.github.com) (`gh`), creating one if it doesn't exist yet.

@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import type { CreateRequest, Repo, ReposResult } from '../shared/types'
 import { readContext } from './context'
+import { listDocs, readDoc } from './docs'
 import { commitAll, diffAgainst, openPullRequest, push } from './finish'
 import { stripInstructions, writeInstructions } from './instructions'
 import { approve, readKnowledge, reject } from './knowledge'
@@ -231,6 +232,12 @@ export function registerRepos(): void {
       await openPullRequest((await locate(path)).path)
       return {}
     })
+  )
+  ipcMain.handle('docs:list', (_e, path) =>
+    attempt(async () => ({ files: await listDocs((await locate(path)).path) }))
+  )
+  ipcMain.handle('docs:read', (_e, path, file) =>
+    attempt(async () => ({ text: await readDoc((await locate(path)).path, String(file)) }))
   )
   ipcMain.handle('knowledge:get', (_e, path) =>
     attempt(async () => readKnowledge((await locate(path)).path))

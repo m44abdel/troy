@@ -39,6 +39,10 @@ const api = {
   push: (path: string): Promise<{ error?: string }> => ipcRenderer.invoke('worktree:push', path),
   openPullRequest: (path: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('worktree:pr', path),
+  docs: (path: string): Promise<{ files?: string[]; error?: string }> =>
+    ipcRenderer.invoke('docs:list', path),
+  readDoc: (path: string, file: string): Promise<{ text?: string; error?: string }> =>
+    ipcRenderer.invoke('docs:read', path, file),
   knowledge: (path: string): Promise<Knowledge | { error: string }> =>
     ipcRenderer.invoke('knowledge:get', path),
   approveFact: (path: string, id: string): Promise<{ error?: string }> =>

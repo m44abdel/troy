@@ -3,6 +3,7 @@ import { isAlive } from '../../shared/status'
 import type { Knowledge, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
 import { DiffPane } from './DiffPane'
+import { DocsPane } from './DocsPane'
 import { KnowledgePane } from './KnowledgePane'
 import { MOD } from './platform'
 import { Terminal } from './Terminal'
@@ -10,7 +11,7 @@ import { agentId, shellId } from './terminals'
 
 const SETUP_COMMAND = 'sh .troy/setup.sh\r'
 
-export type ColumnTab = 'shell' | 'diff' | 'knowledge'
+export type ColumnTab = 'shell' | 'diff' | 'knowledge' | 'docs'
 
 /** What a worktree created this session still needs on its first launch. */
 export interface FirstRun {
@@ -74,6 +75,7 @@ export function Workspace({
         <div className="tabs">
           {tabButton('shell', 'Shell', 'E')}
           {tabButton('diff', comments.length ? `Diff · ${comments.length}` : 'Diff', 'D')}
+          {tabButton('docs', 'Docs')}
           {tabButton('knowledge', pending ? `Knowledge · ${pending}` : 'Knowledge')}
         </div>
         <div className="pane pane-shell" style={{ display: tab === 'shell' ? 'block' : 'none' }}>
@@ -83,6 +85,9 @@ export function Workspace({
             port={wt.port}
             initialInput={firstRun?.setup ? SETUP_COMMAND : undefined}
           />
+        </div>
+        <div className="pane" style={{ display: tab === 'docs' ? 'block' : 'none' }}>
+          <DocsPane path={wt.path} visible={active && showColumn && tab === 'docs'} />
         </div>
         <div className="pane" style={{ display: tab === 'knowledge' ? 'block' : 'none' }}>
           <KnowledgePane path={wt.path} knowledge={knowledge} onChanged={onKnowledgeChanged} />
