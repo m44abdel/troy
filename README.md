@@ -6,7 +6,7 @@ Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its ow
 
 ## Worktrees
 
-**⌘N** asks for a branch, a base branch (defaults to the remote's default branch), an agent CLI and an optional first prompt. Troy fetches the base, runs `git worktree add` into a sibling directory `<repo>.<branch>`, then bootstraps it:
+**⌘N** asks for a branch, a base branch (defaults to the remote's default branch), an agent CLI (Troy suggests the ones it finds on your PATH) and an optional first prompt. Troy fetches the base, runs `git worktree add` into a sibling directory `<repo>.<branch>`, then bootstraps it:
 
 - copies untracked files matching the globs in `.troy/copy` (default `.env*`) from the main checkout
 - gives each worktree its own `PORT_BASE` (3100, 3200, …) so dev servers don't collide
@@ -50,6 +50,11 @@ App shortcuts use **⌘** on macOS (**Ctrl+Shift** on Linux/Windows). Every Ctrl
 | ⌘D       | Show the diff                     |
 | ⌘Enter   | Send review comments to the agent |
 | ⌘\\      | Toggle the right column           |
+| ⌘,       | Settings                          |
+
+Shortcuts live in `keybindings.json` in Troy's app data folder (**Settings → Open keybindings.json**). It maps key codes to actions, for example `"KeyK": "newWorktree"`; set a key to `null` to give it back to the terminal. Edits apply as soon as you save.
+
+**Vim navigation** is off by default; turn it on in Settings. Then `j`/`k`, `gg`/`G` and `Enter` move through the sidebar, and `j`/`k`, `gg`/`G` and `]c`/`[c` scroll the diff and jump between hunks. These keys never apply while a terminal or text field has focus.
 
 ## Development
 
