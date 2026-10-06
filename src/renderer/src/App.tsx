@@ -136,11 +136,13 @@ function App(): React.JSX.Element {
     if (!target || target === current) return
     keepSidebarFocus.current = true
     setSelected(target.path)
-    requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      // A key typed before this frame (e.g. Enter) may already have moved focus on.
+      if (!document.activeElement?.closest('.sidebar')) return
       document
         .querySelector<HTMLElement>(`.worktree[data-path="${CSS.escape(target.path)}"]`)
         ?.focus()
-    )
+    })
   })
 
   const updateSettings = (next: Partial<SettingsData>): void => {
