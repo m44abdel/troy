@@ -37,6 +37,8 @@ When two worktrees of a repo change the same files, both cards say so (**⚠ Sam
 
 Agents say the tests pass; Troy checks. Put any command in `.troy/check` (e.g. `npm test && npm run lint`) and Troy runs it whenever Claude Code reports it has stopped, and again before **Push** or **Open PR**. The card shows **✓ check** or **✗ check**, the diff tab shows the output, and **Send failure to agent** pastes it back to the agent. A result is reused until the worktree changes, so re-checking an unchanged tree is instant. Shipping with a failing check asks first.
 
+With [graphify](https://github.com/safishamsi/graphify) on your PATH (`uv tool install 'graphifyy[mcp]'`), Troy builds a code graph of each repo with `graphify extract --code-only`. The build is local, uses no LLM, takes a few seconds and is stored in Troy's own folder, never in the repo. It's rebuilt at launch and whenever a worktree is created. Every agent in every worktree gets the same graph as a `graph` MCP server, so they ask it how code connects instead of each re-reading the repo. The overlap radar uses it too: besides same-file overlaps, a card says **↳ Uses code api-work changed** when its changes import or call files another worktree changed.
+
 ## Context window
 
 For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is as a small ring on each worktree in the sidebar. It turns amber from 80%, and hovering shows tokens used, window size and model. Other CLIs show as unknown rather than a guess.
