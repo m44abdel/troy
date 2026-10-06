@@ -28,5 +28,10 @@ export default defineConfig(
       ...eslintPluginReactRefresh.configs.vite.rules
     }
   },
+  {
+    // Plain JS build hooks can't carry TypeScript return types.
+    files: ['**/*.{mjs,cjs}'],
+    rules: { '@typescript-eslint/explicit-function-return-type': 'off' }
+  },
   eslintConfigPrettier
 )

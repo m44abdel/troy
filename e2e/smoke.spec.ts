@@ -22,6 +22,14 @@ function gitRepo(prefix: string): string {
   return repo
 }
 
+// TROY_E2E_APP=/path/to/Troy.app/Contents/MacOS/Troy runs the suite against a packaged build.
+function launchTroy(env: Record<string, string | undefined>): Promise<ElectronApplication> {
+  const packaged = process.env.TROY_E2E_APP
+  return packaged
+    ? electron.launch({ executablePath: packaged, env })
+    : electron.launch({ args: ['.'], env })
+}
+
 // Empty ZDOTDIR keeps the developer's own zsh config (prompts, auto-attach) out of the test.
 const shellEnv = { ...process.env, SHELL: '/bin/zsh', ZDOTDIR: tempDir('troy-zdotdir-') }
 
@@ -30,10 +38,7 @@ test('opens a saved repo in a working terminal', async () => {
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
 
-  const app = await electron.launch({
-    args: ['.'],
-    env: { ...shellEnv, TROY_USER_DATA: userData }
-  })
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
     await expect(page.locator('.repo-header')).toContainText(repo.split('/').pop()!)
@@ -50,10 +55,7 @@ test('opens a saved repo in a working terminal', async () => {
 })
 
 test('shows the welcome screen with no repos', async () => {
-  const app = await electron.launch({
-    args: ['.'],
-    env: { ...shellEnv, TROY_USER_DATA: tempDir('troy-profile-') }
-  })
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: tempDir('troy-profile-') })
   try {
     const page = await app.firstWindow()
     await expect(page.getByRole('heading', { name: 'Welcome to Troy' })).toBeVisible()
@@ -84,7 +86,7 @@ test('Cmd shortcuts switch worktrees while Ctrl chords reach the shell', async (
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos }))
 
-  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
     const shell = page.locator('.workspace:visible .pane-shell')
@@ -120,7 +122,7 @@ test('creates a bootstrapped worktree, runs its agent and archives it', async ()
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
   const worktree = `${repo}.feat-e2e`
 
-  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
     await expect(page.locator('.worktree.selected')).toContainText('main')
@@ -176,7 +178,7 @@ test('reviews the diff, sends comments to the agent and commits', async () => {
     JSON.stringify({ repos: [repo], worktrees: { [repo]: { agent: 'cat', port: 3100 } } })
   )
 
-  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
     const workspace = page.locator('.workspace:visible')
@@ -236,9 +238,10 @@ test('shows context usage from the Claude Code session log', async () => {
     JSON.stringify({ repos: [repo], worktrees: { [repo]: { agent: 'claude', port: 3100 } } })
   )
 
-  const app = await electron.launch({
-    args: ['.'],
-    env: { ...shellEnv, TROY_USER_DATA: userData, CLAUDE_CONFIG_DIR: claudeHome }
+  const app = await launchTroy({
+    ...shellEnv,
+    TROY_USER_DATA: userData,
+    CLAUDE_CONFIG_DIR: claudeHome
   })
   try {
     const page = await app.firstWindow()
@@ -299,7 +302,7 @@ test('an agent proposes a fact over MCP and the user approves it', async () => {
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
 
-  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
     await expect(page.locator('.worktree.selected')).toContainText('main')
@@ -354,7 +357,7 @@ test('vim keys move through the sidebar only when enabled, and keybindings.json 
     JSON.stringify({ KeyN: null, KeyK: 'newWorktree' })
   )
 
-  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
     const selected = page.locator('.worktree.selected')
@@ -362,6 +365,7 @@ test('vim keys move through the sidebar only when enabled, and keybindings.json 
 
     // Off by default: j does nothing in the sidebar.
     await selected.focus()
+    await expect(selected).toBeFocused()
     await page.keyboard.press('j')
     await expect(selected).toHaveAttribute('title', repos[0])
 
@@ -371,6 +375,7 @@ test('vim keys move through the sidebar only when enabled, and keybindings.json 
     expect(JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8'))).toEqual({ vim: true })
 
     await selected.focus()
+    await expect(selected).toBeFocused()
     await page.keyboard.press('j')
     await expect(selected).toHaveAttribute('title', repos[1])
     await expect(selected).toBeFocused()
@@ -417,7 +422,7 @@ test('renders the docs tab with Mermaid diagrams and follows relative links', as
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
 
-  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
     const workspace = page.locator('.workspace:visible')
