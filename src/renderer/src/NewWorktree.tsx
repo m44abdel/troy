@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { KNOWN_AGENTS } from '../../shared/shell'
 import type { CreateRequest } from '../../shared/types'
+import { Icon } from './icons'
 
 export type NewWorktreeRequest = Required<CreateRequest>
 
@@ -40,7 +41,15 @@ export function NewWorktree({ repoName, installed, onCancel, onCreate }: Props):
   return (
     <dialog ref={dialog} className="dialog" onClose={onCancel}>
       <form onSubmit={submit}>
-        <h2>New worktree in {repoName}</h2>
+        <div className="dialog-head">
+          <span className="dialog-icon">
+            <Icon name="branch" size={18} />
+          </span>
+          <div>
+            <h2>New worktree in {repoName}</h2>
+            <p className="muted">A fresh branch and checkout, with its own agent and shell.</p>
+          </div>
+        </div>
         <label>
           Branch
           <input name="branch" required autoFocus placeholder="feat/login" />
@@ -68,6 +77,11 @@ export function NewWorktree({ repoName, installed, onCancel, onCreate }: Props):
             Cancel
           </button>
           <button className="primary" disabled={busy}>
+            {busy ? (
+              <span className="spinner" aria-hidden="true" />
+            ) : (
+              <Icon name="plus" size={14} />
+            )}
             {busy ? 'Creating…' : 'Create'}
           </button>
         </div>

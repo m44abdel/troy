@@ -40,7 +40,9 @@ export function KnowledgePane({ path, knowledge, onChanged }: Props): React.JSX.
       {error && <p className="error">{error}</p>}
       {knowledge.proposals.length > 0 && (
         <section>
-          <h3>Review queue</h3>
+          <h3>
+            Review queue <span className="count">{knowledge.proposals.length}</span>
+          </h3>
           {knowledge.proposals.map((p) => (
             <article key={p.id} className="fact proposal">
               <p>{p.fact}</p>
@@ -68,7 +70,7 @@ export function KnowledgePane({ path, knowledge, onChanged }: Props): React.JSX.
       <section>
         <h3>Approved</h3>
         {knowledge.entries.length === 0 && (
-          <p className="muted">
+          <p className="muted empty-note">
             Nothing yet. Agents propose facts with the <code>knowledge_propose</code> tool of the
             troy MCP server; approved ones go to <code>.troy/knowledge.md</code> in the main
             checkout, ready to commit.
