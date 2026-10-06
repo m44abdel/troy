@@ -10,6 +10,7 @@ import {
   type FileData
 } from 'react-diff-view'
 import 'react-diff-view/style/index.css'
+import type { CheckResult } from '../../shared/types'
 import type { ReviewComment } from './comments'
 import { Icon } from './icons'
 import { MOD } from './platform'
@@ -23,6 +24,10 @@ interface Props {
   onComments: (comments: ReviewComment[]) => void
   canSend: boolean
   onSend: () => void
+  /** The latest `.troy/check` result, if the repo has one. */
+  check?: CheckResult
+  onRunCheck: () => Promise<CheckResult | null>
+  onSendCheck: () => void
 }
 
 type Result = { error?: string }
@@ -77,7 +82,10 @@ export function DiffPane({
   comments,
   onComments,
   canSend,
-  onSend
+  onSend,
+  check,
+  onRunCheck,
+  onSendCheck
 }: Props): React.JSX.Element {
   const [files, setFiles] = useState<FileData[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -112,6 +120,25 @@ export function DiffPane({
     if (!result.error) setNotice(done)
     void load()
     return !result.error
+  }
+
+  // Shipping runs the check first (instant when nothing changed) and asks before shipping a failure.
+  const ship = async (run: () => Promise<Result>, done: string): Promise<void> => {
+    setBusy(true)
+    setNotice('Running .troy/check…')
+    const result = await onRunCheck()
+    setBusy(false)
+    setNotice(null)
+    if (result && !result.ok && !window.confirm('.troy/check is failing. Ship anyway?')) return
+    await act(run, done)
+  }
+
+  // These buttons sit in the <summary>; without preventDefault a click also folds the output.
+  const recheck = async (e: React.MouseEvent): Promise<void> => {
+    e.preventDefault()
+    setBusy(true)
+    await onRunCheck()
+    setBusy(false)
   }
 
   const commit = async (): Promise<void> => {
@@ -165,7 +192,7 @@ export function DiffPane({
         <button
           className="secondary"
           disabled={busy}
-          onClick={() => act(() => window.api.push(path), 'Pushed.')}
+          onClick={() => ship(() => window.api.push(path), 'Pushed.')}
         >
           <Icon name="upload" size={14} />
           Push
@@ -174,7 +201,7 @@ export function DiffPane({
           className="secondary"
           disabled={busy}
           onClick={() =>
-            act(() => window.api.openPullRequest(path), 'Opened the pull request in your browser.')
+            ship(() => window.api.openPullRequest(path), 'Opened the pull request in your browser.')
           }
         >
           <Icon name="pr" size={14} />
@@ -191,6 +218,33 @@ export function DiffPane({
         </button>
       </div>
 
+      {check && (
+        <details className={`check-bar ${check.ok ? 'ok' : 'failed'}`}>
+          <summary>
+            <span className="check-label">
+              {check.ok ? '✓ .troy/check passed' : '✗ .troy/check failed'}
+            </span>
+            <button className="secondary" disabled={busy} onClick={recheck}>
+              Run again
+            </button>
+            {!check.ok && (
+              <button
+                className="primary"
+                disabled={!canSend}
+                title={canSend ? undefined : 'Start the agent first'}
+                onClick={(e) => {
+                  e.preventDefault()
+                  onSendCheck()
+                }}
+              >
+                <Icon name="send" size={14} />
+                Send failure to agent
+              </button>
+            )}
+          </summary>
+          <pre>{check.output || '(no output)'}</pre>
+        </details>
+      )}
       {comments.length > 0 && (
         <div className="comment-bar">
           <span className="comment-count">

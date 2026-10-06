@@ -35,6 +35,8 @@ Claude Code reports its own state through hooks Troy loads with `--settings`, me
 
 When two worktrees of a repo change the same files, both cards say so (**⚠ Same files as feat-b (2)**; hover for the list), so you find the collision while the agents are still working, not at merge time. Changes count from where each worktree left its base: commits, uncommitted edits and new files.
 
+Agents say the tests pass; Troy checks. Put any command in `.troy/check` (e.g. `npm test && npm run lint`) and Troy runs it whenever Claude Code reports it has stopped, and again before **Push** or **Open PR**. The card shows **✓ check** or **✗ check**, the diff tab shows the output, and **Send failure to agent** pastes it back to the agent. A result is reused until the worktree changes, so re-checking an unchanged tree is instant. Shipping with a failing check asks first.
+
 ## Context window
 
 For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is as a small ring on each worktree in the sidebar. It turns amber from 80%, and hovering shows tokens used, window size and model. Other CLIs show as unknown rather than a guess.

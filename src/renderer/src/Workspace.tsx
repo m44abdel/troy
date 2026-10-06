@@ -1,6 +1,6 @@
 import type { AgentStatus } from '../../shared/status'
 import { isAlive } from '../../shared/status'
-import type { Knowledge, WorktreeView } from '../../shared/types'
+import type { CheckResult, Knowledge, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
 import { DiffPane } from './DiffPane'
 import { DocsPane } from './DocsPane'
@@ -35,6 +35,9 @@ interface Props {
   comments: ReviewComment[]
   onComments: (path: string, comments: ReviewComment[]) => void
   onSend: (path: string) => void
+  check?: CheckResult
+  onRunCheck: (path: string) => Promise<CheckResult | null>
+  onSendCheck: (path: string) => void
   /** Shared by every worktree of the repo. */
   knowledge?: Knowledge | { error: string }
   onKnowledgeChanged: () => void
@@ -53,6 +56,9 @@ export function Workspace({
   comments,
   onComments,
   onSend,
+  check,
+  onRunCheck,
+  onSendCheck,
   knowledge,
   onKnowledgeChanged
 }: Props): React.JSX.Element {
@@ -138,6 +144,9 @@ export function Workspace({
             onComments={(c) => onComments(wt.path, c)}
             canSend={isAlive(status)}
             onSend={() => onSend(wt.path)}
+            check={check}
+            onRunCheck={() => onRunCheck(wt.path)}
+            onSendCheck={() => onSendCheck(wt.path)}
           />
         </div>
       </div>

@@ -14,3 +14,6 @@ export function formatComments(comments: ReviewComment[]): string {
   )
   return ['Review comments on your changes:', ...lines].join('\n')
 }
+
+export const formatCheckFailure = (output: string): string =>
+  ['.troy/check failed. Fix it and make sure it passes:', '```', output, '```'].join('\n')

@@ -1,4 +1,10 @@
-import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test'
+import {
+  test,
+  expect,
+  _electron as electron,
+  type ElectronApplication,
+  type Locator
+} from '@playwright/test'
 import { execFileSync, spawn } from 'child_process'
 import {
   appendFileSync,
@@ -535,11 +541,61 @@ test('flags worktrees that changed the same files', async () => {
   const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
-    const card = (branch: string) => page.locator(`.worktree[title="${repo}.${branch}"]`)
+    const card = (branch: string): Locator => page.locator(`.worktree[title="${repo}.${branch}"]`)
     await expect(card('feat-a').locator('.card-overlap')).toHaveText('⚠ Same files as feat-b (1)')
     await expect(card('feat-a').locator('.card-overlap')).toHaveAttribute('title', 'api.ts')
     await expect(card('feat-b').locator('.card-overlap')).toHaveText('⚠ Same files as feat-a (1)')
     await expect(page.locator(`.worktree[title="${repo}"] .card-overlap`)).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('runs .troy/check when the agent stops and sends a failure back to it', async () => {
+  const repo = gitRepo('troy-check-')
+  const git = (...args: string[]): Buffer =>
+    execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+  mkdirSync(join(repo, '.troy'))
+  writeFileSync(
+    join(repo, '.troy', 'check'),
+    'grep -q fixed a.txt || { echo "a.txt is not fixed"; exit 1; }\n'
+  )
+  writeFileSync(join(repo, 'a.txt'), 'broken\n')
+  git('add', '.')
+  git('commit', '-qm', 'init')
+  const userData = tempDir('troy-profile-')
+  const script = join(tempDir('troy-agent-'), 'agent.sh')
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos: [repo], worktrees: { [repo]: { agent: `sh ${script}`, port: 3100 } } })
+  )
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const card = page.locator('.worktree.selected')
+    const hooks = JSON.parse(readFileSync(join(userData, 'claude-hooks.json'), 'utf8'))
+    writeFileSync(script, `${hooks.hooks.Stop[0].hooks[0].command}\nwhile true; do sleep 1; done\n`)
+
+    const workspace = page.locator('.workspace:visible')
+    await workspace.locator('.pane-agent .xterm').click()
+    await page.keyboard.press('Enter')
+    await expect(card.locator('.card-check')).toHaveText('✗ check', { timeout: 10_000 })
+
+    await chord(app, 'D', 'meta')
+    const bar = workspace.locator('.check-bar')
+    await expect(bar.locator('.check-label')).toHaveText('✗ .troy/check failed')
+    await bar.locator('summary').click()
+    await expect(bar.locator('pre')).toHaveText('a.txt is not fixed')
+    await bar.getByRole('button', { name: 'Send failure to agent' }).click()
+    await expect(workspace.locator('.pane-agent .xterm-rows')).toContainText(
+      '.troy/check failed. Fix it'
+    )
+
+    writeFileSync(join(repo, 'a.txt'), 'fixed\n')
+    await bar.getByRole('button', { name: 'Run again' }).click()
+    await expect(bar.locator('.check-label')).toHaveText('✓ .troy/check passed')
+    await expect(card.locator('.card-check')).toHaveText('✓ check')
   } finally {
     await app.close()
   }
