@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AppAction } from '../shared/keys'
-import type { ContextUsage, CreateRequest, Knowledge, Repo, ReposResult } from '../shared/types'
+import type {
+  ContextUsage,
+  CreateRequest,
+  Knowledge,
+  Repo,
+  ReposResult,
+  Settings
+} from '../shared/types'
 
 function subscribe<T extends unknown[]>(channel: string, cb: (...args: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, ...args: unknown[]): void => cb(...(args as T))
@@ -10,6 +17,11 @@ function subscribe<T extends unknown[]>(channel: string, cb: (...args: T) => voi
 
 const api = {
   listRepos: (): Promise<Repo[]> => ipcRenderer.invoke('repos:list'),
+  getSettings: (): Promise<Settings> => ipcRenderer.invoke('settings:get'),
+  setSettings: (next: Partial<Settings>): Promise<Settings> =>
+    ipcRenderer.invoke('settings:set', next),
+  openKeybindings: (): Promise<string> => ipcRenderer.invoke('settings:openKeybindings'),
+  installedAgents: (): Promise<string[]> => ipcRenderer.invoke('agents:installed'),
   addRepo: (): Promise<ReposResult & { added?: string }> => ipcRenderer.invoke('repos:add'),
   createWorktree: (
     repo: string,

@@ -343,3 +343,51 @@ test('an agent proposes a fact over MCP and the user approves it', async () => {
     await app.close()
   }
 })
+
+test('vim keys move through the sidebar only when enabled, and keybindings.json remaps', async () => {
+  const repos = [gitRepo('troy-v1-'), gitRepo('troy-v2-')]
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos }))
+  // Free Cmd-N and put "new worktree" on Cmd-K instead.
+  writeFileSync(
+    join(userData, 'keybindings.json'),
+    JSON.stringify({ KeyN: null, KeyK: 'newWorktree' })
+  )
+
+  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  try {
+    const page = await app.firstWindow()
+    const selected = page.locator('.worktree.selected')
+    await expect(selected).toHaveAttribute('title', repos[0])
+
+    // Off by default: j does nothing in the sidebar.
+    await selected.focus()
+    await page.keyboard.press('j')
+    await expect(selected).toHaveAttribute('title', repos[0])
+
+    await chord(app, ',', 'meta')
+    await page.getByLabel('Vim navigation').check()
+    await page.getByRole('button', { name: 'Done' }).click()
+    expect(JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8'))).toEqual({ vim: true })
+
+    await selected.focus()
+    await page.keyboard.press('j')
+    await expect(selected).toHaveAttribute('title', repos[1])
+    await expect(selected).toBeFocused()
+    await page.keyboard.press('g')
+    await page.keyboard.press('g')
+    await expect(selected).toHaveAttribute('title', repos[0])
+
+    // Enter hands focus to the agent pane; from then on j is plain typing.
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('j')
+    await expect(selected).toHaveAttribute('title', repos[0])
+
+    await chord(app, 'N', 'meta')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await chord(app, 'K', 'meta')
+    await expect(page.getByRole('heading', { name: /New worktree/ })).toBeVisible()
+  } finally {
+    await app.close()
+  }
+})

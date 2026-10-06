@@ -54,3 +54,8 @@ export interface Knowledge {
   entries: Array<KnowledgeEntry & { stale: boolean }>
   proposals: Proposal[]
 }
+
+export interface Settings {
+  /** Vim keys in the sidebar and diff; never in terminals. */
+  vim: boolean
+}

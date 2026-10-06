@@ -2,11 +2,14 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { routeKey } from '../shared/keys'
+import { DEFAULT_BINDINGS, routeKey } from '../shared/keys'
 import { registerPty } from './pty'
 import { registerRepos } from './repos'
 import { writeMcpConfig } from './mcp-config'
 import { adoptLoginPath } from './path'
+import { loadBindings, registerSettings, watchBindings } from './settings'
+
+let bindings = DEFAULT_BINDINGS
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -29,7 +32,7 @@ function createWindow(): void {
 
   // App shortcuts are claimed here, before the page or the terminal sees them.
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    const action = routeKey(input, process.platform)
+    const action = routeKey(input, process.platform, bindings)
     if (!action) return
     event.preventDefault()
     mainWindow.webContents.send('app:action', action)
@@ -59,6 +62,9 @@ app.whenReady().then(async () => {
   })
 
   await writeMcpConfig().catch((err) => console.error('Could not write the MCP config', err))
+  bindings = await loadBindings()
+  watchBindings((next) => (bindings = next))
+  registerSettings()
   registerPty()
   registerRepos()
   createWindow()

@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
 import { isAlive, type AgentStatus } from '../../shared/status'
-import type { ContextUsage, Knowledge, Repo } from '../../shared/types'
+import type { ContextUsage, Knowledge, Repo, Settings as SettingsData } from '../../shared/types'
+import type { VimCommand } from '../../shared/vim'
 import { formatComments, type ReviewComment } from './comments'
 import { ContextRing } from './ContextRing'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { MOD } from './platform'
+import { Settings } from './Settings'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
+import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 
 // ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
@@ -31,6 +34,11 @@ function App(): React.JSX.Element {
   const [knowledge, setKnowledge] = useState<Record<string, Knowledge | { error: string }>>({})
   const [dialogRepo, setDialogRepo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [settings, setSettings] = useState<SettingsData>({ vim: false })
+  const [showSettings, setShowSettings] = useState(false)
+  const [installed, setInstalled] = useState<string[] | null>(null)
+  // Set while vim keys move the selection, so focus stays in the sidebar.
+  const keepSidebarFocus = useRef(false)
 
   const worktrees = repos.flatMap((r) => r.worktrees)
   const current = worktrees.find((w) => w.path === selected) ?? worktrees[0]
@@ -41,6 +49,8 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     window.api.listRepos().then(setRepos)
+    window.api.getSettings().then(setSettings)
+    window.api.installedAgents().then(setInstalled)
   }, [])
 
   const watched = worktrees.filter((wt) => visited.includes(wt.path))
@@ -72,7 +82,8 @@ function App(): React.JSX.Element {
   }, [refreshKnowledge])
 
   useEffect(() => {
-    if (current) focusTerminal(agentId(current.path))
+    if (current && !keepSidebarFocus.current) focusTerminal(agentId(current.path))
+    keepSidebarFocus.current = false
   }, [current?.path]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const addRepo = useCallback(async () => {
@@ -113,6 +124,28 @@ function App(): React.JSX.Element {
     [comments, statuses]
   )
 
+  useVimKeys(settings.vim, (command: VimCommand) => {
+    if (!current) return
+    if (command === 'open') return focusTerminal(agentId(current.path))
+    const i = worktrees.indexOf(current)
+    const last = worktrees.length - 1
+    const next = { down: Math.min(i + 1, last), up: Math.max(i - 1, 0), top: 0, bottom: last }[
+      command as 'down' | 'up' | 'top' | 'bottom'
+    ]
+    const target = worktrees[next ?? i]
+    if (!target || target === current) return
+    keepSidebarFocus.current = true
+    setSelected(target.path)
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLElement>(`.worktree[data-path="${CSS.escape(target.path)}"]`)
+        ?.focus()
+    )
+  })
+
+  const updateSettings = async (next: Partial<SettingsData>): Promise<void> =>
+    setSettings(await window.api.setSettings(next))
+
   const showTab = (name: ColumnTab): void => {
     setShowColumn(true)
     setTab(name)
@@ -124,6 +157,7 @@ function App(): React.JSX.Element {
         if (action === 'addRepo') return void addRepo()
         if (action === 'newWorktree') return currentRepo && setDialogRepo(currentRepo.path)
         if (action === 'toggleColumn') return setShowColumn((s) => !s)
+        if (action === 'openSettings') return setShowSettings(true)
         if (!current) return
         if (action === 'archive') return void archive()
         if (action === 'focusAgent') return focusTerminal(agentId(current.path))
@@ -185,6 +219,7 @@ function App(): React.JSX.Element {
                     className={`worktree ${wt === current ? 'selected' : ''}`}
                     onClick={() => setSelected(wt.path)}
                     title={wt.path}
+                    data-path={wt.path}
                   >
                     <span className={`dot ${status}`} title={status} />
                     <span className="branch">{wt.branch ?? 'detached'}</span>
@@ -205,6 +240,13 @@ function App(): React.JSX.Element {
           <div className="empty">
             <h1>Welcome to Troy</h1>
             <p>Add a git repository to get started.</p>
+            {installed && (
+              <p className="agents-found">
+                {installed.length
+                  ? `Agents on your PATH: ${installed.join(', ')}.`
+                  : 'No agent CLI found on your PATH. Install Claude Code, Codex, Gemini CLI, opencode or aider, or type any command when you create a worktree.'}
+              </p>
+            )}
             <button className="primary" onClick={addRepo}>
               Add repository <kbd>{MOD}O</kbd>
             </button>
@@ -236,8 +278,17 @@ function App(): React.JSX.Element {
       {dialogRepo && (
         <NewWorktree
           repoName={basename(dialogRepo)}
+          installed={installed ?? []}
           onCancel={() => setDialogRepo(null)}
           onCreate={createWorktree}
+        />
+      )}
+      {showSettings && (
+        <Settings
+          settings={settings}
+          installed={installed ?? []}
+          onChange={updateSettings}
+          onClose={() => setShowSettings(false)}
         />
       )}
     </div>
