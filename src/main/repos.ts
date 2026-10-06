@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { overlaps, type Overlap } from '../shared/overlap'
 import type { CreateRequest, Repo, ReposResult, Worktree } from '../shared/types'
+import { runCheck } from './check'
 import { readContext } from './context'
 import { listDocs, readDoc } from './docs'
 import { changedFiles, commitAll, diffAgainst, openPullRequest, push } from './finish'
@@ -299,6 +300,9 @@ export function registerRepos(): void {
     })
   )
   ipcMain.handle('worktrees:overlaps', findOverlaps)
+  ipcMain.handle('check:run', (_e, path) =>
+    attempt(async () => ({ result: await runCheck((await locate(path)).path) }))
+  )
   ipcMain.handle('repos:list', listRepos)
   ipcMain.handle('repos:add', addRepo)
   ipcMain.handle('worktree:create', (_e, repo, req) => create(repo, req))

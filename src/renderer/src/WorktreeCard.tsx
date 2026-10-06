@@ -1,5 +1,5 @@
 import type { AgentStatus } from '../../shared/status'
-import type { ContextUsage, WorktreeView } from '../../shared/types'
+import type { CheckResult, ContextUsage, WorktreeView } from '../../shared/types'
 import { ContextRing } from './ContextRing'
 import { MOD } from './platform'
 import { STATUS_LABELS } from './statusLabels'
@@ -26,6 +26,7 @@ interface Props {
   /** Waiting and not yet looked at. */
   needsYou: boolean
   usage?: ContextUsage | null
+  check?: CheckResult
   /** Other worktrees that changed some of the same files. */
   overlaps?: { name: string; files: string[] }[]
   onSelect: () => void
@@ -38,6 +39,7 @@ export function WorktreeCard({
   status,
   needsYou,
   usage,
+  check,
   overlaps = [],
   onSelect
 }: Props): React.JSX.Element {
@@ -59,6 +61,14 @@ export function WorktreeCard({
         <span className={`dot ${status}`} />
         <span className="status-label">{STATUS_LABELS[status]}</span>
         {wt.title && <AgentBadge agent={wt.agent} />}
+        {check && (
+          <span
+            className={`card-check ${check.ok ? 'ok' : 'failed'}`}
+            title={check.ok ? '.troy/check passed' : '.troy/check failed'}
+          >
+            {check.ok ? '✓' : '✗'} check
+          </span>
+        )}
         {usage && <ContextRing usage={usage} />}
       </span>
       {overlaps.map((o) => (

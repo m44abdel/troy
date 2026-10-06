@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AppAction } from '../shared/keys'
 import type { Overlap } from '../shared/overlap'
 import type {
+  CheckResult,
   ContextUsage,
   CreateRequest,
   Knowledge,
@@ -29,6 +30,8 @@ const api = {
     req: CreateRequest
   ): Promise<ReposResult & { path?: string; setup?: boolean }> =>
     ipcRenderer.invoke('worktree:create', repo, req),
+  runCheck: (path: string): Promise<{ result?: CheckResult | null; error?: string }> =>
+    ipcRenderer.invoke('check:run', path),
   overlaps: (): Promise<Record<string, Overlap[]>> => ipcRenderer.invoke('worktrees:overlaps'),
   archiveWorktree: (repo: string, path: string): Promise<ReposResult> =>
     ipcRenderer.invoke('worktree:archive', repo, path),

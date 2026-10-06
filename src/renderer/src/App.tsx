@@ -2,9 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
 import type { Overlap } from '../../shared/overlap'
 import { isAlive, type AgentStatus } from '../../shared/status'
-import type { ContextUsage, Knowledge, Repo, Settings as SettingsData } from '../../shared/types'
+import type {
+  CheckResult,
+  ContextUsage,
+  Knowledge,
+  Repo,
+  Settings as SettingsData
+} from '../../shared/types'
 import type { VimCommand } from '../../shared/vim'
-import { formatComments, type ReviewComment } from './comments'
+import { formatCheckFailure, formatComments, type ReviewComment } from './comments'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { Icon, Logo } from './icons'
 import { MOD } from './platform'
@@ -33,6 +39,7 @@ function App(): React.JSX.Element {
   const [firstRuns, setFirstRuns] = useState<Record<string, FirstRun>>({})
   const [showColumn, setShowColumn] = useState(true)
   const [tab, setTab] = useState<ColumnTab>('shell')
+  const [checks, setChecks] = useState<Record<string, CheckResult>>({})
   const [overlaps, setOverlaps] = useState<Record<string, Overlap[]>>({})
   const [contexts, setContexts] = useState<Record<string, ContextUsage | null>>({})
   const [comments, setComments] = useState<Record<string, ReviewComment[]>>({})
@@ -68,6 +75,19 @@ function App(): React.JSX.Element {
     window.api.listRepos().then(setRepos)
     window.api.getSettings().then(setSettings)
     window.api.installedAgents().then(setInstalled)
+  }, [])
+
+  // Card and diff show the latest result; a worktree with no .troy/check has none.
+  const runCheck = useCallback(async (path: string): Promise<CheckResult | null> => {
+    const { result = null, error } = await window.api.runCheck(path)
+    if (error) console.warn(`Could not run .troy/check in ${path}`, error)
+    setChecks((all) => {
+      const next = { ...all }
+      if (result) next[path] = result
+      else delete next[path]
+      return next
+    })
+    return result
   }, [])
 
   // Recomputed when worktrees come or go and whenever an agent stops working.
@@ -145,6 +165,16 @@ function App(): React.JSX.Element {
     [comments, statuses]
   )
 
+  const sendCheck = useCallback(
+    (path: string) => {
+      const check = checks[path]
+      if (!check || check.ok || !isAlive(statuses[path])) return
+      pasteToTerminal(agentId(path), formatCheckFailure(check.output))
+      focusTerminal(agentId(path))
+    },
+    [checks, statuses]
+  )
+
   useVimKeys(settings.vim, (command: VimCommand) => {
     if (!current) return
     if (command === 'open') return focusTerminal(agentId(current.path))
@@ -210,11 +240,13 @@ function App(): React.JSX.Element {
       const watching = path === currentPath.current && document.hasFocus()
       setSeen((s) => ({ ...s, [path]: watching }))
       if (status !== 'running') refreshOverlaps()
+      // Only a reported stop: a guessed pause may be the agent mid-edit.
+      if (certain && status !== 'running') void runCheck(path)
       if (watching || !certain || status === 'running') return
       const note = new Notification(basename(path), { body: `Agent ${STATUS_LABELS[status]}` })
       note.onclick = () => select(path)
     },
-    [select, refreshOverlaps]
+    [select, refreshOverlaps, runCheck]
   )
 
   // Coming back to Troy acknowledges the worktree that is open.
@@ -290,6 +322,7 @@ function App(): React.JSX.Element {
                     files: o.files
                   }))}
                   usage={contexts[wt.path]}
+                  check={checks[wt.path]}
                   onSelect={() => select(wt.path)}
                 />
               ))}
@@ -375,6 +408,9 @@ function App(): React.JSX.Element {
                 comments={comments[wt.path] ?? []}
                 onComments={onComments}
                 onSend={sendComments}
+                check={checks[wt.path]}
+                onRunCheck={runCheck}
+                onSendCheck={sendCheck}
                 knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
                 onKnowledgeChanged={refreshKnowledge}
               />

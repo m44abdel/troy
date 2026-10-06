@@ -63,3 +63,11 @@ export interface Settings {
   /** Vim keys in the sidebar and diff; never in terminals. */
   vim: boolean
 }
+
+/** The outcome of a worktree's `.troy/check`. */
+export interface CheckResult {
+  ok: boolean
+  /** The last lines of stdout and stderr together. */
+  output: string
+  ranAt: number
+}
