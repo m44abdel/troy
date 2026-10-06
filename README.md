@@ -2,6 +2,8 @@
 
 Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its own git worktree, in a desktop app that never steals your terminal shortcuts.
 
+![Troy: create a worktree, let the agent work, review its diff, send comments back and commit](docs/demo.gif)
+
 > Early development. Today: add repos, create and archive worktrees, run an agent plus a shell in each, review the diff and ship it, see how full each agent's context window is, and share reviewed facts between agents.
 
 ## Install (macOS)
