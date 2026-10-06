@@ -11,6 +11,7 @@ import {
 } from 'react-diff-view'
 import 'react-diff-view/style/index.css'
 import type { ReviewComment } from './comments'
+import { Icon } from './icons'
 import { MOD } from './platform'
 
 interface Props {
@@ -27,6 +28,9 @@ interface Props {
 type Result = { error?: string }
 
 const fileName = (file: FileData): string => (file.type === 'delete' ? file.oldPath : file.newPath)
+
+const countChanges = (file: FileData, type: ChangeData['type']): number =>
+  file.hunks.reduce((n, hunk) => n + hunk.changes.filter((c) => c.type === type).length, 0)
 
 function toComment(file: string, change: ChangeData, text: string): ReviewComment {
   const removed = change.type === 'delete'
@@ -123,9 +127,10 @@ export function DiffPane({
           <button
             className="link"
             title="Delete comment"
+            aria-label="Delete comment"
             onClick={() => onComments(comments.filter((other) => other !== c))}
           >
-            ×
+            <Icon name="x" size={14} />
           </button>
         </div>
       )
@@ -153,7 +158,8 @@ export function DiffPane({
           onKeyDown={(e) => e.key === 'Enter' && void commit()}
           placeholder="Commit message"
         />
-        <button className="secondary" disabled={busy} onClick={commit}>
+        <button className="secondary accent" disabled={busy} onClick={commit}>
+          <Icon name="commit" size={14} />
           Commit all
         </button>
         <button
@@ -161,6 +167,7 @@ export function DiffPane({
           disabled={busy}
           onClick={() => act(() => window.api.push(path), 'Pushed.')}
         >
+          <Icon name="upload" size={14} />
           Push
         </button>
         <button
@@ -170,16 +177,23 @@ export function DiffPane({
             act(() => window.api.openPullRequest(path), 'Opened the pull request in your browser.')
           }
         >
+          <Icon name="pr" size={14} />
           Open PR
         </button>
-        <button className="secondary" disabled={busy} onClick={load} title="Refresh">
-          ↻
+        <button
+          className="secondary square"
+          disabled={busy}
+          onClick={load}
+          title="Refresh"
+          aria-label="Refresh"
+        >
+          <Icon name="refresh" size={14} />
         </button>
       </div>
 
       {comments.length > 0 && (
         <div className="comment-bar">
-          <span>
+          <span className="comment-count">
             {comments.length} comment{comments.length === 1 ? '' : 's'}
           </span>
           <button
@@ -188,21 +202,36 @@ export function DiffPane({
             title={canSend ? undefined : 'Start the agent first'}
             onClick={onSend}
           >
+            <Icon name="send" size={14} />
             Send to agent <kbd>{`${MOD}↵`}</kbd>
           </button>
         </div>
       )}
       {error && <p className="error">{error}</p>}
-      {notice && <p className="notice">{notice}</p>}
+      {notice && (
+        <p className="notice" role="status">
+          {notice}
+        </p>
+      )}
 
       {/* Focusable so vim keys can scroll it. */}
       <div className="diff-files" tabIndex={0}>
-        {files?.length === 0 && <p className="muted">No changes yet.</p>}
+        {files?.length === 0 && (
+          <div className="pane-empty">
+            <Icon name="check" size={22} />
+            <p className="muted">No changes yet.</p>
+          </div>
+        )}
         {files?.map((file) => {
           const name = fileName(file)
           return (
             <section key={name} className="diff-file">
-              <h3>{name}</h3>
+              <header className="diff-file-head">
+                <Icon name="file" size={14} />
+                <h3>{name}</h3>
+                <span className="stat add">+{countChanges(file, 'insert')}</span>
+                <span className="stat del">−{countChanges(file, 'delete')}</span>
+              </header>
               <Diff
                 viewType="unified"
                 diffType={file.type}

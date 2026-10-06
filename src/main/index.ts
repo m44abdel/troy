@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, nativeTheme } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -12,6 +12,8 @@ import { loadBindings, registerSettings, watchBindings } from './settings'
 let bindings = DEFAULT_BINDINGS
 
 function createWindow(): void {
+  // Troy is dark-only; this keeps native vibrancy and menus dark too.
+  nativeTheme.themeSource = 'dark'
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
@@ -19,8 +21,16 @@ function createWindow(): void {
     minHeight: 480,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#0f1115',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // On macOS the sidebar shows the desktop through native vibrancy.
+    ...(process.platform === 'darwin'
+      ? {
+          vibrancy: 'sidebar' as const,
+          visualEffectState: 'active' as const,
+          backgroundColor: '#00000000',
+          trafficLightPosition: { x: 16, y: 18 }
+        }
+      : { backgroundColor: '#0b0b12' }),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

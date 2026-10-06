@@ -2,13 +2,19 @@ import type { AgentStatus } from '../../shared/status'
 import type { ContextUsage, WorktreeView } from '../../shared/types'
 import { ContextRing } from './ContextRing'
 import { MOD } from './platform'
+import { STATUS_LABELS } from './statusLabels'
 
-const STATUS_LABELS: Record<AgentStatus, string> = {
-  idle: 'not started',
-  running: 'working',
-  waiting: 'waiting',
-  done: 'finished',
-  error: 'exited with an error'
+/** A stable hue per agent name, so each CLI gets its own avatar colour. */
+const agentHue = (agent: string): number =>
+  [...agent].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
+
+export function AgentBadge({ agent }: { agent: string }): React.JSX.Element {
+  const name = agent.split(/\s+/)[0].split('/').pop() ?? agent
+  return (
+    <span className="agent-badge" style={{ '--hue': agentHue(name) } as React.CSSProperties}>
+      {name}
+    </span>
+  )
 }
 
 interface Props {
@@ -49,7 +55,7 @@ export function WorktreeCard({
       <span className="card-status">
         <span className={`dot ${status}`} />
         <span className="status-label">{STATUS_LABELS[status]}</span>
-        {wt.title && <span className="agent">{wt.agent}</span>}
+        {wt.title && <AgentBadge agent={wt.agent} />}
         {usage && <ContextRing usage={usage} />}
       </span>
     </button>

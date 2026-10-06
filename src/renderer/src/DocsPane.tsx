@@ -21,7 +21,22 @@ function Mermaid({ code }: { code: string }): React.JSX.Element {
     import('mermaid')
       .then(async ({ default: mermaid }) => {
         // 'strict' sanitizes labels and disables click handlers in the diagram.
-        mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' })
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'base',
+          securityLevel: 'strict',
+          themeVariables: {
+            darkMode: true,
+            background: '#0d0d16',
+            fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+            primaryColor: '#1f1a33',
+            primaryBorderColor: '#8b5cf6',
+            primaryTextColor: '#e6e6f0',
+            lineColor: '#a78bfa',
+            secondaryColor: '#2a1830',
+            tertiaryColor: '#14141f'
+          }
+        })
         const { svg } = await mermaid.render(id, code)
         if (alive && host.current) host.current.innerHTML = svg
       })
@@ -97,7 +112,11 @@ export function DocsPane({ path, visible }: Props): React.JSX.Element {
   return (
     <div className="docs-pane">
       {files && files.length > 0 && (
-        <select value={file ?? ''} onChange={(e) => setFile(e.target.value)}>
+        <select
+          value={file ?? ''}
+          onChange={(e) => setFile(e.target.value)}
+          aria-label="Markdown file"
+        >
           {files.map((f) => (
             <option key={f} value={f}>
               {f}

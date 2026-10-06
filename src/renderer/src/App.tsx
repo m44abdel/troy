@@ -5,6 +5,7 @@ import type { ContextUsage, Knowledge, Repo, Settings as SettingsData } from '..
 import type { VimCommand } from '../../shared/vim'
 import { formatComments, type ReviewComment } from './comments'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
+import { Icon, Logo } from './icons'
 import { MOD } from './platform'
 import { Settings } from './Settings'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
@@ -213,22 +214,33 @@ function App(): React.JSX.Element {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-header">
-          <span className="brand">Troy</span>
-          <button className="icon-button" onClick={addRepo} title={`Add repository (${MOD}O)`}>
-            +
+          <span className="brand">
+            <Logo size={22} />
+            Troy
+          </span>
+          <button
+            className="icon-button"
+            onClick={addRepo}
+            title={`Add repository (${MOD}O)`}
+            aria-label="Add repository"
+          >
+            <Icon name="folderPlus" />
           </button>
         </div>
         <nav className="repo-list">
           {repos.map((repo) => (
             <section key={repo.path} className="repo">
               <div className="repo-header" title={repo.path}>
+                <Icon name="folder" size={13} />
                 <span className="repo-name">{basename(repo.path)}</span>
+                <span className="count">{repo.worktrees.length}</span>
                 <button
                   className="icon-button"
                   onClick={() => setDialogRepo(repo.path)}
                   title={`New worktree (${MOD}N)`}
+                  aria-label={`New worktree in ${basename(repo.path)}`}
                 >
-                  +
+                  <Icon name="plus" size={14} />
                 </button>
               </div>
               {repo.error && <p className="error">{repo.error}</p>}
@@ -253,23 +265,60 @@ function App(): React.JSX.Element {
           </button>
         )}
         {error && <p className="error">{error}</p>}
+        <footer className="sidebar-footer">
+          <button className="footer-button" onClick={() => setShowSettings(true)}>
+            <Icon name="settings" size={15} />
+            Settings
+            <kbd>{MOD},</kbd>
+          </button>
+        </footer>
       </aside>
 
       <main className="workspaces">
         {repos.length === 0 ? (
           <div className="empty">
+            <div className="hero-logo">
+              <Logo size={72} />
+            </div>
             <h1>Welcome to Troy</h1>
-            <p>Add a git repository to get started.</p>
-            {installed && (
-              <p className="agents-found">
-                {installed.length
-                  ? `Agents on your PATH: ${installed.join(', ')}.`
-                  : 'No agent CLI found on your PATH. Install Claude Code, Codex, Gemini CLI, opencode or aider, or type any command when you create a worktree.'}
-              </p>
-            )}
-            <button className="primary" onClick={addRepo}>
+            <p className="tagline">Run coding agents side by side, each in its own git worktree.</p>
+            <ul className="features">
+              <li>
+                <Icon name="branch" size={18} />
+                <strong>One worktree per task</strong>
+                <span>Branch, ports and setup handled for you.</span>
+              </li>
+              <li>
+                <Icon name="diff" size={18} />
+                <strong>Review and ship</strong>
+                <span>Comment on the diff, commit, push, open a PR.</span>
+              </li>
+              <li>
+                <Icon name="sparkles" size={18} />
+                <strong>Shared knowledge</strong>
+                <span>Facts your agents learn, reviewed by you.</span>
+              </li>
+            </ul>
+            <button className="primary large" onClick={addRepo}>
+              <Icon name="folderPlus" />
               Add repository <kbd>{MOD}O</kbd>
             </button>
+            {installed && (
+              <p className="agents-found">
+                {installed.length ? (
+                  <>
+                    Agents on your PATH:{' '}
+                    {installed.map((a) => (
+                      <span key={a} className="chip">
+                        {a}
+                      </span>
+                    ))}
+                  </>
+                ) : (
+                  'No agent CLI found on your PATH. Install Claude Code, Codex, Gemini CLI, opencode or aider, or type any command when you create a worktree.'
+                )}
+              </p>
+            )}
           </div>
         ) : (
           worktrees
@@ -282,6 +331,7 @@ function App(): React.JSX.Element {
                 showColumn={showColumn}
                 tab={tab}
                 onTab={setTab}
+                onToggleColumn={() => setShowColumn((v) => !v)}
                 firstRun={firstRuns[wt.path]}
                 status={statuses[wt.path]}
                 onStatus={onStatus}

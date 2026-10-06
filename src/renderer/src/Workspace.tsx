@@ -5,9 +5,12 @@ import type { ReviewComment } from './comments'
 import { DiffPane } from './DiffPane'
 import { DocsPane } from './DocsPane'
 import { KnowledgePane } from './KnowledgePane'
+import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { Terminal } from './Terminal'
 import { agentId, shellId } from './terminals'
+import { STATUS_LABELS } from './statusLabels'
+import { AgentBadge } from './WorktreeCard'
 
 const SETUP_COMMAND = 'sh .troy/setup.sh\r'
 
@@ -25,6 +28,7 @@ interface Props {
   showColumn: boolean
   tab: ColumnTab
   onTab: (tab: ColumnTab) => void
+  onToggleColumn: () => void
   firstRun?: FirstRun
   status?: AgentStatus
   onStatus: (path: string, status: AgentStatus) => void
@@ -42,6 +46,7 @@ export function Workspace({
   showColumn,
   tab,
   onTab,
+  onToggleColumn,
   firstRun,
   status,
   onStatus,
@@ -52,15 +57,47 @@ export function Workspace({
   onKnowledgeChanged
 }: Props): React.JSX.Element {
   const pending = knowledge && 'proposals' in knowledge ? knowledge.proposals.length : 0
-  const tabButton = (name: ColumnTab, label: string, key?: string): React.JSX.Element => (
+  const tabButton = (
+    name: ColumnTab,
+    icon: IconName,
+    label: string,
+    key?: string
+  ): React.JSX.Element => (
     <button className={`tab ${tab === name ? 'active' : ''}`} onClick={() => onTab(name)}>
-      {label} {key && <kbd>{`${MOD}${key}`}</kbd>}
+      <Icon name={icon} size={14} />
+      {label}
+      {key && <kbd>{`${MOD}${key}`}</kbd>}
     </button>
   )
+  const branch = wt.branch ?? 'detached'
+  const state = status ?? 'idle'
 
   return (
     <div className="workspace" style={{ display: active ? 'flex' : 'none' }}>
       <div className="pane pane-agent">
+        <header className="pane-header">
+          <span className={`status-pill ${state}`}>
+            <span className={`dot ${state}`} />
+            {STATUS_LABELS[state]}
+          </span>
+          <span className="pane-title">{wt.title ?? branch}</span>
+          {wt.title && (
+            <span className="branch-chip">
+              <Icon name="branch" size={12} />
+              {branch}
+            </span>
+          )}
+          <AgentBadge agent={wt.agent} />
+          <button
+            className={`icon-button ${showColumn ? 'on' : ''}`}
+            onClick={onToggleColumn}
+            title={`Toggle side panel (${MOD}\\)`}
+            aria-label="Toggle side panel"
+            aria-pressed={showColumn}
+          >
+            <Icon name="panel" />
+          </button>
+        </header>
         <Terminal
           id={agentId(wt.path)}
           cwd={wt.path}
@@ -73,10 +110,10 @@ export function Workspace({
       </div>
       <div className="column" style={{ display: showColumn ? 'flex' : 'none' }}>
         <div className="tabs">
-          {tabButton('shell', 'Shell', 'E')}
-          {tabButton('diff', comments.length ? `Diff · ${comments.length}` : 'Diff', 'D')}
-          {tabButton('docs', 'Docs')}
-          {tabButton('knowledge', pending ? `Knowledge · ${pending}` : 'Knowledge')}
+          {tabButton('shell', 'terminal', 'Shell', 'E')}
+          {tabButton('diff', 'diff', comments.length ? `Diff · ${comments.length}` : 'Diff', 'D')}
+          {tabButton('docs', 'book', 'Docs')}
+          {tabButton('knowledge', 'sparkles', pending ? `Knowledge · ${pending}` : 'Knowledge')}
         </div>
         <div className="pane pane-shell" style={{ display: tab === 'shell' ? 'block' : 'none' }}>
           <Terminal

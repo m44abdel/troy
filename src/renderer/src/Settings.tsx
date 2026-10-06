@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { KNOWN_AGENTS } from '../../shared/shell'
 import type { Settings as SettingsData } from '../../shared/types'
+import { Icon } from './icons'
 
 interface Props {
   settings: SettingsData
@@ -21,11 +22,20 @@ export function Settings({ settings, installed, onChange, onClose }: Props): Rea
 
   return (
     <dialog ref={dialog} className="dialog settings" onClose={onClose}>
-      <h2>Settings</h2>
+      <div className="dialog-head">
+        <span className="dialog-icon">
+          <Icon name="settings" size={18} />
+        </span>
+        <div>
+          <h2>Settings</h2>
+          <p className="muted">Saved as you change them.</p>
+        </div>
+      </div>
 
       <label className="check">
         <input
           type="checkbox"
+          className="switch"
           checked={settings.vim}
           onChange={(e) => onChange({ vim: e.target.checked })}
         />
@@ -45,6 +55,7 @@ export function Settings({ settings, installed, onChange, onClose }: Props): Rea
           the terminal instead. Changes apply as soon as you save.
         </p>
         <button className="secondary" onClick={openKeybindings}>
+          <Icon name="keyboard" size={14} />
           Open keybindings.json
         </button>
         {error && <p className="error">{error}</p>}
@@ -55,6 +66,7 @@ export function Settings({ settings, installed, onChange, onClose }: Props): Rea
         <ul className="agents">
           {KNOWN_AGENTS.map((agent) => (
             <li key={agent} className={installed.includes(agent) ? 'found' : 'missing'}>
+              {installed.includes(agent) && <Icon name="check" size={12} />}
               {agent}
             </li>
           ))}

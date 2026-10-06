@@ -6,11 +6,29 @@ import { shellQuote } from '../../shared/shell'
 import { trackStatus, type AgentStatus } from '../../shared/status'
 import { terminals } from './terminals'
 
+// Matches the --surface and status tokens in main.css.
 const THEME = {
-  background: '#0f1115',
-  foreground: '#d6dae1',
-  cursor: '#8ab4ff',
-  selectionBackground: '#2a3a55'
+  background: '#0d0d16',
+  foreground: '#e6e6f0',
+  cursor: '#f472b6',
+  cursorAccent: '#0d0d16',
+  selectionBackground: '#8b5cf640',
+  black: '#1c1c2b',
+  red: '#fb7185',
+  green: '#34d399',
+  yellow: '#fbbf24',
+  blue: '#60a5fa',
+  magenta: '#c084fc',
+  cyan: '#38bdf8',
+  white: '#d4d4e2',
+  brightBlack: '#5c5c78',
+  brightRed: '#fda4af',
+  brightGreen: '#6ee7b7',
+  brightYellow: '#fcd34d',
+  brightBlue: '#93c5fd',
+  brightMagenta: '#d8b4fe',
+  brightCyan: '#7dd3fc',
+  brightWhite: '#ffffff'
 }
 
 interface Props {
@@ -43,8 +61,9 @@ export function Terminal({
 
   useEffect(() => {
     const xterm = new XTerm({
-      fontFamily: 'Menlo, "SF Mono", Monaco, monospace',
+      fontFamily: '"SF Mono", Menlo, Monaco, monospace',
       fontSize: 13,
+      lineHeight: 1.2,
       cursorBlink: true,
       // Option sends Meta so Alt-f / Alt-b word movement works in shells and agents.
       macOptionIsMeta: true,
@@ -103,9 +122,11 @@ export function Terminal({
       else if (data === '\r' && !starting) start()
     })
     const bell = xterm.onBell(() => tracker?.bell())
-    const resize = xterm.onResize(
-      ({ cols, rows }) => ptyId && window.api.ptyResize(ptyId, cols, rows)
-    )
+    const resize = xterm.onResize(({ cols, rows }) => {
+      if (!ptyId) return
+      tracker?.resize()
+      window.api.ptyResize(ptyId, cols, rows)
+    })
 
     const observer = new ResizeObserver(() => {
       if (host.current?.offsetParent) fitAddon.fit()
