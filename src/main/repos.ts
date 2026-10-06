@@ -1,10 +1,11 @@
 import { app, dialog, ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
-import type { CreateRequest, Repo, ReposResult } from '../shared/types'
+import { overlaps, type Overlap } from '../shared/overlap'
+import type { CreateRequest, Repo, ReposResult, Worktree } from '../shared/types'
 import { readContext } from './context'
 import { listDocs, readDoc } from './docs'
-import { commitAll, diffAgainst, openPullRequest, push } from './finish'
+import { changedFiles, commitAll, diffAgainst, openPullRequest, push } from './finish'
 import { stripInstructions, writeInstructions } from './instructions'
 import { approve, readKnowledge, reject } from './knowledge'
 import { hookFlags, mcpFlags } from './mcp-config'
@@ -204,14 +205,35 @@ async function locate(path: unknown): Promise<{ path: string; base: string }> {
   const state = await loadState()
   for (const repo of state.repos) {
     const wt = (await listWorktrees(repo).catch(() => [])).find((w) => w.path === path)
-    if (!wt) continue
-    if (wt.primary) return { path: wt.path, base: 'HEAD' }
-    const base =
-      state.worktrees[wt.path]?.base ??
-      (await git(repo, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']).catch(() => 'HEAD'))
-    return { path: wt.path, base }
+    if (wt) return { path: wt.path, base: await baseOf(repo, wt, state) }
   }
   throw new Error(`Unknown worktree: ${path}`)
+}
+
+async function baseOf(repo: string, wt: Worktree, state: State): Promise<string> {
+  if (wt.primary) return 'HEAD'
+  return (
+    state.worktrees[wt.path]?.base ??
+    (await git(repo, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']).catch(() => 'HEAD'))
+  )
+}
+
+/** Worktrees of the same repo that changed the same files, keyed by worktree path. */
+async function findOverlaps(): Promise<Record<string, Overlap[]>> {
+  const state = await loadState()
+  const perRepo = await Promise.all(
+    state.repos.map(async (repo) => {
+      const worktrees = await listWorktrees(repo).catch(() => [])
+      const changes = await Promise.all(
+        worktrees.map(async (wt) => [
+          wt.path,
+          await changedFiles(wt.path, await baseOf(repo, wt, state)).catch(() => [])
+        ])
+      )
+      return overlaps(Object.fromEntries(changes))
+    })
+  )
+  return Object.assign({}, ...perRepo)
 }
 
 async function attempt<T extends object>(fn: () => Promise<T>): Promise<T | { error: string }> {
@@ -276,6 +298,7 @@ export function registerRepos(): void {
       return {}
     })
   )
+  ipcMain.handle('worktrees:overlaps', findOverlaps)
   ipcMain.handle('repos:list', listRepos)
   ipcMain.handle('repos:add', addRepo)
   ipcMain.handle('worktree:create', (_e, repo, req) => create(repo, req))

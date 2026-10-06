@@ -33,6 +33,8 @@ The agent pane waits for Enter before starting, so setup can finish first. Each 
 
 Claude Code reports its own state through hooks Troy loads with `--settings`, merged with your settings and never written into the repo, so a long tool run reads as working and a permission prompt reads as waiting as soon as Claude asks. Other agents fall back to the output guess. When an agent starts waiting, finishes or fails while you're elsewhere, Troy sends a notification and counts waiting agents on the dock icon. A guessed wait never notifies.
 
+When two worktrees of a repo change the same files, both cards say so (**⚠ Same files as feat-b (2)**; hover for the list), so you find the collision while the agents are still working, not at merge time. Changes count from where each worktree left its base: commits, uncommitted edits and new files.
+
 ## Context window
 
 For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is as a small ring on each worktree in the sidebar. It turns amber from 80%, and hovering shows tokens used, window size and model. Other CLIs show as unknown rather than a guess.

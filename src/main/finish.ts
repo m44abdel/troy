@@ -5,20 +5,35 @@ const PUSH_TIMEOUT_MS = 60_000
 const MAX_UNTRACKED_FILES = 200
 const DIFF_FLAGS = ['--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/']
 
-/** Everything this worktree changed since it left `base`: commits, edits and new files. */
-export async function diffAgainst(path: string, base: string): Promise<string> {
-  const mergeBase = await git(path, ['merge-base', 'HEAD', base]).catch(() => 'HEAD')
-  const tracked = await git(path, ['diff', ...DIFF_FLAGS, mergeBase])
-  const untracked = (await git(path, ['ls-files', '--others', '--exclude-standard', '-z']))
+// Where the worktree left `base`, so later commits on the base don't count as its changes.
+const forkPoint = (path: string, base: string): Promise<string> =>
+  git(path, ['merge-base', 'HEAD', base]).catch(() => 'HEAD')
+
+const untrackedFiles = async (path: string): Promise<string[]> =>
+  (await git(path, ['ls-files', '--others', '--exclude-standard', '-z']))
     .split('\0')
     .filter(Boolean)
     .slice(0, MAX_UNTRACKED_FILES)
+
+/** Everything this worktree changed since it left `base`: commits, edits and new files. */
+export async function diffAgainst(path: string, base: string): Promise<string> {
+  const mergeBase = await forkPoint(path, base)
+  const tracked = await git(path, ['diff', ...DIFF_FLAGS, mergeBase])
+  const untracked = await untrackedFiles(path)
   const added = await Promise.all(
     untracked.map((file) =>
       git(path, ['diff', '--no-index', ...DIFF_FLAGS, '--', '/dev/null', file], { okCodes: [1] })
     )
   )
   return [tracked, ...added].filter(Boolean).join('\n')
+}
+
+/** The paths `diffAgainst` covers, sorted. */
+export async function changedFiles(path: string, base: string): Promise<string[]> {
+  const tracked = (await git(path, ['diff', '--name-only', '-z', await forkPoint(path, base)]))
+    .split('\0')
+    .filter(Boolean)
+  return [...new Set([...tracked, ...(await untrackedFiles(path))])].sort()
 }
 
 export async function commitAll(path: string, message: string): Promise<void> {
