@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { routeKey } from '../shared/keys'
 import { registerPty } from './pty'
 import { registerRepos } from './repos'
+import { writeMcpConfig } from './mcp-config'
 import { adoptLoginPath } from './path'
 
 function createWindow(): void {
@@ -57,6 +58,7 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  await writeMcpConfig().catch((err) => console.error('Could not write the MCP config', err))
   registerPty()
   registerRepos()
   createWindow()

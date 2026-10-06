@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useRef } from 'react'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
+import { shellQuote } from '../../shared/shell'
 import { trackStatus, type AgentStatus } from '../../shared/status'
 import { terminals } from './terminals'
 
@@ -12,9 +13,6 @@ const THEME = {
   selectionBackground: '#2a3a55'
 }
 
-// ponytail: POSIX quoting; Windows shells need their own once Windows is supported.
-const shellQuote = (s: string): string => `'${s.replaceAll("'", `'\\''`)}'`
-
 interface Props {
   id: string
   cwd: string
@@ -23,6 +21,8 @@ interface Props {
   command?: string
   /** Passed to the agent on its first launch only. */
   prompt?: string
+  /** Appended to the agent command on every launch, after the prompt. */
+  args?: string
   /** Typed into a plain shell on its first launch only. */
   initialInput?: string
   onStatus?: (status: AgentStatus) => void
@@ -34,6 +34,7 @@ export function Terminal({
   port,
   command,
   prompt,
+  args = '',
   initialInput,
   onStatus
 }: Props): React.JSX.Element {
@@ -66,7 +67,7 @@ export function Terminal({
     const start = (): void => {
       const firstRun = launches++ === 0
       const input = command
-        ? `exec ${command}${firstRun && prompt ? ` ${shellQuote(prompt)}` : ''}\r`
+        ? `exec ${command}${firstRun && prompt ? ` ${shellQuote(prompt)}` : ''}${args}\r`
         : firstRun
           ? initialInput
           : undefined
@@ -123,7 +124,7 @@ export function Terminal({
       terminals.delete(id)
       xterm.dispose()
     }
-  }, [id, cwd, port, command, prompt, initialInput])
+  }, [id, cwd, port, command, prompt, args, initialInput])
 
   return <div ref={host} className="terminal" />
 }

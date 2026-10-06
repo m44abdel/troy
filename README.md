@@ -2,7 +2,7 @@
 
 Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its own git worktree, in a desktop app that never steals your terminal shortcuts.
 
-> Early development. Today: add repos, create and archive worktrees, run an agent plus a shell in each, review the diff and ship it, and see how full each agent's context window is.
+> Early development. Today: add repos, create and archive worktrees, run an agent plus a shell in each, review the diff and ship it, see how full each agent's context window is, and share reviewed facts between agents.
 
 ## Worktrees
 
@@ -17,6 +17,17 @@ The agent pane waits for Enter before starting, so setup can finish first. The s
 ## Context window
 
 For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is: a thin bar under each worktree in the sidebar, and the **Context** tab with tokens used, window size and a warning from 80%. Other CLIs show as unknown rather than a guess.
+
+## Shared knowledge
+
+Agents share what they learn through `.troy/knowledge.md`, a plain file in your main checkout that you commit like any other. Every entry is one fact plus its source (`path:line`, a commit hash or `session:<id>`), the date and who proposed it. Nothing gets in without you:
+
+- Claude Code and Codex start with Troy's MCP server, `troy`, which has two tools. `knowledge_search` searches the approved facts. `knowledge_propose` adds a fact to a review queue, after checking that the cited file, line or commit really exists.
+- The **Knowledge** tab shows the queue (its count appears on the tab) and the approved facts. Approving a fact appends it to `.troy/knowledge.md`.
+- A fact is flagged **stale** once the file it cites has a commit after the fact's date.
+- Each new worktree gets a short managed block in `CLAUDE.md` (Claude) or `AGENTS.md` (other agents, and whichever of the two already exists) pointing agents at the knowledge. Commit it once and later worktrees inherit it. Archiving removes the block again when it's the only change, so it never blocks `git worktree remove`.
+
+Proposals wait in the repository's git directory (`.git/troy/proposals`), so they are shared by all worktrees and never committed.
 
 ## Review and finish
 

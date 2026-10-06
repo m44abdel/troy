@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
 import { isAlive, type AgentStatus } from '../../shared/status'
-import type { ContextUsage, Repo } from '../../shared/types'
+import type { ContextUsage, Knowledge, Repo } from '../../shared/types'
 import { formatComments, type ReviewComment } from './comments'
 import { CONTEXT_WARN_PERCENT, contextPercent, describeContext } from './context'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
@@ -27,6 +27,8 @@ function App(): React.JSX.Element {
   const [tab, setTab] = useState<ColumnTab>('shell')
   const [contexts, setContexts] = useState<Record<string, ContextUsage | null>>({})
   const [comments, setComments] = useState<Record<string, ReviewComment[]>>({})
+  // Keyed by repo: knowledge and its review queue are shared by all of a repo's worktrees.
+  const [knowledge, setKnowledge] = useState<Record<string, Knowledge | { error: string }>>({})
   const [dialogRepo, setDialogRepo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -55,6 +57,19 @@ function App(): React.JSX.Element {
     const timer = setInterval(poll, CONTEXT_POLL_MS)
     return () => clearInterval(timer)
   }, [watchKey])
+
+  const knowledgeTarget = current && currentRepo ? `${currentRepo.path}\0${current.path}` : ''
+  const refreshKnowledge = useCallback(() => {
+    if (!knowledgeTarget) return
+    const [repo, path] = knowledgeTarget.split('\0')
+    window.api.knowledge(path).then((k) => setKnowledge((all) => ({ ...all, [repo]: k })))
+  }, [knowledgeTarget])
+  // Agents add proposals from outside the app, so keep checking the queue.
+  useEffect(() => {
+    refreshKnowledge()
+    const timer = setInterval(refreshKnowledge, CONTEXT_POLL_MS)
+    return () => clearInterval(timer)
+  }, [refreshKnowledge])
 
   useEffect(() => {
     if (current) focusTerminal(agentId(current.path))
@@ -219,6 +234,8 @@ function App(): React.JSX.Element {
                 comments={comments[wt.path] ?? []}
                 onComments={onComments}
                 onSend={sendComments}
+                knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
+                onKnowledgeChanged={refreshKnowledge}
               />
             ))
         )}

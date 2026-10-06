@@ -4,6 +4,9 @@ import { join } from 'path'
 import type { CreateRequest, Repo, ReposResult } from '../shared/types'
 import { readContext } from './context'
 import { commitAll, diffAgainst, openPullRequest, push } from './finish'
+import { stripInstructions, writeInstructions } from './instructions'
+import { approve, readKnowledge, reject } from './knowledge'
+import { mcpFlags } from './mcp-config'
 import {
   createWorktree,
   findWorktree,
@@ -58,11 +61,10 @@ async function describeRepos(state: State): Promise<Repo[]> {
   return Promise.all(
     state.repos.map(async (path) => {
       try {
-        const worktrees = (await listWorktrees(path)).map((wt) => ({
-          ...wt,
-          agent: state.worktrees[wt.path]?.agent ?? DEFAULT_AGENT,
-          port: state.worktrees[wt.path]?.port
-        }))
+        const worktrees = (await listWorktrees(path)).map((wt) => {
+          const agent = state.worktrees[wt.path]?.agent ?? DEFAULT_AGENT
+          return { ...wt, agent, agentArgs: mcpFlags(agent), port: state.worktrees[wt.path]?.port }
+        })
         return { path, worktrees }
       } catch (err) {
         return { path, worktrees: [], error: (err as Error).message }
@@ -117,6 +119,9 @@ async function create(
     const repo = await knownRepo(repoArg)
     const req = parseCreateRequest(reqArg)
     const { path, base } = await createWorktree(repo, req.branch, req.base)
+    await writeInstructions(path, req.agent).catch((err) =>
+      console.warn(`Could not add the knowledge block to ${path}`, err)
+    )
 
     const state = await loadState()
     const port = nextPortBase(Object.values(state.worktrees).map((m) => m.port))
@@ -155,6 +160,10 @@ async function archive(
       : await dialog.showMessageBox(options)
     if (response === 2) return { repos: await listRepos() }
 
+    // If this fails, git's own dirty check below still protects the worktree.
+    await stripInstructions(wt.path).catch((err) =>
+      console.warn('Could not strip the knowledge block', err)
+    )
     await removeWorktree(repo, wt, response === 1)
     const state = await loadState()
     const worktrees = Object.fromEntries(
@@ -220,6 +229,21 @@ export function registerRepos(): void {
   ipcMain.handle('worktree:pr', (_e, path) =>
     attempt(async () => {
       await openPullRequest((await locate(path)).path)
+      return {}
+    })
+  )
+  ipcMain.handle('knowledge:get', (_e, path) =>
+    attempt(async () => readKnowledge((await locate(path)).path))
+  )
+  ipcMain.handle('knowledge:approve', (_e, path, id) =>
+    attempt(async () => {
+      await approve((await locate(path)).path, String(id))
+      return {}
+    })
+  )
+  ipcMain.handle('knowledge:reject', (_e, path, id) =>
+    attempt(async () => {
+      await reject((await locate(path)).path, String(id))
       return {}
     })
   )
