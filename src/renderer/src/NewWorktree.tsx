@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { KNOWN_AGENTS } from '../../shared/shell'
 import type { CreateRequest } from '../../shared/types'
-
-const AGENTS = ['claude', 'codex', 'gemini', 'opencode', 'aider']
 
 export interface NewWorktreeRequest extends CreateRequest {
   prompt: string
@@ -9,17 +8,20 @@ export interface NewWorktreeRequest extends CreateRequest {
 
 interface Props {
   repoName: string
+  /** Agents found on PATH; the first is the default. */
+  installed: string[]
   onCancel: () => void
   /** Resolves to an error message, or null once the worktree exists. */
   onCreate: (req: NewWorktreeRequest) => Promise<string | null>
 }
 
-export function NewWorktree({ repoName, onCancel, onCreate }: Props): React.JSX.Element {
+export function NewWorktree({ repoName, installed, onCancel, onCreate }: Props): React.JSX.Element {
   const dialog = useRef<HTMLDialogElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => dialog.current?.showModal(), [])
+  const agents = [...installed, ...KNOWN_AGENTS.filter((a) => !installed.includes(a))]
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
@@ -51,9 +53,9 @@ export function NewWorktree({ repoName, onCancel, onCreate }: Props): React.JSX.
         </label>
         <label>
           Agent
-          <input name="agent" required list="agents" defaultValue={AGENTS[0]} />
+          <input name="agent" required list="agents" defaultValue={agents[0]} />
           <datalist id="agents">
-            {AGENTS.map((a) => (
+            {agents.map((a) => (
               <option key={a} value={a} />
             ))}
           </datalist>

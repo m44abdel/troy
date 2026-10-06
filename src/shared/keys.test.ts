@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { routeKey, type KeyInput } from './keys'
+import { DEFAULT_BINDINGS, parseBindings, routeKey, type KeyInput } from './keys'
 
 const key = (code: string, mods: Partial<KeyInput> = {}): KeyInput => ({
   type: 'keyDown',
@@ -24,6 +24,7 @@ describe('routeKey on macOS', () => {
     expect(routeKey(key('Backslash', { meta: true }), 'darwin')).toBe('toggleColumn')
     expect(routeKey(key('KeyD', { meta: true }), 'darwin')).toBe('showDiff')
     expect(routeKey(key('Enter', { meta: true }), 'darwin')).toBe('sendToAgent')
+    expect(routeKey(key('Comma', { meta: true }), 'darwin')).toBe('openSettings')
   })
 
   it.each([
@@ -62,5 +63,27 @@ describe('routeKey on Linux/Windows', () => {
   it('passes plain Ctrl through to the terminal', () => {
     expect(routeKey(key('KeyO', { control: true }), 'linux')).toBeNull()
     expect(routeKey(key('KeyP', { control: true }), 'win32')).toBeNull()
+  })
+})
+
+describe('keybindings.json', () => {
+  it('remaps, frees keys with null and skips what it does not know', () => {
+    const { bindings, ignored } = parseBindings({
+      KeyK: 'newWorktree',
+      KeyN: null,
+      KeyX: 'launchRockets',
+      KeyY: 3
+    })
+    expect(routeKey(key('KeyK', { meta: true }), 'darwin', bindings)).toBe('newWorktree')
+    expect(routeKey(key('KeyN', { meta: true }), 'darwin', bindings)).toBeNull()
+    expect(routeKey(key('KeyD', { meta: true }), 'darwin', bindings)).toBe('showDiff')
+    expect(ignored).toEqual(['KeyX: "launchRockets"', 'KeyY: 3'])
+  })
+
+  it('falls back to the defaults for a file that is not an object', () => {
+    expect(parseBindings([1, 2])).toEqual({
+      bindings: DEFAULT_BINDINGS,
+      ignored: ['the file must hold a JSON object']
+    })
   })
 })

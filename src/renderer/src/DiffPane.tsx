@@ -195,7 +195,8 @@ export function DiffPane({
       {error && <p className="error">{error}</p>}
       {notice && <p className="notice">{notice}</p>}
 
-      <div className="diff-files">
+      {/* Focusable so vim keys can scroll it. */}
+      <div className="diff-files" tabIndex={0}>
         {files?.length === 0 && <p className="muted">No changes yet.</p>}
         {files?.map((file) => {
           const name = fileName(file)
