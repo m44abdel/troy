@@ -16,7 +16,7 @@ The agent pane waits for Enter before starting, so setup can finish first. The s
 
 ## Context window
 
-For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is: a thin bar under each worktree in the sidebar, and the **Context** tab with tokens used, window size and a warning from 80%. Other CLIs show as unknown rather than a guess.
+For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is as a small ring on each worktree in the sidebar. It turns amber from 80%, and hovering shows tokens used, window size and model. Other CLIs show as unknown rather than a guess.
 
 ## Shared knowledge
 
@@ -39,17 +39,17 @@ The **Diff** tab (**⌘D**) shows everything the worktree changed since it branc
 
 App shortcuts use **⌘** on macOS (**Ctrl+Shift** on Linux/Windows). Every Ctrl and Alt chord goes straight to the terminal, so Ctrl-P, Ctrl-T, Ctrl-O, Alt-f and friends keep working inside your shell and agent.
 
-| Shortcut | Action |
-| --- | --- |
-| ⌘O | Add a repository |
-| ⌘N | New worktree |
-| ⌘W | Archive worktree |
-| ⌘1–9 | Jump to worktree |
-| ⌘[ / ⌘] | Previous / next worktree |
-| ⌘J / ⌘E | Focus agent / shell |
-| ⌘D | Show the diff |
-| ⌘Enter | Send review comments to the agent |
-| ⌘\\ | Toggle the right column |
+| Shortcut | Action                            |
+| -------- | --------------------------------- |
+| ⌘O       | Add a repository                  |
+| ⌘N       | New worktree                      |
+| ⌘W       | Archive worktree                  |
+| ⌘1–9     | Jump to worktree                  |
+| ⌘[ / ⌘]  | Previous / next worktree          |
+| ⌘J / ⌘E  | Focus agent / shell               |
+| ⌘D       | Show the diff                     |
+| ⌘Enter   | Send review comments to the agent |
+| ⌘\\      | Toggle the right column           |
 
 ## Development
 

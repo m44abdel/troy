@@ -129,66 +129,29 @@ kbd {
   position: relative;
 }
 
-.ctx-bar,
-.ctx-meter {
-  display: block;
-  background: var(--border);
-  border-radius: 2px;
-  overflow: hidden;
+.ctx-ring {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  transform: rotate(-90deg);
 }
 
-.ctx-bar {
-  position: absolute;
-  left: 24px;
-  right: 8px;
-  bottom: 2px;
-  height: 2px;
+.ctx-ring circle {
+  fill: none;
+  stroke-width: 2;
 }
 
-.ctx-bar span,
-.ctx-meter span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
+.ctx-ring .track {
+  stroke: var(--border);
 }
 
-.ctx-bar.warn span,
-.ctx-meter.warn span {
-  background: #f5c26b;
+.ctx-ring .fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
 }
 
-.context-pane {
-  padding: 16px;
-}
-
-.context-figure {
-  font-size: 32px;
-  font-weight: 600;
-}
-
-.ctx-meter {
-  height: 6px;
-  margin: 8px 0 16px;
-}
-
-.context-pane dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
-  margin: 0 0 12px;
-}
-
-.context-pane dt {
-  color: var(--muted);
-}
-
-.context-pane dd {
-  margin: 0;
-}
-
-.context-pane .error,
-.context-pane .muted {
-  padding: 0;
+.ctx-ring.warn .fill {
+  stroke: #f5c26b;
 }
 
 .worktree.selected {
