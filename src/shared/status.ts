@@ -37,3 +37,6 @@ export function trackStatus(
     dispose: () => clearTimeout(timer)
   }
 }
+
+export const isAlive = (status: AgentStatus | undefined): boolean =>
+  status === 'running' || status === 'waiting'

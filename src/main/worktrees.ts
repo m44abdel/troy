@@ -1,4 +1,5 @@
 import { execFile } from 'child_process'
+import { existsSync } from 'fs'
 import { access, cp, glob, readFile } from 'fs/promises'
 import { isAbsolute, join, relative } from 'path'
 import { promisify } from 'util'
@@ -11,19 +12,42 @@ const DEFAULT_COPY = ['.env*']
 export const PORT_START = 3000
 export const PORT_STEP = 100
 
-export async function git(cwd: string, args: string[], timeout = 0): Promise<string> {
+const MAX_OUTPUT_BYTES = 64 * 1024 * 1024
+
+interface RunOptions {
+  timeout?: number
+  /** Exit codes that still mean success, e.g. 1 for `git diff --no-index`. */
+  okCodes?: number[]
+}
+
+export async function run(
+  file: string,
+  args: string[],
+  cwd: string,
+  { timeout = 0, okCodes = [] }: RunOptions = {}
+): Promise<string> {
   try {
-    const { stdout } = await exec('git', ['-C', cwd, ...args], {
+    const { stdout } = await exec(file, args, {
+      cwd,
       timeout,
+      maxBuffer: MAX_OUTPUT_BYTES,
       // Fail instead of hanging on a credential prompt nobody can see.
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
     })
     return stdout.trim()
   } catch (err) {
-    const stderr = (err as { stderr?: string }).stderr?.trim()
-    throw new Error(stderr || (err as Error).message)
+    const { code, stdout, stderr } = err as { code?: unknown; stdout?: string; stderr?: string }
+    if (typeof code === 'number' && okCodes.includes(code)) return (stdout ?? '').trim()
+    if (code === 'ENOENT')
+      throw new Error(
+        existsSync(cwd) ? `${file} is not installed or not on PATH.` : `${cwd} does not exist.`
+      )
+    throw new Error(stderr?.trim() || (err as Error).message)
   }
 }
+
+export const git = (cwd: string, args: string[], options?: RunOptions): Promise<string> =>
+  run('git', args, cwd, options)
 
 export function parseWorktrees(porcelain: string): Worktree[] {
   return porcelain
@@ -71,7 +95,7 @@ async function startPoint(repo: string, base: string): Promise<string> {
   if (!branch) return 'HEAD'
 
   // Offline or a local-only base: fall back to whatever we already have.
-  await git(repo, ['fetch', 'origin', branch], FETCH_TIMEOUT_MS).catch((err) =>
+  await git(repo, ['fetch', 'origin', branch], { timeout: FETCH_TIMEOUT_MS }).catch((err) =>
     console.warn(`git fetch origin ${branch} failed:`, err.message)
   )
   const remoteRef = `origin/${branch}`
@@ -107,7 +131,12 @@ export async function copyUntracked(from: string, to: string): Promise<string[]>
   return copied
 }
 
-export async function createWorktree(repo: string, branch: string, base: string): Promise<string> {
+/** Creates the worktree and returns its path plus the ref its diff is measured against. */
+export async function createWorktree(
+  repo: string,
+  branch: string,
+  base: string
+): Promise<{ path: string; base: string }> {
   if (!branch || branch.startsWith('-')) throw new Error(`Invalid branch name: "${branch}"`)
   await git(repo, ['check-ref-format', '--branch', branch])
 
@@ -116,7 +145,8 @@ export async function createWorktree(repo: string, branch: string, base: string)
   // --no-track so a plain `git push` never targets the base branch.
   await git(repo, ['worktree', 'add', '--no-track', '-b', branch, path, start])
   await copyUntracked(repo, path)
-  return path
+  // A bare HEAD would move with the new branch, so pin it to the commit we started from.
+  return { path, base: start === 'HEAD' ? await git(repo, ['rev-parse', 'HEAD']) : start }
 }
 
 export async function hasSetupScript(path: string): Promise<boolean> {

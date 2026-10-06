@@ -147,3 +147,57 @@ test('creates a bootstrapped worktree, runs its agent and archives it', async ()
     await app.close()
   }
 })
+
+test('reviews the diff, sends comments to the agent and commits', async () => {
+  const repo = gitRepo('troy-diff-')
+  const git = (...args: string[]): string =>
+    execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+      .toString()
+      .trim()
+  writeFileSync(join(repo, 'a.txt'), 'one\n')
+  git('add', '.')
+  git('commit', '-qm', 'init')
+  git('config', 'user.name', 't')
+  git('config', 'user.email', 't@t')
+  writeFileSync(join(repo, 'a.txt'), 'one\ntwo\n')
+  writeFileSync(join(repo, 'new.txt'), 'fresh\n')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos: [repo], worktrees: { [repo]: { agent: 'cat', port: 3100 } } })
+  )
+
+  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  try {
+    const page = await app.firstWindow()
+    const workspace = page.locator('.workspace:visible')
+    const agentRows = workspace.locator('.pane-agent .xterm-rows')
+
+    await workspace.locator('.pane-agent .xterm').click()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.worktree.selected .dot')).toHaveClass(/running|waiting/)
+
+    await chord(app, 'D', 'meta')
+    const diff = workspace.locator('.pane-diff')
+    await expect(diff.locator('.diff-file h3')).toHaveText(['a.txt', 'new.txt'])
+
+    await diff.locator('.diff-file').first().locator('.diff-gutter-insert').first().click()
+    await page.keyboard.type('rename this')
+    await page.keyboard.press('Enter')
+    await expect(diff.locator('.comment')).toContainText('rename this')
+    await expect(workspace.locator('.tab.active')).toContainText('Diff · 1')
+
+    await chord(app, 'Enter', 'meta')
+    await expect(agentRows).toContainText('a.txt:2: rename this')
+    await expect(diff.locator('.comment')).toHaveCount(0)
+
+    await diff.getByPlaceholder('Commit message').fill('add two')
+    await diff.getByRole('button', { name: 'Commit all' }).click()
+    await expect(diff.locator('.notice')).toHaveText('Committed.')
+    await expect(diff.getByText('No changes yet.')).toBeVisible()
+    expect(git('log', '-1', '--format=%s')).toBe('add two')
+    expect(git('status', '--porcelain')).toBe('')
+  } finally {
+    await app.close()
+  }
+})

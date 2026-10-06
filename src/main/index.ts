@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { routeKey } from '../shared/keys'
 import { registerPty } from './pty'
 import { registerRepos } from './repos'
+import { adoptLoginPath } from './path'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -48,7 +49,8 @@ function createWindow(): void {
 // Lets tests run against a throwaway profile instead of the real one.
 if (process.env.TROY_USER_DATA) app.setPath('userData', process.env.TROY_USER_DATA)
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await adoptLoginPath()
   electronApp.setAppUserModelId('dev.troy.app')
 
   app.on('browser-window-created', (_, window) => {

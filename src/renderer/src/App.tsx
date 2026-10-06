@@ -1,63 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
-import type { AgentStatus } from '../../shared/status'
-import type { Repo, WorktreeView } from '../../shared/types'
+import { isAlive, type AgentStatus } from '../../shared/status'
+import type { Repo } from '../../shared/types'
+import { formatComments, type ReviewComment } from './comments'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
-import { Terminal } from './Terminal'
-import { focusTerminal } from './terminals'
-
-const isMac = navigator.userAgent.includes('Mac')
-const MOD = isMac ? '⌘' : 'Ctrl+Shift+'
-const SETUP_COMMAND = 'sh .troy/setup.sh\r'
+import { MOD } from './platform'
+import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
+import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 
 const basename = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
-const agentId = (path: string): string => `${path}:agent`
-const shellId = (path: string): string => `${path}:shell`
 
-/** What a worktree created this session still needs on its first launch. */
-interface FirstRun {
-  prompt: string
-  setup: boolean
-}
-
-interface WorkspaceProps {
-  wt: WorktreeView
-  active: boolean
-  showShell: boolean
-  firstRun?: FirstRun
-  onStatus: (path: string, status: AgentStatus) => void
-}
-
-function Workspace({
-  wt,
-  active,
-  showShell,
-  firstRun,
-  onStatus
-}: WorkspaceProps): React.JSX.Element {
-  return (
-    <div className="workspace" style={{ display: active ? 'flex' : 'none' }}>
-      <div className="pane pane-agent">
-        <Terminal
-          id={agentId(wt.path)}
-          cwd={wt.path}
-          port={wt.port}
-          command={wt.agent}
-          prompt={firstRun?.prompt || undefined}
-          onStatus={(status) => onStatus(wt.path, status)}
-        />
-      </div>
-      <div className="pane pane-shell" style={{ display: showShell ? 'block' : 'none' }}>
-        <Terminal
-          id={shellId(wt.path)}
-          cwd={wt.path}
-          port={wt.port}
-          initialInput={firstRun?.setup ? SETUP_COMMAND : undefined}
-        />
-      </div>
-    </div>
-  )
-}
+// Focus after React has shown a pane that may have been hidden.
+const focusSoon = (id: string): void => void requestAnimationFrame(() => focusTerminal(id))
 
 function App(): React.JSX.Element {
   const [repos, setRepos] = useState<Repo[]>([])
@@ -65,7 +19,9 @@ function App(): React.JSX.Element {
   const [visited, setVisited] = useState<string[]>([])
   const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({})
   const [firstRuns, setFirstRuns] = useState<Record<string, FirstRun>>({})
-  const [showShell, setShowShell] = useState(true)
+  const [showColumn, setShowColumn] = useState(true)
+  const [tab, setTab] = useState<ColumnTab>('shell')
+  const [comments, setComments] = useState<Record<string, ReviewComment[]>>({})
   const [dialogRepo, setDialogRepo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -111,19 +67,37 @@ function App(): React.JSX.Element {
     setError(result.error ?? null)
   }, [current, currentRepo])
 
+  const sendComments = useCallback(
+    (path: string) => {
+      const pending = comments[path] ?? []
+      if (!pending.length || !isAlive(statuses[path])) return
+      pasteToTerminal(agentId(path), formatComments(pending))
+      setComments((c) => ({ ...c, [path]: [] }))
+      focusTerminal(agentId(path))
+    },
+    [comments, statuses]
+  )
+
+  const showTab = (name: ColumnTab): void => {
+    setShowColumn(true)
+    setTab(name)
+  }
+
   useEffect(
     () =>
       window.api.onAction((action: AppAction) => {
         if (action === 'addRepo') return void addRepo()
         if (action === 'newWorktree') return currentRepo && setDialogRepo(currentRepo.path)
-        if (action === 'toggleShell') return setShowShell((s) => !s)
+        if (action === 'toggleColumn') return setShowColumn((s) => !s)
         if (!current) return
         if (action === 'archive') return void archive()
         if (action === 'focusAgent') return focusTerminal(agentId(current.path))
         if (action === 'focusShell') {
-          setShowShell(true)
-          return focusTerminal(shellId(current.path))
+          showTab('shell')
+          return focusSoon(shellId(current.path))
         }
+        if (action === 'showDiff') return showTab('diff')
+        if (action === 'sendToAgent') return sendComments(current.path)
         const i = worktrees.indexOf(current)
         const n = worktrees.length
         if (action === 'prev') return setSelected(worktrees[(i - 1 + n) % n].path)
@@ -131,11 +105,15 @@ function App(): React.JSX.Element {
         const target = worktrees[Number(action.split(':')[1]) - 1]
         if (target) setSelected(target.path)
       }),
-    [worktrees, current, currentRepo, addRepo, archive]
+    [worktrees, current, currentRepo, addRepo, archive, sendComments]
   )
 
   const onStatus = useCallback(
     (path: string, status: AgentStatus) => setStatuses((s) => ({ ...s, [path]: status })),
+    []
+  )
+  const onComments = useCallback(
+    (path: string, list: ReviewComment[]) => setComments((c) => ({ ...c, [path]: list })),
     []
   )
 
@@ -202,9 +180,15 @@ function App(): React.JSX.Element {
                 key={wt.path}
                 wt={wt}
                 active={wt === current}
-                showShell={showShell}
+                showColumn={showColumn}
+                tab={tab}
+                onTab={setTab}
                 firstRun={firstRuns[wt.path]}
+                status={statuses[wt.path]}
                 onStatus={onStatus}
+                comments={comments[wt.path] ?? []}
+                onComments={onComments}
+                onSend={sendComments}
               />
             ))
         )}

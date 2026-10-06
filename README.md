@@ -2,7 +2,7 @@
 
 Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its own git worktree, in a desktop app that never steals your terminal shortcuts.
 
-> Early development. Today: add repos, create and archive worktrees, and run an agent plus a shell in each.
+> Early development. Today: add repos, create and archive worktrees, run an agent plus a shell in each, review the diff and ship it.
 
 ## Worktrees
 
@@ -13,6 +13,10 @@ Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its ow
 - runs `.troy/setup.sh` in the shell pane if the worktree has one (e.g. `npm i`)
 
 The agent pane waits for Enter before starting, so setup can finish first. The sidebar dot shows the agent's state: running (output flowing), waiting (quiet or rang the bell), done, or error (non-zero exit).
+
+## Review and finish
+
+The **Diff** tab (**⌘D**) shows everything the worktree changed since it branched off its base: commits, uncommitted edits and new files. Click a line number to leave a comment; **⌘Enter** pastes all comments into the agent as one message for you to send. The toolbar commits everything, pushes the branch, or opens its pull request in the browser via the [GitHub CLI](https://cli.github.com) (`gh`), creating one if it doesn't exist yet.
 
 **⌘W** archives the worktree (`git worktree remove`, optionally deleting the branch). Git refuses if there are uncommitted changes, and the primary checkout can't be archived.
 
@@ -28,7 +32,9 @@ App shortcuts use **⌘** on macOS (**Ctrl+Shift** on Linux/Windows). Every Ctrl
 | ⌘1–9 | Jump to worktree |
 | ⌘[ / ⌘] | Previous / next worktree |
 | ⌘J / ⌘E | Focus agent / shell |
-| ⌘\\ | Toggle the shell column |
+| ⌘D | Show the diff |
+| ⌘Enter | Send review comments to the agent |
+| ⌘\\ | Toggle the right column |
 
 ## Development
 
