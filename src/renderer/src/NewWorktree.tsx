@@ -2,9 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { KNOWN_AGENTS } from '../../shared/shell'
 import type { CreateRequest } from '../../shared/types'
 
-export interface NewWorktreeRequest extends CreateRequest {
-  prompt: string
-}
+export type NewWorktreeRequest = Required<CreateRequest>
 
 interface Props {
   repoName: string

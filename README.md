@@ -27,7 +27,7 @@ Troy doesn't bundle any agent: it runs whichever CLIs (claude, codex, gemini, â€
 - gives each worktree its own `PORT_BASE` (3100, 3200, â€¦) so dev servers don't collide
 - runs `.troy/setup.sh` in the shell pane if the worktree has one (e.g. `npm i`)
 
-The agent pane waits for Enter before starting, so setup can finish first. The sidebar dot shows the agent's state: running (output flowing), waiting (quiet or rang the bell), done, or error (non-zero exit).
+The agent pane waits for Enter before starting, so setup can finish first. Each worktree is a card in the sidebar, titled with the first line of its initial prompt, with the agent's state underneath: working (output flowing), waiting (quiet or rang the bell), finished, or exited with an error. A session that starts waiting while you're looking at another one turns amber until you open it or click **Clear all waiting**.
 
 ## Context window
 

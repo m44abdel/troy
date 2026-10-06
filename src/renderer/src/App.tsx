@@ -4,13 +4,13 @@ import { isAlive, type AgentStatus } from '../../shared/status'
 import type { ContextUsage, Knowledge, Repo, Settings as SettingsData } from '../../shared/types'
 import type { VimCommand } from '../../shared/vim'
 import { formatComments, type ReviewComment } from './comments'
-import { ContextRing } from './ContextRing'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { MOD } from './platform'
 import { Settings } from './Settings'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
+import { WorktreeCard } from './WorktreeCard'
 
 // ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
 const CONTEXT_POLL_MS = 5000
@@ -25,6 +25,8 @@ function App(): React.JSX.Element {
   const [selected, setSelected] = useState<string | null>(null)
   const [visited, setVisited] = useState<string[]>([])
   const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({})
+  // Worktrees whose current wait you have already seen; a new status clears the mark.
+  const [seen, setSeen] = useState<Record<string, boolean>>({})
   const [firstRuns, setFirstRuns] = useState<Record<string, FirstRun>>({})
   const [showColumn, setShowColumn] = useState(true)
   const [tab, setTab] = useState<ColumnTab>('shell')
@@ -37,12 +39,23 @@ function App(): React.JSX.Element {
   const [settings, setSettings] = useState<SettingsData>({ vim: false })
   const [showSettings, setShowSettings] = useState(false)
   const [installed, setInstalled] = useState<string[] | null>(null)
+  const currentPath = useRef<string | undefined>(undefined)
   // Set while vim keys move the selection, so focus stays in the sidebar.
   const keepSidebarFocus = useRef(false)
 
   const worktrees = repos.flatMap((r) => r.worktrees)
   const current = worktrees.find((w) => w.path === selected) ?? worktrees[0]
   const currentRepo = repos.find((r) => current && r.worktrees.includes(current)) ?? repos[0]
+
+  useEffect(() => {
+    currentPath.current = current?.path
+  })
+
+  // Opening a worktree acknowledges whatever it is waiting on.
+  const select = useCallback((path: string) => {
+    setSelected(path)
+    setSeen((s) => ({ ...s, [path]: true }))
+  }, [])
 
   // Terminals mount on first view and then stay alive in the background.
   if (current && !visited.includes(current.path)) setVisited([...visited, current.path])
@@ -91,8 +104,8 @@ function App(): React.JSX.Element {
     setRepos(result.repos)
     setError(result.error ?? null)
     const added = result.repos.find((r) => r.path === result.added)
-    if (added?.worktrees[0]) setSelected(added.worktrees[0].path)
-  }, [])
+    if (added?.worktrees[0]) select(added.worktrees[0].path)
+  }, [select])
 
   const createWorktree = async (req: NewWorktreeRequest): Promise<string | null> => {
     if (!dialogRepo) return null
@@ -102,7 +115,7 @@ function App(): React.JSX.Element {
     const path = result.path
     setFirstRuns((f) => ({ ...f, [path]: { prompt: req.prompt, setup: !!result.setup } }))
     setDialogRepo(null)
-    setSelected(path)
+    select(path)
     return null
   }
 
@@ -135,7 +148,7 @@ function App(): React.JSX.Element {
     const target = worktrees[next ?? i]
     if (!target || target === current) return
     keepSidebarFocus.current = true
-    setSelected(target.path)
+    select(target.path)
     requestAnimationFrame(() => {
       // A key typed before this frame (e.g. Enter) may already have moved focus on.
       if (!document.activeElement?.closest('.sidebar')) return
@@ -173,18 +186,24 @@ function App(): React.JSX.Element {
         if (action === 'sendToAgent') return sendComments(current.path)
         const i = worktrees.indexOf(current)
         const n = worktrees.length
-        if (action === 'prev') return setSelected(worktrees[(i - 1 + n) % n].path)
-        if (action === 'next') return setSelected(worktrees[(i + 1) % n].path)
+        if (action === 'prev') return select(worktrees[(i - 1 + n) % n].path)
+        if (action === 'next') return select(worktrees[(i + 1) % n].path)
         const target = worktrees[Number(action.split(':')[1]) - 1]
-        if (target) setSelected(target.path)
+        if (target) select(target.path)
       }),
-    [worktrees, current, currentRepo, addRepo, archive, sendComments]
+    [worktrees, current, currentRepo, addRepo, archive, sendComments, select]
   )
 
-  const onStatus = useCallback(
-    (path: string, status: AgentStatus) => setStatuses((s) => ({ ...s, [path]: status })),
-    []
-  )
+  // A status change on the open worktree happens in front of you, so it counts as seen.
+  const onStatus = useCallback((path: string, status: AgentStatus) => {
+    setStatuses((s) => ({ ...s, [path]: status }))
+    setSeen((s) => ({ ...s, [path]: path === currentPath.current }))
+  }, [])
+
+  const needsYou = (path: string): boolean => statuses[path] === 'waiting' && !seen[path]
+  const waiting = worktrees.filter((wt) => needsYou(wt.path))
+  const clearWaiting = (): void =>
+    setSeen((s) => ({ ...s, ...Object.fromEntries(waiting.map((wt) => [wt.path, true])) }))
   const onComments = useCallback(
     (path: string, list: ReviewComment[]) => setComments((c) => ({ ...c, [path]: list })),
     []
@@ -213,29 +232,26 @@ function App(): React.JSX.Element {
                 </button>
               </div>
               {repo.error && <p className="error">{repo.error}</p>}
-              {repo.worktrees.map((wt) => {
-                const i = worktrees.indexOf(wt)
-                const status = statuses[wt.path] ?? 'idle'
-                const usage = contexts[wt.path]
-                return (
-                  <button
-                    key={wt.path}
-                    className={`worktree ${wt === current ? 'selected' : ''}`}
-                    onClick={() => setSelected(wt.path)}
-                    title={wt.path}
-                    data-path={wt.path}
-                  >
-                    <span className={`dot ${status}`} title={status} />
-                    <span className="branch">{wt.branch ?? 'detached'}</span>
-                    <span className="agent">{wt.agent}</span>
-                    {i < 9 && <kbd>{`${MOD}${i + 1}`}</kbd>}
-                    {usage && <ContextRing usage={usage} />}
-                  </button>
-                )
-              })}
+              {repo.worktrees.map((wt) => (
+                <WorktreeCard
+                  key={wt.path}
+                  wt={wt}
+                  index={worktrees.indexOf(wt)}
+                  selected={wt === current}
+                  status={statuses[wt.path] ?? 'idle'}
+                  needsYou={needsYou(wt.path)}
+                  usage={contexts[wt.path]}
+                  onSelect={() => select(wt.path)}
+                />
+              ))}
             </section>
           ))}
         </nav>
+        {waiting.length > 0 && (
+          <button className="link clear-waiting" onClick={clearWaiting}>
+            Clear all waiting
+          </button>
+        )}
         {error && <p className="error">{error}</p>}
       </aside>
 

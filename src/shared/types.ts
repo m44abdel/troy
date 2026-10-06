@@ -8,6 +8,8 @@ export interface WorktreeView extends Worktree {
   agent: string
   /** Appended to the agent's command line, e.g. to load Troy's MCP server. */
   agentArgs: string
+  /** What the session is for: the first line of its initial prompt. */
+  title?: string
   port?: number
 }
 
@@ -26,6 +28,8 @@ export interface CreateRequest {
   branch: string
   base: string
   agent: string
+  /** Optional first message for the agent. */
+  prompt?: string
 }
 
 export interface ContextUsage {

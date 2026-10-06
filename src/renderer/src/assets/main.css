@@ -49,7 +49,7 @@ kbd {
 }
 
 .sidebar {
-  width: 220px;
+  width: 260px;
   flex-shrink: 0;
   background: var(--panel);
   border-right: 1px solid var(--border);
@@ -687,4 +687,84 @@ kbd {
 .mermaid svg {
   max-width: 100%;
   height: auto;
+}
+
+.worktree.card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.worktree.card.selected {
+  box-shadow: none;
+  border-color: var(--accent);
+  background: var(--selected);
+}
+
+.worktree.card.needs-you {
+  border-color: #f5c26b;
+  background: #2b2416;
+}
+
+.card-head,
+.card-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.card-head .branch {
+  flex: 1;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.card-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-status {
+  font-family: Menlo, 'SF Mono', Monaco, monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.card-status .status-label {
+  flex: 1;
+}
+
+.worktree.running .status-label {
+  color: var(--accent);
+}
+
+.worktree.waiting .status-label {
+  color: #f5c26b;
+}
+
+.worktree.done .status-label {
+  color: #6fd08c;
+}
+
+.worktree.error .status-label {
+  color: var(--danger);
+}
+
+.clear-waiting {
+  margin: 4px 12px 8px;
+  color: #f5c26b;
+}
+
+.card-status .dot.idle {
+  background: var(--muted);
+  opacity: 0.5;
 }
