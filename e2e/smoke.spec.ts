@@ -130,10 +130,12 @@ test('creates a bootstrapped worktree, runs its agent and archives it', async ()
     await chord(app, 'N', 'meta')
     await page.getByLabel('Branch', { exact: true }).fill('feat/e2e')
     await page.getByLabel('Agent').fill('echo agent-port-$PORT_BASE')
+    await page.getByLabel('Initial prompt').fill('Fix the login bug\nand add a test')
     await page.getByRole('button', { name: 'Create' }).click()
 
     const row = page.locator('.worktree.selected')
-    await expect(row).toContainText('feat/e2e')
+    await expect(row.locator('.card-title')).toHaveText('Fix the login bug')
+    await expect(row.locator('.card-head')).toContainText('feat/e2e')
     expect(existsSync(join(worktree, '.env'))).toBe(true)
     expect(readFileSync(join(worktree, 'AGENTS.md'), 'utf8')).toContain('.troy/knowledge.md')
     await expect.poll(() => existsSync(join(worktree, 'setup-ran')), { timeout: 15_000 }).toBe(true)
@@ -145,6 +147,7 @@ test('creates a bootstrapped worktree, runs its agent and archives it', async ()
     await page.keyboard.press('Enter')
     await expect(agent.locator('.xterm-rows')).toContainText('agent-port-3100', { timeout: 15_000 })
     await expect(row.locator('.dot')).toHaveClass(/done/)
+    await expect(row.locator('.status-label')).toHaveText('finished')
 
     await app.evaluate(({ dialog }) => {
       dialog.showMessageBox = (async () => ({ response: 1, checkboxChecked: false })) as never
@@ -438,6 +441,38 @@ test('renders the docs tab with Mermaid diagrams and follows relative links', as
     await docs.getByRole('link', { name: 'the guide' }).click()
     await expect(docs.locator('select')).toHaveValue('docs/guide.md')
     await expect(docs).toContainText('Hello from the guide.')
+  } finally {
+    await app.close()
+  }
+})
+
+test('a session that starts waiting while you are elsewhere is highlighted until cleared', async () => {
+  const repos = [gitRepo('troy-c1-'), gitRepo('troy-c2-')]
+  const userData = tempDir('troy-profile-')
+  const meta = { agent: 'cat', port: 3100 }
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos, worktrees: { [repos[0]]: meta, [repos[1]]: { ...meta, port: 3200 } } })
+  )
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const first = page.locator(`.worktree[title="${repos[0]}"]`)
+    await expect(first.locator('.status-label')).toHaveText('not started')
+
+    // Start the agent, then look away before it goes quiet.
+    await page.locator('.workspace:visible .pane-agent .xterm').click()
+    await page.keyboard.press('Enter')
+    await expect(first.locator('.status-label')).toHaveText('working')
+    await chord(app, '2', 'meta')
+
+    await expect(first.locator('.status-label')).toHaveText('waiting', { timeout: 10_000 })
+    await expect(first).toHaveClass(/needs-you/)
+    await page.getByRole('button', { name: 'Clear all waiting' }).click()
+    await expect(first).not.toHaveClass(/needs-you/)
+    await expect(first.locator('.status-label')).toHaveText('waiting')
+    await expect(page.getByRole('button', { name: 'Clear all waiting' })).toHaveCount(0)
   } finally {
     await app.close()
   }

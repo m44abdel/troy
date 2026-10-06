@@ -19,12 +19,14 @@ import {
 } from './worktrees'
 
 const DEFAULT_AGENT = 'claude'
+const MAX_TITLE_LENGTH = 120
 
 interface WorktreeMeta {
   agent: string
   port: number
   /** Ref the worktree's diff is measured against. */
   base?: string
+  title?: string
 }
 
 interface State {
@@ -63,8 +65,10 @@ async function describeRepos(state: State): Promise<Repo[]> {
     state.repos.map(async (path) => {
       try {
         const worktrees = (await listWorktrees(path)).map((wt) => {
-          const agent = state.worktrees[wt.path]?.agent ?? DEFAULT_AGENT
-          return { ...wt, agent, agentArgs: mcpFlags(agent), port: state.worktrees[wt.path]?.port }
+          const meta = state.worktrees[wt.path]
+          const agent = meta?.agent ?? DEFAULT_AGENT
+          const title = typeof meta?.title === 'string' ? meta.title : undefined
+          return { ...wt, agent, agentArgs: mcpFlags(agent), port: meta?.port, title }
         })
         return { path, worktrees }
       } catch (err) {
@@ -104,12 +108,21 @@ async function addRepo(event: IpcMainInvokeEvent): Promise<ReposResult & { added
   return { repos: await describeRepos(next), added: top }
 }
 
+/** The first line of the prompt, short enough for a sidebar card. */
+export const taskTitle = (prompt: string): string | undefined =>
+  prompt
+    .split('\n')
+    .map((line) => line.trim())
+    .find(Boolean)
+    ?.slice(0, MAX_TITLE_LENGTH)
+
 function parseCreateRequest(req: unknown): CreateRequest {
-  const { branch, base, agent } = (req ?? {}) as Record<string, unknown>
+  const { branch, base, agent, prompt } = (req ?? {}) as Record<string, unknown>
   if (typeof branch !== 'string' || typeof base !== 'string' || typeof agent !== 'string')
     throw new Error('Branch, base and agent must be text.')
   if (!agent.trim() || /[\r\n]/.test(agent)) throw new Error('Agent must be a single command line.')
-  return { branch: branch.trim(), base: base.trim(), agent: agent.trim() }
+  if (prompt !== undefined && typeof prompt !== 'string') throw new Error('Prompt must be text.')
+  return { branch: branch.trim(), base: base.trim(), agent: agent.trim(), prompt }
 }
 
 async function create(
@@ -128,7 +141,10 @@ async function create(
     const port = nextPortBase(Object.values(state.worktrees).map((m) => m.port))
     const next = {
       ...state,
-      worktrees: { ...state.worktrees, [path]: { agent: req.agent, port, base } }
+      worktrees: {
+        ...state.worktrees,
+        [path]: { agent: req.agent, port, base, title: taskTitle(req.prompt ?? '') }
+      }
     }
     await saveState(next)
     return { repos: await describeRepos(next), path, setup: await hasSetupScript(path) }
