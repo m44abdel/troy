@@ -2,7 +2,7 @@
 
 Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its own git worktree, in a desktop app that never steals your terminal shortcuts.
 
-> Early development. Today: add repos, create and archive worktrees, run an agent plus a shell in each, review the diff and ship it.
+> Early development. Today: add repos, create and archive worktrees, run an agent plus a shell in each, review the diff and ship it, and see how full each agent's context window is.
 
 ## Worktrees
 
@@ -13,6 +13,10 @@ Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its ow
 - runs `.troy/setup.sh` in the shell pane if the worktree has one (e.g. `npm i`)
 
 The agent pane waits for Enter before starting, so setup can finish first. The sidebar dot shows the agent's state: running (output flowing), waiting (quiet or rang the bell), done, or error (non-zero exit).
+
+## Context window
+
+For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is: a thin bar under each worktree in the sidebar, and the **Context** tab with tokens used, window size and a warning from 80%. Other CLIs show as unknown rather than a guess.
 
 ## Review and finish
 

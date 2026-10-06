@@ -1,7 +1,8 @@
 import type { AgentStatus } from '../../shared/status'
 import { isAlive } from '../../shared/status'
-import type { WorktreeView } from '../../shared/types'
+import type { ContextUsage, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
+import { ContextPane } from './ContextPane'
 import { DiffPane } from './DiffPane'
 import { MOD } from './platform'
 import { Terminal } from './Terminal'
@@ -9,7 +10,7 @@ import { agentId, shellId } from './terminals'
 
 const SETUP_COMMAND = 'sh .troy/setup.sh\r'
 
-export type ColumnTab = 'shell' | 'diff'
+export type ColumnTab = 'shell' | 'diff' | 'context'
 
 /** What a worktree created this session still needs on its first launch. */
 export interface FirstRun {
@@ -25,6 +26,7 @@ interface Props {
   onTab: (tab: ColumnTab) => void
   firstRun?: FirstRun
   status?: AgentStatus
+  context?: ContextUsage | null
   onStatus: (path: string, status: AgentStatus) => void
   comments: ReviewComment[]
   onComments: (path: string, comments: ReviewComment[]) => void
@@ -39,14 +41,15 @@ export function Workspace({
   onTab,
   firstRun,
   status,
+  context,
   onStatus,
   comments,
   onComments,
   onSend
 }: Props): React.JSX.Element {
-  const tabButton = (name: ColumnTab, label: string, key: string): React.JSX.Element => (
+  const tabButton = (name: ColumnTab, label: string, key?: string): React.JSX.Element => (
     <button className={`tab ${tab === name ? 'active' : ''}`} onClick={() => onTab(name)}>
-      {label} <kbd>{`${MOD}${key}`}</kbd>
+      {label} {key && <kbd>{`${MOD}${key}`}</kbd>}
     </button>
   )
 
@@ -66,6 +69,7 @@ export function Workspace({
         <div className="tabs">
           {tabButton('shell', 'Shell', 'E')}
           {tabButton('diff', comments.length ? `Diff · ${comments.length}` : 'Diff', 'D')}
+          {tabButton('context', 'Context')}
         </div>
         <div className="pane pane-shell" style={{ display: tab === 'shell' ? 'block' : 'none' }}>
           <Terminal
@@ -74,6 +78,9 @@ export function Workspace({
             port={wt.port}
             initialInput={firstRun?.setup ? SETUP_COMMAND : undefined}
           />
+        </div>
+        <div className="pane" style={{ display: tab === 'context' ? 'block' : 'none' }}>
+          <ContextPane agent={wt.agent} usage={context} />
         </div>
         <div className="pane pane-diff" style={{ display: tab === 'diff' ? 'flex' : 'none' }}>
           <DiffPane
