@@ -31,6 +31,8 @@ Troy doesn't bundle any agent: it runs whichever CLIs (claude, codex, gemini, â€
 
 The agent pane waits for Enter before starting, so setup can finish first. Each worktree is a card in the sidebar, titled with the first line of its initial prompt, with the agent's state underneath: working (output flowing), waiting (quiet or rang the bell), finished, or exited with an error. A session that starts waiting while you're looking at another one turns amber until you open it or click **Clear all waiting**.
 
+Claude Code reports its own state through hooks Troy loads with `--settings`, merged with your settings and never written into the repo, so a long tool run reads as working and a permission prompt reads as waiting as soon as Claude asks. Other agents fall back to the output guess. When an agent starts waiting, finishes or fails while you're elsewhere, Troy sends a notification and counts waiting agents on the dock icon. A guessed wait never notifies.
+
 ## Context window
 
 For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is as a small ring on each worktree in the sidebar. It turns amber from 80%, and hovering shows tokens used, window size and model. Other CLIs show as unknown rather than a guess.

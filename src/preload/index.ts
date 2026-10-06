@@ -63,6 +63,7 @@ const api = {
   onPtyData: (id: string, cb: (data: string) => void) => subscribe(`pty:data:${id}`, cb),
   onPtyExit: (id: string, cb: (code: number) => void) => subscribe(`pty:exit:${id}`, cb),
 
+  setBadge: (count: number): void => ipcRenderer.send('app:badge', count),
   onAction: (cb: (action: AppAction) => void) => subscribe('app:action', cb)
 }
 

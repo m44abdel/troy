@@ -2,6 +2,7 @@ import { app } from 'electron'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { commandName, shellQuote } from '../shared/shell'
+import { STATUS_OSC } from '../shared/status'
 
 export interface McpLaunch {
   command: string
@@ -18,10 +19,41 @@ const launch = (): McpLaunch => ({
 
 const configPath = (): string => join(app.getPath('userData'), 'mcp.json')
 
-/** The file Claude Code loads via --mcp-config. */
+const hooksPath = (): string => join(app.getPath('userData'), 'claude-hooks.json')
+
+// The agent pane sets TROY_TTY; the OSC lands in that pane's terminal, which reads it as status.
+const report = (
+  status: 'running' | 'waiting'
+): { hooks: { type: string; command: string }[] }[] => [
+  {
+    hooks: [
+      {
+        type: 'command',
+        command: `[ -n "$TROY_TTY" ] && printf '\\033]${STATUS_OSC};${status}\\007' > "$TROY_TTY"; true`
+      }
+    ]
+  }
+]
+
+/** Claude Code hooks that report working or waiting straight to Troy. */
+export const hookSettings = (): Record<string, unknown> => ({
+  hooks: {
+    UserPromptSubmit: report('running'),
+    PostToolUse: report('running'),
+    Notification: report('waiting'),
+    Stop: report('waiting')
+  }
+})
+
+/** The files Claude Code loads via --mcp-config and --settings. */
 export async function writeMcpConfig(): Promise<void> {
   await writeFile(configPath(), JSON.stringify({ mcpServers: { troy: launch() } }, null, 2))
+  await writeFile(hooksPath(), JSON.stringify(hookSettings(), null, 2))
 }
+
+/** Claude's --settings merges with the user's own settings rather than replacing them. */
+export const hookFlags = (agent: string, path = hooksPath()): string =>
+  commandName(agent) === 'claude' ? ` --settings ${shellQuote(path)}` : ''
 
 /**
  * Flags appended to the agent's command line so it starts Troy's MCP server.

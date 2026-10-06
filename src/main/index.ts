@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, nativeTheme } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -85,6 +85,10 @@ app.whenReady().then(async () => {
   registerSettings()
   registerPty()
   registerRepos()
+  // The dock badge counts agents waiting on you.
+  ipcMain.on('app:badge', (_e, count: unknown) => {
+    if (Number.isInteger(count) && (count as number) >= 0) app.setBadgeCount(count as number)
+  })
   createWindow()
 
   app.on('activate', () => {

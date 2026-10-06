@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { execFileSync } from 'child_process'
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { formatEntry, readKnowledge } from './knowledge'
 import { createServer, search } from './mcp'
-import { mcpFlags } from './mcp-config'
+import { hookFlags, hookSettings, mcpFlags } from './mcp-config'
 
 function tempRepo(): string {
   const repo = realpathSync(mkdtempSync(join(tmpdir(), 'troy-mcp-')))
@@ -124,5 +124,35 @@ describe('mcpFlags', () => {
         ` -c 'mcp_servers.troy.env={ELECTRON_RUN_AS_NODE="1"}'`
     )
     expect(mcpFlags('aider', '', server)).toBe('')
+  })
+})
+
+describe('hookSettings', () => {
+  const commandFor = (event: string): string =>
+    (hookSettings().hooks as Record<string, { hooks: { command: string }[] }[]>)[event][0].hooks[0]
+      .command
+
+  it('writes the status OSC to the tty named by TROY_TTY', () => {
+    const tty = join(mkdtempSync(join(tmpdir(), 'troy-hook-')), 'tty')
+    writeFileSync(tty, '')
+    execFileSync('sh', ['-c', commandFor('Stop')], { env: { ...process.env, TROY_TTY: tty } })
+    expect(readFileSync(tty, 'utf8')).toBe('\x1b]7700;waiting\x07')
+    execFileSync('sh', ['-c', commandFor('UserPromptSubmit')], {
+      env: { ...process.env, TROY_TTY: tty }
+    })
+    expect(readFileSync(tty, 'utf8')).toBe('\x1b]7700;running\x07')
+  })
+
+  it('succeeds silently outside Troy', () => {
+    const env = { ...process.env }
+    delete env.TROY_TTY
+    expect(execFileSync('sh', ['-c', commandFor('Notification')], { env }).toString()).toBe('')
+  })
+})
+
+describe('hookFlags', () => {
+  it('loads the hook settings into Claude only', () => {
+    expect(hookFlags('claude', "/it's/hooks.json")).toBe(` --settings '/it'\\''s/hooks.json'`)
+    expect(hookFlags('codex', '/x')).toBe('')
   })
 })

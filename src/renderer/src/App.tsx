@@ -8,6 +8,7 @@ import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { Icon, Logo } from './icons'
 import { MOD } from './platform'
 import { Settings } from './Settings'
+import { STATUS_LABELS } from './statusLabels'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
@@ -195,14 +196,34 @@ function App(): React.JSX.Element {
     [worktrees, current, currentRepo, addRepo, archive, sendComments, select]
   )
 
-  // A status change on the open worktree happens in front of you, so it counts as seen.
-  const onStatus = useCallback((path: string, status: AgentStatus) => {
-    setStatuses((s) => ({ ...s, [path]: status }))
-    setSeen((s) => ({ ...s, [path]: path === currentPath.current }))
+  // A status change on the open worktree while Troy has focus happens in front of you.
+  // Anything else you hear about, but only when the status is reported, not guessed.
+  const onStatus = useCallback(
+    (path: string, status: AgentStatus, certain: boolean) => {
+      setStatuses((s) => ({ ...s, [path]: status }))
+      const watching = path === currentPath.current && document.hasFocus()
+      setSeen((s) => ({ ...s, [path]: watching }))
+      if (watching || !certain || status === 'running') return
+      const note = new Notification(basename(path), { body: `Agent ${STATUS_LABELS[status]}` })
+      note.onclick = () => select(path)
+    },
+    [select]
+  )
+
+  // Coming back to Troy acknowledges the worktree that is open.
+  useEffect(() => {
+    const onFocus = (): void => {
+      const path = currentPath.current
+      if (path) setSeen((s) => ({ ...s, [path]: true }))
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [])
 
   const needsYou = (path: string): boolean => statuses[path] === 'waiting' && !seen[path]
   const waiting = worktrees.filter((wt) => needsYou(wt.path))
+
+  useEffect(() => window.api.setBadge(waiting.length), [waiting.length])
   const clearWaiting = (): void =>
     setSeen((s) => ({ ...s, ...Object.fromEntries(waiting.map((wt) => [wt.path, true])) }))
   const onComments = useCallback(
