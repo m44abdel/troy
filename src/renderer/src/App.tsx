@@ -3,7 +3,7 @@ import type { AppAction } from '../../shared/keys'
 import { isAlive, type AgentStatus } from '../../shared/status'
 import type { ContextUsage, Knowledge, Repo } from '../../shared/types'
 import { formatComments, type ReviewComment } from './comments'
-import { CONTEXT_WARN_PERCENT, contextPercent, describeContext } from './context'
+import { ContextRing } from './ContextRing'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { MOD } from './platform'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
@@ -190,14 +190,7 @@ function App(): React.JSX.Element {
                     <span className="branch">{wt.branch ?? 'detached'}</span>
                     <span className="agent">{wt.agent}</span>
                     {i < 9 && <kbd>{`${MOD}${i + 1}`}</kbd>}
-                    {usage && (
-                      <span
-                        className={`ctx-bar ${contextPercent(usage) >= CONTEXT_WARN_PERCENT ? 'warn' : ''}`}
-                        title={describeContext(usage)}
-                      >
-                        <span style={{ width: `${contextPercent(usage)}%` }} />
-                      </span>
-                    )}
+                    {usage && <ContextRing usage={usage} />}
                   </button>
                 )
               })}
@@ -229,7 +222,6 @@ function App(): React.JSX.Element {
                 onTab={setTab}
                 firstRun={firstRuns[wt.path]}
                 status={statuses[wt.path]}
-                context={contexts[wt.path]}
                 onStatus={onStatus}
                 comments={comments[wt.path] ?? []}
                 onComments={onComments}

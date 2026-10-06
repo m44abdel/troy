@@ -1,8 +1,7 @@
 import type { AgentStatus } from '../../shared/status'
 import { isAlive } from '../../shared/status'
-import type { ContextUsage, Knowledge, WorktreeView } from '../../shared/types'
+import type { Knowledge, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
-import { ContextPane } from './ContextPane'
 import { DiffPane } from './DiffPane'
 import { KnowledgePane } from './KnowledgePane'
 import { MOD } from './platform'
@@ -11,7 +10,7 @@ import { agentId, shellId } from './terminals'
 
 const SETUP_COMMAND = 'sh .troy/setup.sh\r'
 
-export type ColumnTab = 'shell' | 'diff' | 'context' | 'knowledge'
+export type ColumnTab = 'shell' | 'diff' | 'knowledge'
 
 /** What a worktree created this session still needs on its first launch. */
 export interface FirstRun {
@@ -27,7 +26,6 @@ interface Props {
   onTab: (tab: ColumnTab) => void
   firstRun?: FirstRun
   status?: AgentStatus
-  context?: ContextUsage | null
   onStatus: (path: string, status: AgentStatus) => void
   comments: ReviewComment[]
   onComments: (path: string, comments: ReviewComment[]) => void
@@ -45,7 +43,6 @@ export function Workspace({
   onTab,
   firstRun,
   status,
-  context,
   onStatus,
   comments,
   onComments,
@@ -77,7 +74,6 @@ export function Workspace({
         <div className="tabs">
           {tabButton('shell', 'Shell', 'E')}
           {tabButton('diff', comments.length ? `Diff · ${comments.length}` : 'Diff', 'D')}
-          {tabButton('context', 'Context')}
           {tabButton('knowledge', pending ? `Knowledge · ${pending}` : 'Knowledge')}
         </div>
         <div className="pane pane-shell" style={{ display: tab === 'shell' ? 'block' : 'none' }}>
@@ -87,9 +83,6 @@ export function Workspace({
             port={wt.port}
             initialInput={firstRun?.setup ? SETUP_COMMAND : undefined}
           />
-        </div>
-        <div className="pane" style={{ display: tab === 'context' ? 'block' : 'none' }}>
-          <ContextPane agent={wt.agent} usage={context} />
         </div>
         <div className="pane" style={{ display: tab === 'knowledge' ? 'block' : 'none' }}>
           <KnowledgePane path={wt.path} knowledge={knowledge} onChanged={onKnowledgeChanged} />

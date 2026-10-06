@@ -242,21 +242,16 @@ test('shows context usage from the Claude Code session log', async () => {
   })
   try {
     const page = await app.firstWindow()
-    await expect(page.locator('.worktree.selected .ctx-bar')).toHaveAttribute(
-      'title',
-      '75% of context used (150k / 200k)'
+    const ring = page.locator('.worktree.selected .ctx-ring')
+    await expect(ring.locator('title')).toHaveText(
+      '75% of context used (150k / 200k)\nclaude-sonnet-5-5'
     )
-
-    const workspace = page.locator('.workspace:visible')
-    await workspace.getByRole('button', { name: 'Context' }).click()
-    await expect(workspace.locator('.context-figure')).toHaveText('75%')
-    await expect(workspace.locator('.context-pane')).toContainText('claude-sonnet-5-5')
-    await expect(workspace.locator('.context-pane .error')).toHaveCount(0)
+    await expect(ring).not.toHaveClass(/warn/)
 
     appendFileSync(log, turn(170_000))
-    await expect(workspace.locator('.context-figure')).toHaveText('85%', { timeout: 10_000 })
-    await expect(workspace.locator('.context-pane .error')).toContainText('85% full')
-    await expect(page.locator('.worktree.selected .ctx-bar')).toHaveClass(/warn/)
+    await expect(ring).toHaveClass(/warn/, { timeout: 10_000 })
+    await expect(ring.locator('title')).toContainText('85% of context used')
+    await expect(ring.locator('title')).toContainText('/compact')
   } finally {
     await app.close()
   }
