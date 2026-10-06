@@ -17,12 +17,19 @@ describe('routeKey on macOS', () => {
     expect(routeKey(key('BracketLeft', { meta: true }), 'darwin')).toBe('prev')
     expect(routeKey(key('BracketRight', { meta: true }), 'darwin')).toBe('next')
     expect(routeKey(key('Digit3', { meta: true }), 'darwin')).toBe('jump:3')
+    expect(routeKey(key('KeyN', { meta: true }), 'darwin')).toBe('newWorktree')
+    expect(routeKey(key('KeyW', { meta: true }), 'darwin')).toBe('archive')
+    expect(routeKey(key('KeyJ', { meta: true }), 'darwin')).toBe('focusAgent')
+    expect(routeKey(key('KeyE', { meta: true }), 'darwin')).toBe('focusShell')
+    expect(routeKey(key('Backslash', { meta: true }), 'darwin')).toBe('toggleShell')
   })
 
   it.each([
     ['Ctrl-P', key('KeyP', { control: true })],
     ['Ctrl-T', key('KeyT', { control: true })],
     ['Ctrl-O', key('KeyO', { control: true })],
+    ['Ctrl-N', key('KeyN', { control: true })],
+    ['Ctrl-W', key('KeyW', { control: true })],
     ['Alt-f', key('KeyF', { alt: true })],
     ['plain o', key('KeyO')]
   ])('passes %s through to the terminal', (_name, input) => {

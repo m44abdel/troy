@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AppAction } from '../shared/keys'
+import type { CreateRequest, Repo, ReposResult } from '../shared/types'
 
 function subscribe<T extends unknown[]>(channel: string, cb: (...args: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, ...args: unknown[]): void => cb(...(args as T))
@@ -8,12 +9,22 @@ function subscribe<T extends unknown[]>(channel: string, cb: (...args: T) => voi
 }
 
 const api = {
-  listRepos: (): Promise<string[]> => ipcRenderer.invoke('repos:list'),
-  addRepo: (): Promise<{ repos: string[]; added?: string; error?: string }> =>
-    ipcRenderer.invoke('repos:add'),
+  listRepos: (): Promise<Repo[]> => ipcRenderer.invoke('repos:list'),
+  addRepo: (): Promise<ReposResult & { added?: string }> => ipcRenderer.invoke('repos:add'),
+  createWorktree: (
+    repo: string,
+    req: CreateRequest
+  ): Promise<ReposResult & { path?: string; setup?: boolean }> =>
+    ipcRenderer.invoke('worktree:create', repo, req),
+  archiveWorktree: (repo: string, path: string): Promise<ReposResult> =>
+    ipcRenderer.invoke('worktree:archive', repo, path),
 
-  ptySpawn: (cwd: string, cols: number, rows: number): Promise<string> =>
-    ipcRenderer.invoke('pty:spawn', cwd, cols, rows),
+  ptySpawn: (
+    cwd: string,
+    cols: number,
+    rows: number,
+    env?: Record<string, string>
+  ): Promise<string> => ipcRenderer.invoke('pty:spawn', cwd, cols, rows, env),
   ptyWrite: (id: string, data: string): void => ipcRenderer.send('pty:write', id, data),
   ptyResize: (id: string, cols: number, rows: number): void =>
     ipcRenderer.send('pty:resize', id, cols, rows),

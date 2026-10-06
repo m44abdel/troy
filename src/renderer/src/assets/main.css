@@ -89,14 +89,31 @@ kbd {
   display: flex;
   flex-direction: column;
   padding: 4px 6px;
-  gap: 2px;
+  gap: 10px;
   overflow-y: auto;
 }
 
-.repo {
+.repo-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 2px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.repo-header .icon-button {
+  width: 20px;
+  height: 20px;
+}
+
+.worktree {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
   text-align: left;
   background: none;
   border: none;
@@ -104,19 +121,60 @@ kbd {
   padding: 6px 8px;
 }
 
-.repo:hover {
+.worktree:hover {
   background: var(--selected);
 }
 
-.repo.selected {
+.worktree.selected {
   background: var(--selected);
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
-.repo-name {
+.repo-name,
+.branch {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.branch {
+  flex: 1;
+}
+
+.agent {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--border);
+}
+
+.dot.running {
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.dot.waiting {
+  background: #f5c26b;
+}
+
+.dot.done {
+  background: #6fd08c;
+}
+
+.dot.error {
+  background: var(--danger);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .error {
@@ -124,11 +182,28 @@ kbd {
   padding: 0 12px;
 }
 
-.workspace {
+.workspaces {
   flex: 1;
   min-width: 0;
   position: relative;
+}
+
+.workspace {
+  height: 100%;
+}
+
+.pane {
+  min-width: 0;
   padding: 8px 0 0 8px;
+}
+
+.pane-agent {
+  flex: 55;
+}
+
+.pane-shell {
+  flex: 45;
+  border-left: 1px solid var(--border);
 }
 
 .terminal {
@@ -172,4 +247,69 @@ kbd {
 .primary kbd {
   color: #0b1020;
   opacity: 0.6;
+}
+
+.secondary {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+}
+
+.dialog {
+  width: 420px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+.dialog h2 {
+  margin: 0 0 16px;
+  font-size: 15px;
+}
+
+.dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.dialog input,
+.dialog textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.dialog input:focus,
+.dialog textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.dialog .error {
+  padding: 0;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
