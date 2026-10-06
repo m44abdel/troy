@@ -143,8 +143,10 @@ function App(): React.JSX.Element {
     )
   })
 
-  const updateSettings = async (next: Partial<SettingsData>): Promise<void> =>
-    setSettings(await window.api.setSettings(next))
+  const updateSettings = (next: Partial<SettingsData>): void => {
+    setSettings((s) => ({ ...s, ...next }))
+    window.api.setSettings(next).catch((err) => setError(`Could not save settings: ${err.message}`))
+  }
 
   const showTab = (name: ColumnTab): void => {
     setShowColumn(true)

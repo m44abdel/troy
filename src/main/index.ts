@@ -38,9 +38,17 @@ function createWindow(): void {
     mainWindow.webContents.send('app:action', action)
   })
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+  // Links leave the app for the browser; nothing else may navigate the window.
+  const openExternal = (url: string): void => {
+    if (/^(https?|mailto):/i.test(url)) void shell.openExternal(url)
+  }
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternal(url)
     return { action: 'deny' }
+  })
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    event.preventDefault()
+    openExternal(url)
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
