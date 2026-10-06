@@ -6,8 +6,12 @@ export type AgentStatus = 'idle' | 'running' | 'waiting' | 'done' | 'error'
 // ponytail: fixed silence threshold; per-agent tuning if a CLI pauses longer mid-task.
 export const IDLE_MS = 3000
 
+// A resize makes TUIs redraw the whole screen; output this soon after one is a redraw, not work.
+export const RESIZE_GRACE_MS = 500
+
 export interface StatusTracker {
   output(): void
+  resize(): void
   bell(): void
   exit(code: number): void
   dispose(): void
@@ -19,6 +23,7 @@ export function trackStatus(
 ): StatusTracker {
   let current: AgentStatus = 'idle'
   let timer: ReturnType<typeof setTimeout> | undefined
+  let redrawUntil = 0
 
   const set = (next: AgentStatus): void => {
     clearTimeout(timer)
@@ -29,8 +34,13 @@ export function trackStatus(
 
   return {
     output: () => {
+      // A redraw keeps a working agent working but never wakes a waiting one.
+      if (Date.now() < redrawUntil && current !== 'running') return
       set('running')
       timer = setTimeout(() => set('waiting'), idleMs)
+    },
+    resize: () => {
+      redrawUntil = Date.now() + RESIZE_GRACE_MS
     },
     bell: () => set('waiting'),
     exit: (code) => set(code === 0 ? 'done' : 'error'),
