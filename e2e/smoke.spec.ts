@@ -1,6 +1,14 @@
 import { test, expect, _electron as electron, type ElectronApplication } from '@playwright/test'
-import { execFileSync } from 'child_process'
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'fs'
+import { execFileSync, spawn } from 'child_process'
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync
+} from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -125,6 +133,7 @@ test('creates a bootstrapped worktree, runs its agent and archives it', async ()
     const row = page.locator('.worktree.selected')
     await expect(row).toContainText('feat/e2e')
     expect(existsSync(join(worktree, '.env'))).toBe(true)
+    expect(readFileSync(join(worktree, 'AGENTS.md'), 'utf8')).toContain('.troy/knowledge.md')
     await expect.poll(() => existsSync(join(worktree, 'setup-ran')), { timeout: 15_000 }).toBe(true)
 
     // The agent waits for Enter, runs once with this worktree's port, and exits cleanly.
@@ -248,6 +257,93 @@ test('shows context usage from the Claude Code session log', async () => {
     await expect(workspace.locator('.context-figure')).toHaveText('85%', { timeout: 10_000 })
     await expect(workspace.locator('.context-pane .error')).toContainText('85% full')
     await expect(page.locator('.worktree.selected .ctx-bar')).toHaveClass(/warn/)
+  } finally {
+    await app.close()
+  }
+})
+
+/** Talks to the MCP server the way an agent would: spawned from Troy's config, over stdio. */
+async function mcpSession(userData: string, cwd: string, messages: object[]): Promise<string[]> {
+  const { command, args, env } = JSON.parse(readFileSync(join(userData, 'mcp.json'), 'utf8'))
+    .mcpServers.troy
+  const server = spawn(command, args, { cwd, env: { ...process.env, ...env } })
+  const replies: string[] = []
+  let buffer = ''
+  const done = new Promise<void>((resolve, reject) => {
+    server.on('error', reject)
+    server.stdout.on('data', (chunk) => {
+      buffer += chunk
+      const lines = buffer.split('\n')
+      buffer = lines.pop()!
+      replies.push(...lines)
+      if (replies.length >= messages.filter((m) => 'id' in m).length) resolve()
+    })
+  })
+  server.stdin.write(messages.map((m) => JSON.stringify(m)).join('\n') + '\n')
+  await done
+  server.kill()
+  // Replies may arrive in any order; JSON-RPC matches them by id.
+  return replies.sort((a, b) => JSON.parse(a).id - JSON.parse(b).id)
+}
+
+test('an agent proposes a fact over MCP and the user approves it', async () => {
+  const repo = gitRepo('troy-know-')
+  writeFileSync(join(repo, 'ports.txt'), 'PORT_BASE=3100\n')
+  execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '.'])
+  execFileSync('git', [
+    '-C',
+    repo,
+    '-c',
+    'user.name=t',
+    '-c',
+    'user.email=t@t',
+    'commit',
+    '-qm',
+    'i'
+  ])
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await electron.launch({ args: ['.'], env: { ...shellEnv, TROY_USER_DATA: userData } })
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.worktree.selected')).toContainText('main')
+
+    const propose = (id: number, source: string): object => ({
+      jsonrpc: '2.0',
+      id,
+      method: 'tools/call',
+      params: { name: 'knowledge_propose', arguments: { fact: 'Ports start at 3100.', source } }
+    })
+    const replies = await mcpSession(userData, repo, [
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { clientInfo: { name: 'e2e-agent' } }
+      },
+      { jsonrpc: '2.0', method: 'notifications/initialized' },
+      propose(2, 'ports.txt:1'),
+      propose(3, 'ports.txt:7')
+    ])
+    expect(replies[1]).toContain('Queued for review')
+    expect(replies[2]).toContain('out of range')
+
+    const workspace = page.locator('.workspace:visible')
+    const tab = workspace.locator('.tab', { hasText: 'Knowledge' })
+    await expect(tab).toContainText('Knowledge · 1', { timeout: 10_000 })
+    await tab.click()
+    const pane = workspace.locator('.knowledge-pane')
+    await expect(pane.locator('.proposal')).toContainText('ports.txt:1 · ')
+    await expect(pane.locator('.proposal')).toContainText('e2e-agent')
+
+    await pane.getByRole('button', { name: 'Approve' }).click()
+    await expect(pane.locator('.proposal')).toHaveCount(0)
+    await expect(pane.locator('.fact')).toContainText('Ports start at 3100.')
+    await expect(tab).toHaveText('Knowledge')
+    expect(readFileSync(join(repo, '.troy', 'knowledge.md'), 'utf8')).toContain(
+      '- Ports start at 3100.\n  Source: `ports.txt:1`'
+    )
   } finally {
     await app.close()
   }

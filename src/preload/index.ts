@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AppAction } from '../shared/keys'
-import type { ContextUsage, CreateRequest, Repo, ReposResult } from '../shared/types'
+import type { ContextUsage, CreateRequest, Knowledge, Repo, ReposResult } from '../shared/types'
 
 function subscribe<T extends unknown[]>(channel: string, cb: (...args: T) => void): () => void {
   const listener = (_e: IpcRendererEvent, ...args: unknown[]): void => cb(...(args as T))
@@ -27,6 +27,12 @@ const api = {
   push: (path: string): Promise<{ error?: string }> => ipcRenderer.invoke('worktree:push', path),
   openPullRequest: (path: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('worktree:pr', path),
+  knowledge: (path: string): Promise<Knowledge | { error: string }> =>
+    ipcRenderer.invoke('knowledge:get', path),
+  approveFact: (path: string, id: string): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('knowledge:approve', path, id),
+  rejectFact: (path: string, id: string): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('knowledge:reject', path, id),
 
   ptySpawn: (
     cwd: string,

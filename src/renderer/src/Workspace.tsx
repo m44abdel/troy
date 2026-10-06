@@ -1,16 +1,17 @@
 import type { AgentStatus } from '../../shared/status'
 import { isAlive } from '../../shared/status'
-import type { ContextUsage, WorktreeView } from '../../shared/types'
+import type { ContextUsage, Knowledge, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
 import { ContextPane } from './ContextPane'
 import { DiffPane } from './DiffPane'
+import { KnowledgePane } from './KnowledgePane'
 import { MOD } from './platform'
 import { Terminal } from './Terminal'
 import { agentId, shellId } from './terminals'
 
 const SETUP_COMMAND = 'sh .troy/setup.sh\r'
 
-export type ColumnTab = 'shell' | 'diff' | 'context'
+export type ColumnTab = 'shell' | 'diff' | 'context' | 'knowledge'
 
 /** What a worktree created this session still needs on its first launch. */
 export interface FirstRun {
@@ -31,6 +32,9 @@ interface Props {
   comments: ReviewComment[]
   onComments: (path: string, comments: ReviewComment[]) => void
   onSend: (path: string) => void
+  /** Shared by every worktree of the repo. */
+  knowledge?: Knowledge | { error: string }
+  onKnowledgeChanged: () => void
 }
 
 export function Workspace({
@@ -45,8 +49,11 @@ export function Workspace({
   onStatus,
   comments,
   onComments,
-  onSend
+  onSend,
+  knowledge,
+  onKnowledgeChanged
 }: Props): React.JSX.Element {
+  const pending = knowledge && 'proposals' in knowledge ? knowledge.proposals.length : 0
   const tabButton = (name: ColumnTab, label: string, key?: string): React.JSX.Element => (
     <button className={`tab ${tab === name ? 'active' : ''}`} onClick={() => onTab(name)}>
       {label} {key && <kbd>{`${MOD}${key}`}</kbd>}
@@ -61,6 +68,7 @@ export function Workspace({
           cwd={wt.path}
           port={wt.port}
           command={wt.agent}
+          args={wt.agentArgs}
           prompt={firstRun?.prompt || undefined}
           onStatus={(s) => onStatus(wt.path, s)}
         />
@@ -70,6 +78,7 @@ export function Workspace({
           {tabButton('shell', 'Shell', 'E')}
           {tabButton('diff', comments.length ? `Diff · ${comments.length}` : 'Diff', 'D')}
           {tabButton('context', 'Context')}
+          {tabButton('knowledge', pending ? `Knowledge · ${pending}` : 'Knowledge')}
         </div>
         <div className="pane pane-shell" style={{ display: tab === 'shell' ? 'block' : 'none' }}>
           <Terminal
@@ -81,6 +90,9 @@ export function Workspace({
         </div>
         <div className="pane" style={{ display: tab === 'context' ? 'block' : 'none' }}>
           <ContextPane agent={wt.agent} usage={context} />
+        </div>
+        <div className="pane" style={{ display: tab === 'knowledge' ? 'block' : 'none' }}>
+          <KnowledgePane path={wt.path} knowledge={knowledge} onChanged={onKnowledgeChanged} />
         </div>
         <div className="pane pane-diff" style={{ display: tab === 'diff' ? 'flex' : 'none' }}>
           <DiffPane

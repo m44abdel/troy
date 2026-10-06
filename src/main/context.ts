@@ -1,6 +1,7 @@
 import { glob, open, readdir, stat } from 'fs/promises'
 import { homedir } from 'os'
-import { basename, join } from 'path'
+import { join } from 'path'
+import { commandName } from '../shared/shell'
 import type { ContextUsage } from '../shared/types'
 
 // ponytail: only the end of each log is read; the usage we need is always recent.
@@ -140,7 +141,7 @@ async function codexContext(path: string): Promise<ContextUsage | null> {
 
 /** Context-window usage of the agent's latest session in `path`, or null when unknown. */
 export async function readContext(path: string, agent: string): Promise<ContextUsage | null> {
-  const cli = basename(agent.trim().split(/\s+/)[0] ?? '')
+  const cli = commandName(agent)
   if (cli === 'claude') return claudeContext(path)
   if (cli === 'codex') return codexContext(path)
   return null

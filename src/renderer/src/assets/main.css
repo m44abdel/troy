@@ -529,3 +529,63 @@ kbd {
   justify-content: flex-end;
   gap: 8px;
 }
+
+.knowledge-pane {
+  padding: 16px;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.knowledge-pane h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.knowledge-pane section + section {
+  margin-top: 20px;
+}
+
+.knowledge-pane .error {
+  padding: 0;
+}
+
+.fact {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.fact p {
+  margin: 0;
+}
+
+.fact .fact-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fact.proposal {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.fact.proposal .actions {
+  margin-top: 8px;
+}
+
+.badge {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #0b1020;
+  background: #f5c26b;
+}
