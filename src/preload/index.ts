@@ -18,6 +18,13 @@ const api = {
     ipcRenderer.invoke('worktree:create', repo, req),
   archiveWorktree: (repo: string, path: string): Promise<ReposResult> =>
     ipcRenderer.invoke('worktree:archive', repo, path),
+  diff: (path: string): Promise<{ diff?: string; error?: string }> =>
+    ipcRenderer.invoke('worktree:diff', path),
+  commit: (path: string, message: string): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('worktree:commit', path, message),
+  push: (path: string): Promise<{ error?: string }> => ipcRenderer.invoke('worktree:push', path),
+  openPullRequest: (path: string): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('worktree:pr', path),
 
   ptySpawn: (
     cwd: string,

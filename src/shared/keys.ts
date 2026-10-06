@@ -7,7 +7,9 @@ export type AppAction =
   | 'archive'
   | 'focusAgent'
   | 'focusShell'
-  | 'toggleShell'
+  | 'showDiff'
+  | 'sendToAgent'
+  | 'toggleColumn'
   | 'prev'
   | 'next'
   | `jump:${number}`
@@ -27,7 +29,9 @@ const BINDINGS: Record<string, AppAction> = {
   KeyW: 'archive',
   KeyJ: 'focusAgent',
   KeyE: 'focusShell',
-  Backslash: 'toggleShell',
+  KeyD: 'showDiff',
+  Enter: 'sendToAgent',
+  Backslash: 'toggleColumn',
   BracketLeft: 'prev',
   BracketRight: 'next'
 }

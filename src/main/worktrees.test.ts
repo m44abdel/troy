@@ -62,9 +62,10 @@ describe('createWorktree / removeWorktree', () => {
   it('creates a sibling worktree, copies untracked .env files and archives it', async () => {
     const repo = tempRepo()
 
-    const path = await createWorktree(repo, 'feat/x', '')
+    const { path, base } = await createWorktree(repo, 'feat/x', '')
 
     expect(path).toBe(`${repo}.feat-x`)
+    expect(base).toMatch(/^[0-9a-f]{40}$/)
     expect(readFileSync(join(path, '.env'), 'utf8')).toBe('SECRET=1\n')
     // Tracked files keep the committed version, not the primary's local edit.
     expect(readFileSync(join(path, '.envrc.tracked'), 'utf8')).toBe('tracked\n')
@@ -82,7 +83,7 @@ describe('createWorktree / removeWorktree', () => {
     mkdirSync(join(repo, 'config'))
     writeFileSync(join(repo, 'config', 'local.json'), '{}')
 
-    const path = await createWorktree(repo, 'feat-y', '')
+    const { path } = await createWorktree(repo, 'feat-y', '')
 
     expect(existsSync(join(path, 'config', 'local.json'))).toBe(true)
     expect(existsSync(join(path, '.env'))).toBe(false)
@@ -95,7 +96,7 @@ describe('createWorktree / removeWorktree', () => {
     await expect(createWorktree(repo, '--force', '')).rejects.toThrow('Invalid branch')
     await expect(createWorktree(repo, 'bad name', '')).rejects.toThrow()
 
-    const path = await createWorktree(repo, 'dirty', '')
+    const { path } = await createWorktree(repo, 'dirty', '')
     writeFileSync(join(path, 'wip.txt'), 'unsaved')
     await expect(removeWorktree(repo, await findWorktree(repo, path), false)).rejects.toThrow()
     expect(existsSync(join(path, 'wip.txt'))).toBe(true)

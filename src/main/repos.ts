@@ -2,6 +2,7 @@ import { app, dialog, ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'el
 import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import type { CreateRequest, Repo, ReposResult } from '../shared/types'
+import { commitAll, diffAgainst, openPullRequest, push } from './finish'
 import {
   createWorktree,
   findWorktree,
@@ -17,6 +18,8 @@ const DEFAULT_AGENT = 'claude'
 interface WorktreeMeta {
   agent: string
   port: number
+  /** Ref the worktree's diff is measured against. */
+  base?: string
 }
 
 interface State {
@@ -112,11 +115,14 @@ async function create(
   try {
     const repo = await knownRepo(repoArg)
     const req = parseCreateRequest(reqArg)
-    const path = await createWorktree(repo, req.branch, req.base)
+    const { path, base } = await createWorktree(repo, req.branch, req.base)
 
     const state = await loadState()
     const port = nextPortBase(Object.values(state.worktrees).map((m) => m.port))
-    const next = { ...state, worktrees: { ...state.worktrees, [path]: { agent: req.agent, port } } }
+    const next = {
+      ...state,
+      worktrees: { ...state.worktrees, [path]: { agent: req.agent, port, base } }
+    }
     await saveState(next)
     return { repos: await describeRepos(next), path, setup: await hasSetupScript(path) }
   } catch (err) {
@@ -160,7 +166,54 @@ async function archive(
   }
 }
 
+/** Resolves a renderer-supplied path to a worktree of a repo the user added. */
+async function locate(path: unknown): Promise<{ path: string; base: string }> {
+  const state = await loadState()
+  for (const repo of state.repos) {
+    const wt = (await listWorktrees(repo).catch(() => [])).find((w) => w.path === path)
+    if (!wt) continue
+    if (wt.primary) return { path: wt.path, base: 'HEAD' }
+    const base =
+      state.worktrees[wt.path]?.base ??
+      (await git(repo, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']).catch(() => 'HEAD'))
+    return { path: wt.path, base }
+  }
+  throw new Error(`Unknown worktree: ${path}`)
+}
+
+async function attempt<T extends object>(fn: () => Promise<T>): Promise<T | { error: string }> {
+  try {
+    return await fn()
+  } catch (err) {
+    return { error: (err as Error).message }
+  }
+}
+
 export function registerRepos(): void {
+  ipcMain.handle('worktree:diff', (_e, path) =>
+    attempt(async () => {
+      const wt = await locate(path)
+      return { diff: await diffAgainst(wt.path, wt.base) }
+    })
+  )
+  ipcMain.handle('worktree:commit', (_e, path, message) =>
+    attempt(async () => {
+      await commitAll((await locate(path)).path, String(message ?? ''))
+      return {}
+    })
+  )
+  ipcMain.handle('worktree:push', (_e, path) =>
+    attempt(async () => {
+      await push((await locate(path)).path)
+      return {}
+    })
+  )
+  ipcMain.handle('worktree:pr', (_e, path) =>
+    attempt(async () => {
+      await openPullRequest((await locate(path)).path)
+      return {}
+    })
+  )
   ipcMain.handle('repos:list', listRepos)
   ipcMain.handle('repos:add', addRepo)
   ipcMain.handle('worktree:create', (_e, repo, req) => create(repo, req))

@@ -21,7 +21,9 @@ describe('routeKey on macOS', () => {
     expect(routeKey(key('KeyW', { meta: true }), 'darwin')).toBe('archive')
     expect(routeKey(key('KeyJ', { meta: true }), 'darwin')).toBe('focusAgent')
     expect(routeKey(key('KeyE', { meta: true }), 'darwin')).toBe('focusShell')
-    expect(routeKey(key('Backslash', { meta: true }), 'darwin')).toBe('toggleShell')
+    expect(routeKey(key('Backslash', { meta: true }), 'darwin')).toBe('toggleColumn')
+    expect(routeKey(key('KeyD', { meta: true }), 'darwin')).toBe('showDiff')
+    expect(routeKey(key('Enter', { meta: true }), 'darwin')).toBe('sendToAgent')
   })
 
   it.each([
@@ -30,6 +32,8 @@ describe('routeKey on macOS', () => {
     ['Ctrl-O', key('KeyO', { control: true })],
     ['Ctrl-N', key('KeyN', { control: true })],
     ['Ctrl-W', key('KeyW', { control: true })],
+    ['Ctrl-D', key('KeyD', { control: true })],
+    ['plain Enter', key('Enter')],
     ['Alt-f', key('KeyF', { alt: true })],
     ['plain o', key('KeyO')]
   ])('passes %s through to the terminal', (_name, input) => {
