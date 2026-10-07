@@ -147,20 +147,18 @@ describe('hookSettings', () => {
     (hookSettings().hooks as Record<string, { hooks: { command: string }[] }[]>)[event][0].hooks[0]
       .command
 
-  it('writes the status OSC to the tty named by TROY_TTY', () => {
-    const tty = join(mkdtempSync(join(tmpdir(), 'troy-hook-')), 'tty')
-    writeFileSync(tty, '')
-    execFileSync('sh', ['-c', commandFor('Stop')], { env: { ...process.env, TROY_TTY: tty } })
-    expect(readFileSync(tty, 'utf8')).toBe('\x1b]7700;waiting\x07')
-    execFileSync('sh', ['-c', commandFor('UserPromptSubmit')], {
-      env: { ...process.env, TROY_TTY: tty }
-    })
-    expect(readFileSync(tty, 'utf8')).toBe('\x1b]7700;running\x07')
+  it('writes the status to the file named by TROY_STATUS_FILE', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'troy-hook-')), 'status')
+    const env = { ...process.env, TROY_STATUS_FILE: file }
+    execFileSync('sh', ['-c', commandFor('Stop')], { env })
+    expect(readFileSync(file, 'utf8')).toBe('waiting\n')
+    execFileSync('sh', ['-c', commandFor('UserPromptSubmit')], { env })
+    expect(readFileSync(file, 'utf8')).toBe('running\n')
   })
 
   it('succeeds silently outside Troy', () => {
     const env = { ...process.env }
-    delete env.TROY_TTY
+    delete env.TROY_STATUS_FILE
     expect(execFileSync('sh', ['-c', commandFor('Notification')], { env }).toString()).toBe('')
   })
 })

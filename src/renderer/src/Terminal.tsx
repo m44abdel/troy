@@ -3,7 +3,8 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { shellQuote } from '../../shared/shell'
-import { parseHookStatus, STATUS_OSC, trackStatus, type StatusListener } from '../../shared/status'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { trackStatus, type StatusListener } from '../../shared/status'
 import { terminals } from './terminals'
 
 // Matches the --surface and status tokens in main.css.
@@ -69,10 +70,16 @@ export function Terminal({
       cursorBlink: true,
       // Option sends Meta so Alt-f / Alt-b word movement works in shells and agents.
       macOptionIsMeta: true,
-      theme: THEME
+      theme: THEME,
+      // The unicode API is still "proposed" in xterm 6.
+      allowProposedApi: true
     })
     const fitAddon = new FitAddon()
     xterm.loadAddon(fitAddon)
+    // Agents' TUIs measure emoji as two columns wide; xterm's default (Unicode 6) says one,
+    // which shifts their cursor moves and scrambles the screen as they redraw.
+    xterm.loadAddon(new Unicode11Addon())
+    xterm.unicode.activeVersion = '11'
     xterm.open(host.current!)
     fitAddon.fit()
     terminals.set(id, xterm)
@@ -88,8 +95,7 @@ export function Terminal({
     const start = (): void => {
       const firstRun = launches++ === 0
       const input = command
-        ? // TROY_TTY tells the agent's hooks where to report status.
-          `TROY_TTY=$(tty) exec ${command}${firstRun && prompt ? ` ${shellQuote(prompt)}` : ''}${args}\r`
+        ? `exec ${command}${firstRun && prompt ? ` ${shellQuote(prompt)}` : ''}${args}\r`
         : firstRun
           ? initialInput
           : undefined
@@ -104,6 +110,7 @@ export function Terminal({
               xterm.write(data)
               tracker?.output()
             }),
+            window.api.onPtyStatus(pid, (status) => tracker?.hook(status)),
             window.api.onPtyExit(pid, (code) => {
               ptyId = null
               unsubscribe.forEach((fn) => fn())
@@ -125,11 +132,6 @@ export function Terminal({
       else if (data === '\r' && !starting) start()
     })
     const bell = xterm.onBell(() => tracker?.bell())
-    const hook = xterm.parser.registerOscHandler(STATUS_OSC, (data) => {
-      const status = parseHookStatus(data)
-      if (status) tracker?.hook(status)
-      return true
-    })
     const resize = xterm.onResize(({ cols, rows }) => {
       if (!ptyId) return
       tracker?.resize()
@@ -146,7 +148,6 @@ export function Terminal({
       observer.disconnect()
       input.dispose()
       bell.dispose()
-      hook.dispose()
       resize.dispose()
       tracker?.dispose()
       unsubscribe.forEach((fn) => fn())

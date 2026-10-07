@@ -2,7 +2,6 @@ import { app } from 'electron'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { commandName, shellQuote } from '../shared/shell'
-import { STATUS_OSC } from '../shared/status'
 
 export interface McpLaunch {
   command: string
@@ -21,7 +20,8 @@ const configPath = (): string => join(app.getPath('userData'), 'mcp.json')
 
 const hooksPath = (): string => join(app.getPath('userData'), 'claude-hooks.json')
 
-// The agent pane sets TROY_TTY; the OSC lands in that pane's terminal, which reads it as status.
+// Each pane's shell has its own TROY_STATUS_FILE, which Troy watches. Writing to a file, not
+// the terminal, keeps hook output from landing in the middle of the agent's screen updates.
 const report = (
   status: 'running' | 'waiting'
 ): { hooks: { type: string; command: string }[] }[] => [
@@ -29,7 +29,7 @@ const report = (
     hooks: [
       {
         type: 'command',
-        command: `[ -n "$TROY_TTY" ] && printf '\\033]${STATUS_OSC};${status}\\007' > "$TROY_TTY"; true`
+        command: `[ -n "$TROY_STATUS_FILE" ] && echo ${status} > "$TROY_STATUS_FILE"; true`
       }
     ]
   }

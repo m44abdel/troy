@@ -810,3 +810,22 @@ test('agents and shells do not inherit the Claude Code session Troy was opened f
     await app.close()
   }
 })
+
+test('measures emoji as two columns, as agent TUIs do', async () => {
+  const repo = gitRepo('troy-width-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const shell = page.locator('.workspace:visible .pane-shell')
+    await shell.locator('.xterm').click()
+    // ✅ then "move to column 3": with Unicode 11 widths the x lands right after the emoji.
+    await page.keyboard.type("printf 'width:\\xe2\\x9c\\x85\\033[9Gx|\\n'")
+    await page.keyboard.press('Enter')
+    await expect(shell.locator('.xterm-rows')).toContainText('width:✅x|', { timeout: 15_000 })
+  } finally {
+    await app.close()
+  }
+})

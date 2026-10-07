@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { AppAction } from '../shared/keys'
+import type { AgentStatus } from '../shared/status'
 import type { Overlap } from '../shared/overlap'
 import type {
   CheckResult,
@@ -67,6 +68,7 @@ const api = {
   ptyKill: (id: string): void => ipcRenderer.send('pty:kill', id),
   onPtyData: (id: string, cb: (data: string) => void) => subscribe(`pty:data:${id}`, cb),
   onPtyExit: (id: string, cb: (code: number) => void) => subscribe(`pty:exit:${id}`, cb),
+  onPtyStatus: (id: string, cb: (status: AgentStatus) => void) => subscribe(`pty:status:${id}`, cb),
 
   setBadge: (count: number): void => ipcRenderer.send('app:badge', count),
   onAction: (cb: (action: AppAction) => void) => subscribe('app:action', cb)

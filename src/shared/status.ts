@@ -10,9 +10,6 @@ export const IDLE_MS = 3000
 // A resize makes TUIs redraw the whole screen; output this soon after one is a redraw, not work.
 export const RESIZE_GRACE_MS = 500
 
-/** Private OSC code hooks write to the agent's tty: ESC ] 7700 ; <status> BEL. */
-export const STATUS_OSC = 7700
-
 const HOOK_STATUSES: readonly AgentStatus[] = ['running', 'waiting']
 
 export const parseHookStatus = (data: string): AgentStatus | null =>
