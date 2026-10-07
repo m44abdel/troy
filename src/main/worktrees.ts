@@ -82,28 +82,74 @@ export function nextPortBase(used: number[]): number {
   return port
 }
 
-async function startPoint(repo: string, base: string): Promise<string> {
-  const remotes = (await git(repo, ['remote'])).split('\n')
-  if (!remotes.includes('origin')) return base || 'HEAD'
+interface StartPoint {
+  /** What the new branch starts from. */
+  start: string
+  /** Set when the branch already exists on origin: the worktree continues it and tracks it. */
+  track: boolean
+  /** What the worktree's diff is measured against. */
+  base: string
+  warnings: string[]
+}
 
-  const branch =
+const hasRef = (repo: string, ref: string): Promise<boolean> =>
+  git(repo, ['rev-parse', '--verify', '--quiet', ref]).then(
+    () => true,
+    () => false
+  )
+
+const fetchBranch = (repo: string, branch: string): Promise<boolean> =>
+  git(repo, ['fetch', 'origin', `+refs/heads/${branch}:refs/remotes/origin/${branch}`], {
+    timeout: FETCH_TIMEOUT_MS
+  }).then(
+    () => true,
+    () => false
+  )
+
+// Pulls the local branch up to origin's, only ever forward. Where it is checked out, that
+// checkout moves too; git refuses if local commits or uncommitted edits are in the way.
+async function fastForward(repo: string, branch: string): Promise<string | null> {
+  const holder = (await listWorktrees(repo)).find((w) => w.branch === branch)
+  const remote = `refs/remotes/origin/${branch}`
+  try {
+    if (holder) await git(holder.path, ['merge', '--ff-only', '--quiet', remote])
+    else if (await hasRef(repo, `refs/heads/${branch}`))
+      await git(repo, ['fetch', '.', `${remote}:refs/heads/${branch}`])
+    return null
+  } catch {
+    return `Your local ${branch} could not be fast-forwarded to origin/${branch} (local commits or uncommitted changes), so it was left as is. The worktree still starts from origin/${branch}.`
+  }
+}
+
+async function startPoint(repo: string, base: string, branch: string): Promise<StartPoint> {
+  const remotes = (await git(repo, ['remote'])).split('\n')
+  const local = base || 'HEAD'
+  if (!remotes.includes('origin')) return { start: local, track: false, base: local, warnings: [] }
+
+  const baseBranch =
     base ||
     (await git(repo, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']).then(
       (ref) => ref.replace(/^origin\//, ''),
       () => ''
     ))
-  if (!branch) return 'HEAD'
+  if (!baseBranch) return { start: 'HEAD', track: false, base: 'HEAD', warnings: [] }
 
-  // Offline or a local-only base: fall back to whatever we already have.
-  await git(repo, ['fetch', 'origin', branch], { timeout: FETCH_TIMEOUT_MS }).catch((err) =>
-    console.warn(`git fetch origin ${branch} failed:`, err.message)
-  )
-  const remoteRef = `origin/${branch}`
-  const hasRemoteRef = await git(repo, ['rev-parse', '--verify', '--quiet', remoteRef]).then(
-    () => true,
-    () => false
-  )
-  return hasRemoteRef ? remoteRef : branch
+  const warnings: string[] = []
+  if (await fetchBranch(repo, baseBranch)) {
+    const stuck = await fastForward(repo, baseBranch)
+    if (stuck) warnings.push(stuck)
+  } else {
+    warnings.push(
+      `Could not fetch ${baseBranch} from origin, so the worktree starts from the copy you already have.`
+    )
+  }
+  const remoteBase = `origin/${baseBranch}`
+  const from = (await hasRef(repo, remoteBase)) ? remoteBase : baseBranch
+
+  // The branch is already on origin (a teammate's, or yours from another machine): continue it.
+  if (await fetchBranch(repo, branch))
+    return { start: `origin/${branch}`, track: true, base: from, warnings }
+  return { start: from, track: false, base: from, warnings }
 }
 
 async function copyPatterns(repo: string): Promise<string[]> {
@@ -131,22 +177,26 @@ export async function copyUntracked(from: string, to: string): Promise<string[]>
   return copied
 }
 
-/** Creates the worktree and returns its path plus the ref its diff is measured against. */
+/**
+ * Creates the worktree from the freshly fetched base (pulling the local base branch along)
+ * and returns its path, the ref its diff is measured against, and anything that went amiss.
+ */
 export async function createWorktree(
   repo: string,
   branch: string,
   base: string
-): Promise<{ path: string; base: string }> {
+): Promise<{ path: string; base: string; warnings: string[] }> {
   if (!branch || branch.startsWith('-')) throw new Error(`Invalid branch name: "${branch}"`)
   await git(repo, ['check-ref-format', '--branch', branch])
 
   const path = worktreePath(repo, branch)
-  const start = await startPoint(repo, base)
-  // --no-track so a plain `git push` never targets the base branch.
-  await git(repo, ['worktree', 'add', '--no-track', '-b', branch, path, start])
+  const { start, track, base: diffBase, warnings } = await startPoint(repo, base, branch)
+  // Only a branch continued from origin tracks; a new one must never push to the base.
+  await git(repo, ['worktree', 'add', track ? '--track' : '--no-track', '-b', branch, path, start])
   await copyUntracked(repo, path)
   // A bare HEAD would move with the new branch, so pin it to the commit we started from.
-  return { path, base: start === 'HEAD' ? await git(repo, ['rev-parse', 'HEAD']) : start }
+  const pinned = diffBase === 'HEAD' ? await git(repo, ['rev-parse', 'HEAD']) : diffBase
+  return { path, base: pinned, warnings }
 }
 
 export async function hasSetupScript(path: string): Promise<boolean> {

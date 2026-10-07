@@ -28,7 +28,7 @@ const api = {
   createWorktree: (
     repo: string,
     req: CreateRequest
-  ): Promise<ReposResult & { path?: string; setup?: boolean }> =>
+  ): Promise<ReposResult & { path?: string; setup?: boolean; warning?: string }> =>
     ipcRenderer.invoke('worktree:create', repo, req),
   runCheck: (path: string): Promise<{ result?: CheckResult | null; error?: string }> =>
     ipcRenderer.invoke('check:run', path),

@@ -140,11 +140,11 @@ function parseCreateRequest(req: unknown): CreateRequest {
 async function create(
   repoArg: unknown,
   reqArg: unknown
-): Promise<ReposResult & { path?: string; setup?: boolean }> {
+): Promise<ReposResult & { path?: string; setup?: boolean; warning?: string }> {
   try {
     const repo = await knownRepo(repoArg)
     const req = parseCreateRequest(reqArg)
-    const { path, base } = await createWorktree(repo, req.branch, req.base)
+    const { path, base, warnings } = await createWorktree(repo, req.branch, req.base)
     // The base was just fetched, so this is a good moment to refresh the graph.
     void buildGraph(repo)
     await writeInstructions(path, req.agent).catch((err) =>
@@ -161,7 +161,12 @@ async function create(
       }
     }
     await saveState(next)
-    return { repos: await describeRepos(next), path, setup: await hasSetupScript(path) }
+    return {
+      repos: await describeRepos(next),
+      path,
+      setup: await hasSetupScript(path),
+      ...(warnings.length ? { warning: warnings.join(' ') } : {})
+    }
   } catch (err) {
     return { repos: await listRepos(), error: (err as Error).message }
   }

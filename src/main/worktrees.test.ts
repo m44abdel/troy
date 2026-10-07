@@ -102,3 +102,74 @@ describe('createWorktree / removeWorktree', () => {
     expect(existsSync(join(path, 'wip.txt'))).toBe(true)
   })
 })
+
+// A repo cloned from a bare remote where a teammate has since pushed to dev and feat/shared.
+function cloneBehindRemote(): { repo: string; remote: string; sha: (ref: string) => string } {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'troy-pull-')))
+  const remote = join(root, 'remote.git')
+  const seed = join(root, 'seed')
+  const repo = join(root, 'app')
+  const run = (cwd: string, ...args: string[]): string =>
+    execFileSync('git', ['-C', cwd, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+      .toString()
+      .trim()
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', remote])
+  execFileSync('git', ['clone', '-q', remote, seed])
+  run(seed, 'commit', '-q', '--allow-empty', '-m', 'init')
+  run(seed, 'push', '-q', 'origin', 'HEAD:main', 'HEAD:dev')
+  execFileSync('git', ['clone', '-q', remote, repo])
+  run(repo, 'branch', '-q', 'dev', 'origin/dev')
+  run(seed, 'commit', '-q', '--allow-empty', '-m', 'teammate on dev')
+  run(seed, 'push', '-q', 'origin', 'HEAD:dev', 'HEAD:feat/shared')
+  return { repo, remote, sha: (ref) => run(repo, 'rev-parse', ref) }
+}
+
+describe('createWorktree from a remote', () => {
+  it('starts from the latest remote base and fast-forwards the local base branch', async () => {
+    const { repo, remote, sha } = cloneBehindRemote()
+    const latest = execFileSync('git', ['-C', remote, 'rev-parse', 'dev']).toString().trim()
+
+    const { path, base, warnings } = await createWorktree(repo, 'feat/new', 'dev')
+
+    expect(base).toBe('origin/dev')
+    expect(sha('dev')).toBe(latest)
+    expect(execFileSync('git', ['-C', path, 'rev-parse', 'HEAD']).toString().trim()).toBe(latest)
+    expect(warnings).toEqual([])
+  })
+
+  it('fast-forwards the base branch where it is checked out', async () => {
+    const { repo, remote } = cloneBehindRemote()
+    execFileSync('git', ['-C', repo, 'switch', '-q', 'dev'])
+    const latest = execFileSync('git', ['-C', remote, 'rev-parse', 'dev']).toString().trim()
+
+    await createWorktree(repo, 'feat/new', 'dev')
+
+    expect(execFileSync('git', ['-C', repo, 'rev-parse', 'HEAD']).toString().trim()).toBe(latest)
+  })
+
+  it('picks up a branch that already exists on the remote and tracks it', async () => {
+    const { repo, sha } = cloneBehindRemote()
+
+    const { path } = await createWorktree(repo, 'feat/shared', 'dev')
+
+    expect(execFileSync('git', ['-C', path, 'rev-parse', 'HEAD']).toString().trim()).toBe(
+      sha('origin/feat/shared')
+    )
+    expect(
+      execFileSync('git', ['-C', path, 'rev-parse', '--abbrev-ref', '@{upstream}'])
+        .toString()
+        .trim()
+    ).toBe('origin/feat/shared')
+  })
+
+  it('warns, and starts from what it has, when the remote cannot be reached', async () => {
+    const { repo, sha } = cloneBehindRemote()
+    execFileSync('git', ['-C', repo, 'remote', 'set-url', 'origin', join(repo, 'gone.git')])
+    const stale = sha('origin/dev')
+
+    const { path, warnings } = await createWorktree(repo, 'feat/offline', 'dev')
+
+    expect(execFileSync('git', ['-C', path, 'rev-parse', 'HEAD']).toString().trim()).toBe(stale)
+    expect(warnings).toEqual([expect.stringContaining('Could not fetch dev')])
+  })
+})

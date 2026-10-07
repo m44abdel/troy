@@ -185,6 +185,8 @@ function App(): React.JSX.Element {
     const path = result.path
     setFirstRuns((f) => ({ ...f, [path]: { prompt: req.prompt, setup: !!result.setup } }))
     setDialogRepo(null)
+    // Created, but not from the latest base (offline, or a local base that couldn't move).
+    setError(result.warning ?? null)
     select(path)
     return null
   }
