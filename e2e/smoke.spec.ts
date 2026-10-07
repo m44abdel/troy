@@ -782,3 +782,31 @@ test('reorders worktrees by drag and by Cmd-arrow, and keeps the order', async (
     await app.close()
   }
 })
+
+test('agents and shells do not inherit the Claude Code session Troy was opened from', async () => {
+  const repo = gitRepo('troy-env-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({
+    ...shellEnv,
+    TROY_USER_DATA: userData,
+    CLAUDECODE: '1',
+    CLAUDE_CODE_CHILD_SESSION: '1',
+    CLAUDE_CODE_NO_FLICKER: '1'
+  })
+  try {
+    const page = await app.firstWindow()
+    const shell = page.locator('.workspace:visible .pane-shell')
+    await shell.locator('.xterm').click()
+    await page.keyboard.type(
+      'echo "child=[${CLAUDE_CODE_CHILD_SESSION}${CLAUDECODE}] flicker=[${CLAUDE_CODE_NO_FLICKER}]"'
+    )
+    await page.keyboard.press('Enter')
+    await expect(shell.locator('.xterm-rows')).toContainText('child=[] flicker=[1]', {
+      timeout: 15_000
+    })
+  } finally {
+    await app.close()
+  }
+})
