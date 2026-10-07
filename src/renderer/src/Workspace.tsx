@@ -2,7 +2,7 @@ import type { AgentStatus } from '../../shared/status'
 import { isAlive } from '../../shared/status'
 import type { CheckResult, Knowledge, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
-import { DiffPane } from './DiffPane'
+import { DiffPane, type DiffFilter } from './DiffPane'
 import { DocsPane } from './DocsPane'
 import { KnowledgePane } from './KnowledgePane'
 import { Icon, type IconName } from './icons'
@@ -38,6 +38,8 @@ interface Props {
   check?: CheckResult
   onRunCheck: (path: string) => Promise<CheckResult | null>
   onSendCheck: (path: string) => void
+  diffFilter?: DiffFilter
+  onClearDiffFilter: () => void
   /** Shared by every worktree of the repo. */
   knowledge?: Knowledge | { error: string }
   onKnowledgeChanged: () => void
@@ -59,6 +61,8 @@ export function Workspace({
   check,
   onRunCheck,
   onSendCheck,
+  diffFilter,
+  onClearDiffFilter,
   knowledge,
   onKnowledgeChanged
 }: Props): React.JSX.Element {
@@ -147,6 +151,8 @@ export function Workspace({
             check={check}
             onRunCheck={() => onRunCheck(wt.path)}
             onSendCheck={() => onSendCheck(wt.path)}
+            filter={diffFilter}
+            onClearFilter={onClearDiffFilter}
           />
         </div>
       </div>

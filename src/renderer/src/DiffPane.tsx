@@ -15,6 +15,12 @@ import type { ReviewComment } from './comments'
 import { Icon } from './icons'
 import { MOD } from './platform'
 
+/** Narrows the diff to some files, e.g. the ones another worktree also changed. */
+export interface DiffFilter {
+  files: string[]
+  label: string
+}
+
 interface Props {
   path: string
   visible: boolean
@@ -28,6 +34,8 @@ interface Props {
   check?: CheckResult
   onRunCheck: () => Promise<CheckResult | null>
   onSendCheck: () => void
+  filter?: DiffFilter
+  onClearFilter: () => void
 }
 
 type Result = { error?: string }
@@ -85,7 +93,9 @@ export function DiffPane({
   onSend,
   check,
   onRunCheck,
-  onSendCheck
+  onSendCheck,
+  filter,
+  onClearFilter
 }: Props): React.JSX.Element {
   const [files, setFiles] = useState<FileData[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -99,6 +109,8 @@ export function DiffPane({
     // parseDiff turns an empty string into one blank file, so skip it.
     setFiles(result.diff ? parseDiff(result.diff, { nearbySequences: 'zip' }) : [])
   }, [])
+
+  const shown = filter ? files?.filter((f) => filter.files.includes(fileName(f))) : files
 
   const load = (): Promise<void> => window.api.diff(path).then(apply)
 
@@ -268,15 +280,24 @@ export function DiffPane({
         </p>
       )}
 
+      {filter && (
+        <div className="filter-bar" role="status">
+          <span>Showing only: {filter.label}</span>
+          <button className="secondary" onClick={onClearFilter}>
+            Show all
+          </button>
+        </div>
+      )}
+
       {/* Focusable so vim keys can scroll it. */}
       <div className="diff-files" tabIndex={0}>
-        {files?.length === 0 && (
+        {shown?.length === 0 && (
           <div className="pane-empty">
             <Icon name="check" size={22} />
             <p className="muted">No changes yet.</p>
           </div>
         )}
-        {files?.map((file) => {
+        {shown?.map((file) => {
           const name = fileName(file)
           return (
             <section key={name} className="diff-file">
