@@ -662,7 +662,7 @@ test('links worktrees through the code graph when one uses code another changed'
   }
 })
 
-test('folds a repo and closes a session without removing its worktree', async () => {
+test('closing a worktree hides it until reopened, and folds and closes survive a restart', async () => {
   const repo = gitRepo('troy-fold-')
   execFileSync('git', [
     '-C',
@@ -678,23 +678,23 @@ test('folds a repo and closes a session without removing its worktree', async ()
     'init'
   ])
   execFileSync('git', ['-C', repo, 'worktree', 'add', '-q', '-b', 'side', `${repo}.side`])
+  const other = gitRepo('troy-fold2-')
   const userData = tempDir('troy-profile-')
   writeFileSync(
     join(userData, 'state.json'),
-    JSON.stringify({ repos: [repo], worktrees: { [repo]: { agent: 'cat', port: 3100 } } })
+    JSON.stringify({ repos: [repo, other], worktrees: { [repo]: { agent: 'cat', port: 3100 } } })
   )
+  const env = { ...shellEnv, TROY_USER_DATA: userData }
 
-  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  let app = await launchTroy(env)
   try {
     const page = await app.firstWindow()
     const first = page.locator(`.worktree[title="${repo}"]`)
-    const agent = page.locator('.workspace:visible .pane-agent')
 
-    // Close: the agent stops and the pane offers to reopen; the worktree stays listed.
-    await agent.locator('.xterm').click()
+    // A working agent asks first; closing removes the card and stops the agent.
+    await page.locator('.workspace:visible .pane-agent .xterm').click()
     await page.keyboard.press('Enter')
     await expect(first.locator('.status-label')).toHaveText('working')
-    // A working agent asks first.
     const asked = new Promise<string>((resolve) =>
       page.once('dialog', (d) => {
         resolve(d.message())
@@ -704,19 +704,37 @@ test('folds a repo and closes a session without removing its worktree', async ()
     await first.hover()
     await first.getByRole('button', { name: /^Close session/ }).click()
     expect(await asked).toContain('still working')
-    await expect(page.locator('.closed-session')).toBeVisible()
-    await expect(first.locator('.status-label')).toHaveText('not started')
-    await expect(page.locator('.worktree')).toHaveCount(2)
-    await page.getByRole('button', { name: 'Open session' }).click()
-    await expect(agent.locator('.xterm-rows')).toContainText('Press Enter to start')
-
-    // Fold: the cards go, the header stays, and selecting a worktree unfolds it.
-    await page.locator('.repo-toggle').click()
-    await expect(page.locator('.repo-toggle')).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.locator('.worktree')).toHaveCount(0)
-    await chord(app, '2', 'meta')
-    await expect(page.locator('.worktree')).toHaveCount(2)
+    await expect(first).toHaveCount(0)
     await expect(page.locator('.worktree.selected')).toHaveAttribute('title', `${repo}.side`)
+    await expect(page.locator('.closed-toggle')).toHaveText('1 closed')
+
+    await page.locator('.repo-toggle').nth(1).click()
+    await expect(page.locator(`.worktree[title="${other}"]`)).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+
+  // Both the close and the fold are remembered.
+  app = await launchTroy(env)
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.worktree')).toHaveCount(1)
+    await expect(page.locator(`.worktree[title="${repo}.side"]`)).toHaveCount(1)
+    await expect(page.locator('.repo-toggle').nth(1)).toHaveAttribute('aria-expanded', 'false')
+
+    // Reopening brings the card back with a fresh agent pane.
+    await page.locator('.closed-toggle').click()
+    await page.locator('.closed-item').click()
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', repo)
+    await expect(page.locator('.closed-toggle')).toHaveCount(0)
+    await expect(page.locator('.workspace:visible .pane-agent .xterm-rows')).toContainText(
+      'Press Enter to start'
+    )
+
+    // Selecting a worktree in a folded repo unfolds it.
+    await chord(app, '3', 'meta')
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', other)
+    await expect(page.locator('.repo-toggle').nth(1)).toHaveAttribute('aria-expanded', 'true')
   } finally {
     await app.close()
   }

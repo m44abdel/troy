@@ -117,3 +117,37 @@ export function WorktreeCard({
     </div>
   )
 }
+
+/** A repo's closed worktrees, behind an "N closed" toggle; clicking one reopens it. */
+export function ClosedList({
+  worktrees,
+  open,
+  onToggle,
+  onReopen
+}: {
+  worktrees: WorktreeView[]
+  open: boolean
+  onToggle: () => void
+  onReopen: (path: string) => void
+}): React.JSX.Element | null {
+  if (!worktrees.length) return null
+  return (
+    <div className="closed-list">
+      <button className="closed-toggle" onClick={onToggle} aria-expanded={open}>
+        {worktrees.length} closed
+      </button>
+      {open &&
+        worktrees.map((wt) => (
+          <button
+            key={wt.path}
+            className="closed-item"
+            onClick={() => onReopen(wt.path)}
+            title={`Reopen ${wt.path}`}
+          >
+            <span className="card-title">{wt.title ?? wt.branch ?? 'detached'}</span>
+            <span className="branch">{wt.branch ?? 'detached'}</span>
+          </button>
+        ))}
+    </div>
+  )
+}
