@@ -6,6 +6,29 @@ Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its ow
 
 > Early development. Today: add repos, create and archive worktrees, run an agent plus a shell in each, review the diff and ship it, see how full each agent's context window is, and share reviewed facts between agents.
 
+## How Troy compares
+
+Run many agents without babysitting them, colliding them, or taking their word for it. This table is based on [Conductor](https://www.conductor.build/docs/) and [Superset](https://docs.superset.sh)'s own docs as of October 2026, and it includes the rows where Troy loses. Corrections welcome.
+
+| | Troy | Conductor | Superset |
+|---|---|---|---|
+| License | MIT | Proprietary | Elastic License 2.0 (source-available) |
+| Account needed | None | GitHub sign-in | Superset account |
+| Agents | Any CLI on your PATH | Claude Code, Codex, Cursor, OpenCode | Any CLI |
+| Platforms | macOS | macOS | macOS, Linux (experimental) |
+| Agent status | Claude Code hooks; other agents are guessed from output | Notifications | Agent hooks |
+| **Warns when parallel worktrees touch the same or dependent code** | ✓ overlap radar | — | — |
+| **Runs your checks itself before you push or open a PR** | ✓ `.troy/check` | Gates merge on CI | Shows CI status |
+| **Shared code graph that every agent queries over MCP** | ✓ via graphify | — | — |
+| **Shared project knowledge that a person reviews** | ✓ | — | — |
+| Diff comments sent back to the agent | ✓ | ✓ | ✓ |
+| Push and open a PR | ✓ | ✓ plus merge | ✓ plus merge |
+| Setup script, `.env` copy, per-worktree ports | ✓ | ✓ | Ports detected, not assigned |
+| Checkpoints to undo an agent's turn | — | ✓ | — |
+| Windows | — | — | Planned |
+
+Troy also claims only ⌘ for its shortcuts. Ctrl and Alt always reach the terminal, so readline, zsh and the agents' own keys keep working.
+
 ## Install (macOS)
 
 ```bash
