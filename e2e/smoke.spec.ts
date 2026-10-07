@@ -3,7 +3,8 @@ import {
   expect,
   _electron as electron,
   type ElectronApplication,
-  type Locator
+  type Locator,
+  type Page
 } from '@playwright/test'
 import { execFileSync, spawn } from 'child_process'
 import {
@@ -735,6 +736,48 @@ test('closing a worktree hides it until reopened, and folds and closes survive a
     await chord(app, '3', 'meta')
     await expect(page.locator('.worktree.selected')).toHaveAttribute('title', other)
     await expect(page.locator('.repo-toggle').nth(1)).toHaveAttribute('aria-expanded', 'true')
+  } finally {
+    await app.close()
+  }
+})
+
+test('reorders worktrees by drag and by Cmd-arrow, and keeps the order', async () => {
+  const repo = gitRepo('troy-order-')
+  const git = (...args: string[]): Buffer =>
+    execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+  git('commit', '-q', '--allow-empty', '-m', 'init')
+  git('worktree', 'add', '-q', '-b', 'a', `${repo}.a`)
+  git('worktree', 'add', '-q', '-b', 'b', `${repo}.b`)
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+  const env = { ...shellEnv, TROY_USER_DATA: userData }
+  const titles = (page: Page): Promise<string[]> =>
+    page.locator('.worktree').evaluateAll((cards) => cards.map((c) => c.getAttribute('title')!))
+
+  let app = await launchTroy(env)
+  try {
+    const page = await app.firstWindow()
+    await expect.poll(() => titles(page)).toEqual([repo, `${repo}.a`, `${repo}.b`])
+
+    await page
+      .locator(`.worktree[title="${repo}.b"]`)
+      .dragTo(page.locator(`.worktree[title="${repo}"]`))
+    await expect.poll(() => titles(page)).toEqual([`${repo}.b`, repo, `${repo}.a`])
+
+    // ⌘↓ moves the selected worktree, and ⌘1–9 follow the new order.
+    await chord(app, '1', 'meta')
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', `${repo}.b`)
+    await chord(app, 'Down', 'meta')
+    await expect.poll(() => titles(page)).toEqual([repo, `${repo}.b`, `${repo}.a`])
+  } finally {
+    await app.close()
+  }
+
+  app = await launchTroy(env)
+  try {
+    await expect
+      .poll(async () => titles(await app.firstWindow()))
+      .toEqual([repo, `${repo}.b`, `${repo}.a`])
   } finally {
     await app.close()
   }

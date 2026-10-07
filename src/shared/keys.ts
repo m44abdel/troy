@@ -12,6 +12,8 @@ export const ACTIONS = [
   'toggleColumn',
   'prev',
   'next',
+  'moveUp',
+  'moveDown',
   'openSettings'
 ] as const
 
@@ -40,6 +42,8 @@ export const DEFAULT_BINDINGS: Bindings = {
   Backslash: 'toggleColumn',
   BracketLeft: 'prev',
   BracketRight: 'next',
+  ArrowUp: 'moveUp',
+  ArrowDown: 'moveDown',
   Comma: 'openSettings'
 }
 

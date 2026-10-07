@@ -246,6 +246,11 @@ html[data-platform='mac'] .sidebar {
   border-color: rgb(251 191 36 / 40%);
 }
 
+.worktree.card.drop-target {
+  border-color: var(--accent);
+  box-shadow: 0 -2px 0 var(--accent);
+}
+
 .card-close {
   position: absolute;
   z-index: 1;
