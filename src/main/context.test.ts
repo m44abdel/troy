@@ -1,8 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { claudeProjectDir, claudeUsage, codexSessionCwd, codexUsage, readContext } from './context'
+import {
+  claudeProjectDir,
+  claudeUsage,
+  codexSessionCwd,
+  codexUsage,
+  readContext,
+  resumeFlag
+} from './context'
 
 const jsonl = (...entries: object[]): string => entries.map((e) => JSON.stringify(e)).join('\n')
 
@@ -123,5 +130,28 @@ describe('readContext', () => {
     expect((await readContext('/code/app', '/opt/bin/codex'))?.used).toBe(7_000)
     expect(await readContext('/code/app', 'aider')).toBeNull()
     expect(await readContext('/nowhere', 'claude')).toBeNull()
+  })
+})
+
+describe('resumeFlag', () => {
+  it('continues Claude in a worktree that has a conversation, and nothing else', () => {
+    const home = realpathSync(mkdtempSync(join(tmpdir(), 'troy-claude-')))
+    const old = process.env.CLAUDE_CONFIG_DIR
+    process.env.CLAUDE_CONFIG_DIR = home
+    try {
+      const used = '/code/app.feat-x'
+      mkdirSync(join(home, 'projects', '-code-app-feat-x'), { recursive: true })
+      writeFileSync(join(home, 'projects', '-code-app-feat-x', 'abc.jsonl'), '{}\n')
+      mkdirSync(join(home, 'projects', '-code-app-empty'), { recursive: true })
+
+      expect(resumeFlag('claude', used)).toBe(' --continue')
+      expect(resumeFlag('/usr/local/bin/claude --model opus', used)).toBe(' --continue')
+      expect(resumeFlag('claude', '/code/app.empty')).toBe('')
+      expect(resumeFlag('claude', '/code/app.fresh')).toBe('')
+      expect(resumeFlag('aider', used)).toBe('')
+    } finally {
+      if (old === undefined) delete process.env.CLAUDE_CONFIG_DIR
+      else process.env.CLAUDE_CONFIG_DIR = old
+    }
   })
 })

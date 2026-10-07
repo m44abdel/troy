@@ -124,6 +124,7 @@ export function Workspace({
           port={wt.port}
           command={wt.agent}
           args={wt.agentArgs}
+          resume={wt.resume}
           prompt={firstRun?.prompt || undefined}
           onStatus={(s, certain) => onStatus(wt.path, s, certain)}
         />

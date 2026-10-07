@@ -4,7 +4,7 @@ import { join } from 'path'
 import { overlaps, type Overlap } from '../shared/overlap'
 import type { CreateRequest, Repo, ReposResult, Worktree } from '../shared/types'
 import { runCheck } from './check'
-import { readContext } from './context'
+import { readContext, resumeFlag } from './context'
 import { buildGraph, graphDependencies, graphServer } from './graph'
 import { listDocs, readDoc } from './docs'
 import { changedFiles, commitAll, diffAgainst, openPullRequest, push } from './finish'
@@ -77,6 +77,7 @@ async function describeRepos(state: State): Promise<Repo[]> {
             ...wt,
             agent, // --mcp-config swallows every argument after it, so it goes last.
             agentArgs: hookFlags(agent) + mcpFlags(agent, undefined, undefined, graph ?? undefined),
+            resume: resumeFlag(agent, wt.path),
             port: meta?.port,
             title
           }
