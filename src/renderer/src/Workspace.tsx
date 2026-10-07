@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { AgentStatus } from '../../shared/status'
 import { isAlive } from '../../shared/status'
 import type { CheckResult, Knowledge, WorktreeView } from '../../shared/types'
@@ -7,6 +8,7 @@ import { DocsPane } from './DocsPane'
 import { KnowledgePane } from './KnowledgePane'
 import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
+import { Splitter } from './Splitter'
 import { Terminal } from './Terminal'
 import { agentId, shellId } from './terminals'
 import { STATUS_LABELS } from './statusLabels'
@@ -38,6 +40,10 @@ interface Props {
   check?: CheckResult
   onRunCheck: (path: string) => Promise<CheckResult | null>
   onSendCheck: (path: string) => void
+  /** The agent pane's share of the width, in percent. */
+  agentShare: number
+  onAgentShare: (share: number) => void
+  onResetAgentShare: () => void
   diffFilter?: DiffFilter
   onClearDiffFilter: () => void
   /** Shared by every worktree of the repo. */
@@ -61,6 +67,9 @@ export function Workspace({
   check,
   onRunCheck,
   onSendCheck,
+  agentShare,
+  onAgentShare,
+  onResetAgentShare,
   diffFilter,
   onClearDiffFilter,
   knowledge,
@@ -81,9 +90,10 @@ export function Workspace({
   )
   const branch = wt.branch ?? 'detached'
   const state = status ?? 'idle'
+  const root = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="workspace" style={{ display: active ? 'flex' : 'none' }}>
+    <div className="workspace" ref={root} style={{ display: active ? 'flex' : 'none' }}>
       <div className="pane pane-agent">
         <header className="pane-header">
           <span className={`status-pill ${state}`}>
@@ -118,6 +128,19 @@ export function Workspace({
           onStatus={(s, certain) => onStatus(wt.path, s, certain)}
         />
       </div>
+      {showColumn && (
+        <Splitter
+          label="Resize agent and side panel"
+          value={agentShare}
+          min={20}
+          max={80}
+          onMove={(x) => {
+            const box = root.current?.getBoundingClientRect()
+            if (box?.width) onAgentShare(((x - box.left) / box.width) * 100)
+          }}
+          onReset={onResetAgentShare}
+        />
+      )}
       <div className="column" style={{ display: showColumn ? 'flex' : 'none' }}>
         <div className="tabs">
           {tabButton('shell', 'terminal', 'Shell', 'E')}

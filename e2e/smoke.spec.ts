@@ -829,3 +829,50 @@ test('measures emoji as two columns, as agent TUIs do', async () => {
     await app.close()
   }
 })
+
+test('resizes the sidebar and the agent pane by dragging, and remembers the sizes', async () => {
+  const repo = gitRepo('troy-resize-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+  const env = { ...shellEnv, TROY_USER_DATA: userData }
+  const width = (page: Page, selector: string): Promise<number> =>
+    page.locator(selector).evaluate((el) => Math.round(el.getBoundingClientRect().width))
+  const drag = async (page: Page, name: string, toX: number): Promise<void> => {
+    const box = (await page.getByRole('separator', { name }).boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(toX, box.y + box.height / 2, { steps: 5 })
+    await page.mouse.up()
+  }
+
+  let app = await launchTroy(env)
+  let agentBefore = 0
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.workspace:visible')).toBeVisible()
+    await drag(page, 'Resize sidebar', 360)
+    await expect.poll(() => width(page, '.sidebar')).toBe(360)
+
+    agentBefore = await width(page, '.workspace:visible .pane-agent')
+    const column = (await page.locator('.workspace:visible .column').boundingBox())!
+    await drag(page, 'Resize agent and side panel', column.x + column.width / 2)
+    await expect
+      .poll(() => width(page, '.workspace:visible .pane-agent'))
+      .toBeGreaterThan(agentBefore)
+  } finally {
+    await app.close()
+  }
+
+  app = await launchTroy(env)
+  try {
+    const page = await app.firstWindow()
+    await expect.poll(() => width(page, '.sidebar')).toBe(360)
+    await expect
+      .poll(() => width(page, '.workspace:visible .pane-agent'))
+      .toBeGreaterThan(agentBefore)
+    await page.getByRole('separator', { name: 'Resize sidebar' }).dblclick()
+    await expect.poll(() => width(page, '.sidebar')).toBe(272)
+  } finally {
+    await app.close()
+  }
+})

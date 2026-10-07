@@ -19,13 +19,20 @@ import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
 import { applyOrder, moveTo } from './order'
-import { useStoredList } from './useStoredList'
+import { Splitter } from './Splitter'
+import { isNumber, isStringList, useStored } from './useStored'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 import { ClosedList, WorktreeCard } from './WorktreeCard'
 
 // ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
 const CONTEXT_POLL_MS = 5000
+
+const SIDEBAR = { initial: 272, min: 200, max: 480 }
+const AGENT_SHARE = { initial: 55, min: 20, max: 80 }
+
+const clamp = (value: number, { min, max }: { min: number; max: number }): number =>
+  Math.min(max, Math.max(min, value))
 
 const omit = <T,>(record: Record<string, T>, key: string): Record<string, T> => {
   const next = { ...record }
@@ -43,10 +50,13 @@ function App(): React.JSX.Element {
   const [selected, setSelected] = useState<string | null>(null)
   const [visited, setVisited] = useState<string[]>([])
   // Closed worktrees leave the sidebar (and their terminals stop) until you reopen them.
-  const [closed, setClosed] = useStoredList('troy.closedSessions')
-  const [folded, setFolded] = useStoredList('troy.foldedRepos')
+  const [closed, setClosed] = useStored('troy.closedSessions', [], isStringList)
+  const [folded, setFolded] = useStored('troy.foldedRepos', [], isStringList)
+  const [sidebarWidth, setSidebarWidth] = useStored('troy.sidebarWidth', SIDEBAR.initial, isNumber)
+  // The agent pane's share of the workspace, in percent; the side column gets the rest.
+  const [agentShare, setAgentShare] = useStored('troy.agentShare', AGENT_SHARE.initial, isNumber)
   // Worktree paths in the order you arranged them; new worktrees go after.
-  const [order, setOrder] = useStoredList('troy.worktreeOrder')
+  const [order, setOrder] = useStored('troy.worktreeOrder', [], isStringList)
   // Repos whose closed worktrees are listed for reopening.
   const [showClosed, setShowClosed] = useState<string[]>([])
   const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({})
@@ -341,7 +351,15 @@ function App(): React.JSX.Element {
   )
 
   return (
-    <div className="app">
+    <div
+      className="app"
+      style={
+        {
+          '--sidebar-width': `${clamp(sidebarWidth, SIDEBAR)}px`,
+          '--agent-share': clamp(agentShare, AGENT_SHARE)
+        } as React.CSSProperties
+      }
+    >
       <aside className="sidebar">
         <div className="sidebar-header">
           <span className="brand">
@@ -438,6 +456,15 @@ function App(): React.JSX.Element {
           </button>
         </footer>
       </aside>
+      <Splitter
+        label="Resize sidebar"
+        value={sidebarWidth}
+        min={SIDEBAR.min}
+        max={SIDEBAR.max}
+        // The sidebar starts at the window's left edge, so the pointer's x is its width.
+        onMove={(x) => setSidebarWidth(clamp(x, SIDEBAR))}
+        onReset={() => setSidebarWidth(SIDEBAR.initial)}
+      />
 
       <main className="workspaces">
         {repos.length === 0 ? (
@@ -507,6 +534,9 @@ function App(): React.JSX.Element {
                   check={checks[wt.path]}
                   onRunCheck={runCheck}
                   onSendCheck={sendCheck}
+                  agentShare={clamp(agentShare, AGENT_SHARE)}
+                  onAgentShare={(share) => setAgentShare(clamp(share, AGENT_SHARE))}
+                  onResetAgentShare={() => setAgentShare(AGENT_SHARE.initial)}
                   diffFilter={diffFilters[wt.path]}
                   onClearDiffFilter={() => setDiffFilters((f) => omit(f, wt.path))}
                   knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
