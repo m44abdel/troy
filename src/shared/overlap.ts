@@ -46,3 +46,19 @@ export function overlaps(
     })
   )
 }
+
+/**
+ * The overlaps worth a warning: both sessions live at once. A worktree whose agent is
+ * closed or finished isn't editing anything now, so sharing a file with it is just history.
+ */
+export function liveOverlaps(
+  all: Record<string, Overlap[]>,
+  isLive: (path: string) => boolean
+): Record<string, Overlap[]> {
+  return Object.fromEntries(
+    Object.entries(all).flatMap(([path, list]) => {
+      const kept = isLive(path) ? list.filter((o) => isLive(o.other)) : []
+      return kept.length ? [[path, kept]] : []
+    })
+  )
+}

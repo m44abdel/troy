@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
-import type { Overlap } from '../../shared/overlap'
+import { liveOverlaps, type Overlap } from '../../shared/overlap'
 import { isAlive, type AgentStatus } from '../../shared/status'
 import type {
   CheckResult,
@@ -28,6 +28,9 @@ import { ClosedList, WorktreeCard } from './WorktreeCard'
 
 // ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
 const CONTEXT_POLL_MS = 5000
+
+// How often to look for clashes while two or more agents are working at once.
+const OVERLAP_POLL_MS = 10_000
 
 const SIDEBAR = { initial: 272, min: 200, max: 480 }
 const AGENT_SHARE = { initial: 55, min: 20, max: 80 }
@@ -167,9 +170,21 @@ function App(): React.JSX.Element {
     return result
   }, [])
 
-  // Recomputed when worktrees come or go and whenever an agent stops working.
+  // Recomputed when worktrees come or go, whenever an agent's status changes, and every few
+  // seconds while two or more agents work at once (they clash while editing, not after).
   const refreshOverlaps = useCallback(() => void window.api.overlaps().then(setOverlaps), [])
   useEffect(refreshOverlaps, [repos, refreshOverlaps])
+  const concurrent = worktrees.filter((wt) => isAlive(statuses[wt.path])).length >= 2
+  useEffect(() => {
+    if (!concurrent) return
+    const timer = setInterval(refreshOverlaps, OVERLAP_POLL_MS)
+    return () => clearInterval(timer)
+  }, [concurrent, refreshOverlaps])
+  // Only sessions live at the same time can trip over each other.
+  const clashes = useMemo(
+    () => liveOverlaps(overlaps, (path) => isAlive(statuses[path])),
+    [overlaps, statuses]
+  )
 
   const watched = worktrees.filter((wt) => visited.includes(wt.path))
   const watchKey = watched.map((wt) => `${wt.path}\0${wt.agent}`).join('\n')
@@ -340,7 +355,7 @@ function App(): React.JSX.Element {
       const watching = path === currentPath.current && document.hasFocus()
       setSeen((s) => ({ ...s, [path]: watching }))
       if (isAlive(status)) deliverMail(path)
-      if (status !== 'running') refreshOverlaps()
+      refreshOverlaps()
       // Only a reported stop: a guessed pause may be the agent mid-edit.
       if (certain && status !== 'running') void runCheck(path)
       if (watching || !certain || status === 'running') return
@@ -364,6 +379,23 @@ function App(): React.JSX.Element {
     const wt = worktrees.find((w) => w.path === path)
     return wt?.title ?? wt?.branch ?? basename(path)
   }
+
+  // One notification per new clash, when you're not already looking at Troy.
+  const notified = useRef(new Set<string>())
+  const notifyClash = useEffectEvent((path: string, overlap: Overlap) => {
+    const key = [path, overlap.other, ...overlap.files].join('\0')
+    if (notified.current.has(key)) return
+    notified.current.add(key)
+    if (document.hasFocus()) return
+    const note = new Notification('Two agents are editing the same files', {
+      body: `${nameOf(path)} and ${nameOf(overlap.other)}: ${overlap.files.join(', ')}`
+    })
+    note.onclick = () => select(path)
+  })
+  useEffect(() => {
+    for (const [path, list] of Object.entries(clashes))
+      for (const o of list) if (o.kind === 'same' && path < o.other) notifyClash(path, o)
+  }, [clashes])
 
   const needsYou = (path: string): boolean => statuses[path] === 'waiting' && !seen[path]
   const waiting = worktrees.filter((wt) => needsYou(wt.path))
@@ -442,7 +474,7 @@ function App(): React.JSX.Element {
                       selected={wt === current}
                       status={statuses[wt.path] ?? 'idle'}
                       needsYou={needsYou(wt.path)}
-                      overlaps={overlaps[wt.path]?.map((o) => ({
+                      overlaps={clashes[wt.path]?.map((o) => ({
                         name: nameOf(o.other),
                         kind: o.kind,
                         files: o.files
