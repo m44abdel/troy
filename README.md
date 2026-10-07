@@ -56,6 +56,8 @@ The agent pane waits for Enter before starting, so setup can finish first. Each 
 
 Claude Code reports its own state through hooks Troy loads with `--settings`, merged with your settings and never written into the repo, so a long tool run reads as working and a permission prompt reads as waiting as soon as Claude asks. Other agents fall back to the output guess. When an agent starts waiting, finishes or fails while you're elsewhere, Troy sends a notification and counts waiting agents on the dock icon. A guessed wait never notifies.
 
+<img src="docs/agent-status.png" alt="Sidebar: the cart agent's hook reported it stopped, so its card is amber and waiting while you watch the API agent, which is still working" width="720">
+
 When two worktrees of a repo change the same files, both cards say so (**⚠ 2 files shared with feat-b**; hover for the list), so you find the collision while the agents are still working, not at merge time. Changes count from where each worktree left its base: commits, uncommitted edits and new files. Click a line to open that worktree's diff showing only those files. **Show all** brings the rest back.
 
 <p>
@@ -64,6 +66,8 @@ When two worktrees of a repo change the same files, both cards say so (**⚠ 2 f
 </p>
 
 Agents say the tests pass; Troy checks. Put any command in `.troy/check` (e.g. `npm test && npm run lint`) and Troy runs it whenever Claude Code reports it has stopped, and again before **Push** or **Open PR**. The card shows **✓ check** or **✗ check**, the diff tab shows the output, and **Send failure to agent** pastes it back to the agent. A result is reused until the worktree changes, so re-checking an unchanged tree is instant. Shipping with a failing check asks first.
+
+<img src="docs/receipts.png" alt="The agent says tests pass; the card shows ✗ check and the diff tab shows .troy/check's output, 1 failed, with Run again and Send failure to agent" width="720">
 
 With [graphify](https://github.com/safishamsi/graphify) on your PATH (`uv tool install 'graphifyy[mcp]'`), Troy builds a code graph of each repo with `graphify extract --code-only`. The build is local, uses no LLM, takes a few seconds and is stored in Troy's own folder, never in the repo. It's rebuilt at launch and whenever a worktree is created. Every agent in every worktree gets the same graph as a `graph` MCP server, so they ask it how code connects instead of each re-reading the repo. The overlap radar uses it too: besides same-file overlaps, a card says **↳ 1 file uses changes in api-work** when its changes import or call files another worktree changed.
 
