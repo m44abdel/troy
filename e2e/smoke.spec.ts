@@ -88,6 +88,21 @@ function chord(
   )
 }
 
+// Starts the agent in each worktree by selecting it and pressing Enter in its agent pane.
+async function startAgents(page: Page, paths: string[]): Promise<void> {
+  for (const path of paths) {
+    const card = page.locator(`.worktree[title="${path}"]`)
+    await card.locator('.card-select').click()
+    await expect(card).toHaveClass(/selected/)
+    await page.locator('.workspace:visible .pane-agent .xterm').click()
+    await page.keyboard.press('Enter')
+    await expect(card.locator('.status-label')).not.toHaveText('not started')
+  }
+}
+
+const catAgents = (paths: string[]): object =>
+  Object.fromEntries(paths.map((path, i) => [path, { agent: 'cat', port: 3100 + 100 * i }]))
+
 test('Cmd shortcuts switch worktrees while Ctrl chords reach the shell', async () => {
   const repos = [gitRepo('troy-a-'), gitRepo('troy-b-')]
   const userData = tempDir('troy-profile-')
@@ -530,7 +545,7 @@ test('a hook report beats the output guess and badges the dock', async () => {
   }
 })
 
-test('flags worktrees that changed the same files', async () => {
+test('flags two live sessions editing the same files, and only while both are live', async () => {
   const repo = gitRepo('troy-overlap-')
   const git = (...args: string[]): Buffer =>
     execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
@@ -544,12 +559,24 @@ test('flags worktrees that changed the same files', async () => {
   writeFileSync(join(`${repo}.feat-b`, 'api.ts'), 'b\n')
   writeFileSync(join(`${repo}.feat-b`, 'db.ts'), 'b\n')
   const userData = tempDir('troy-profile-')
-  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+  const [a, b] = [`${repo}.feat-a`, `${repo}.feat-b`]
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos: [repo], worktrees: catAgents([a, b]) })
+  )
 
   const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
     const card = (branch: string): Locator => page.locator(`.worktree[title="${repo}.${branch}"]`)
+    await expect(page.locator('.worktree')).toHaveCount(3)
+
+    // Edits by sessions that aren't running are history, not a clash.
+    await expect(page.locator('.card-overlap')).toHaveCount(0)
+    await startAgents(page, [a])
+    await expect(page.locator('.card-overlap')).toHaveCount(0)
+
+    await startAgents(page, [b])
     await expect(card('feat-a').locator('.card-overlap')).toHaveText('⚠ 1 file shared with feat-b')
     await expect(card('feat-a').locator('.card-overlap')).toHaveAttribute(
       'title',
@@ -567,6 +594,14 @@ test('flags worktrees that changed the same files', async () => {
     await workspace.getByRole('button', { name: 'Show all' }).click()
     await expect(workspace.locator('.diff-file h3')).toHaveText(['api.ts', 'db.ts'])
     await expect(workspace.locator('.filter-bar')).toHaveCount(0)
+
+    // Once one of them closes, the other is no longer in a clash.
+    page.on('dialog', (d) => void d.accept())
+    await card('feat-a').hover()
+    await card('feat-a')
+      .getByRole('button', { name: /^Close session/ })
+      .click()
+    await expect(page.locator('.card-overlap')).toHaveCount(0)
   } finally {
     await app.close()
   }
@@ -650,7 +685,11 @@ test('links worktrees through the code graph when one uses code another changed'
     { mode: 0o755 }
   )
   const userData = tempDir('troy-profile-')
-  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+  const worktrees = [`${repo}.api-work`, `${repo}.ui-work`]
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos: [repo], worktrees: catAgents(worktrees) })
+  )
 
   const app = await launchTroy({
     ...shellEnv,
@@ -660,6 +699,8 @@ test('links worktrees through the code graph when one uses code another changed'
   try {
     const page = await app.firstWindow()
     const card = (branch: string): Locator => page.locator(`.worktree[title="${repo}.${branch}"]`)
+    await expect(page.locator('.worktree')).toHaveCount(3)
+    await startAgents(page, worktrees)
     await expect(card('ui-work').locator('.card-overlap')).toHaveText(
       '↳ 1 file uses changes in api-work'
     )

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { overlaps } from './overlap'
+import { liveOverlaps, overlaps } from './overlap'
 
 describe('overlaps', () => {
   it('pairs every worktree with the others that changed the same files', () => {
@@ -40,5 +40,25 @@ describe('overlaps', () => {
 
     expect(result.a).toEqual([{ other: 'b', kind: 'same', files: ['src/api.ts'] }])
     expect(result.b).toEqual([{ other: 'a', kind: 'same', files: ['src/api.ts'] }])
+  })
+})
+
+describe('liveOverlaps', () => {
+  it('keeps only overlaps between two sessions that are both live', () => {
+    const all = {
+      a: [
+        { other: 'b', kind: 'same' as const, files: ['x.ts'] },
+        { other: 'c', kind: 'same' as const, files: ['y.ts'] }
+      ],
+      b: [{ other: 'a', kind: 'same' as const, files: ['x.ts'] }],
+      c: [{ other: 'a', kind: 'same' as const, files: ['y.ts'] }]
+    }
+    const live = (path: string): boolean => path !== 'c'
+
+    expect(liveOverlaps(all, live)).toEqual({
+      a: [{ other: 'b', kind: 'same', files: ['x.ts'] }],
+      b: [{ other: 'a', kind: 'same', files: ['x.ts'] }]
+    })
+    expect(liveOverlaps(all, () => false)).toEqual({})
   })
 })

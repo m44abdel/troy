@@ -58,7 +58,7 @@ Claude Code reports its own state through hooks Troy loads with `--settings`, me
 
 <img src="docs/agent-status.png" alt="Sidebar: the cart agent's hook reported it stopped, so its card is amber and waiting while you watch the API agent, which is still working" width="720">
 
-When two worktrees of a repo change the same files, both cards say so (**⚠ 2 files shared with feat-b**; hover for the list), so you find the collision while the agents are still working, not at merge time. Changes count from where each worktree left its base: commits, uncommitted edits and new files. Click a line to open that worktree's diff showing only those files. **Show all** brings the rest back.
+When two agents are working at the same time on the same files, both cards say so (**⚠ 2 files shared with feat-b**; hover for the list), and if you're not looking at Troy you get a notification. That's when clashes happen, so a worktree whose agent isn't running doesn't count: its edits are history. While two or more agents are live, Troy checks every 10 seconds, so you hear about it while they're still editing, not at merge time. Changes count from where each worktree left its base: commits, uncommitted edits and new files. Click a line to open that worktree's diff showing only those files. **Show all** brings the rest back.
 
 <p>
   <img src="docs/overlap-radar.png" alt="Sidebar cards: two cart worktrees each show '1 file shared with' the other, and a third shows '1 file used by' a worktree that imports its code" width="272">
