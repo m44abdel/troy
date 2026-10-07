@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { OverlapKind } from '../../shared/overlap'
 import type { AgentStatus } from '../../shared/status'
 import type { CheckResult, ContextUsage, WorktreeView } from '../../shared/types'
@@ -22,6 +23,8 @@ export function AgentBadge({ agent }: { agent: string }): React.JSX.Element {
 const files = (n: number): string => `${n} file${n === 1 ? '' : 's'}`
 
 // Count and relation first, name last: a narrow sidebar cuts the end off.
+const DRAG_TYPE = 'application/x-troy-worktree'
+
 const OVERLAP_TEXT: Record<OverlapKind, (n: number, name: string) => string> = {
   same: (n, name) => `⚠ ${files(n)} shared with ${name}`,
   uses: (n, name) => `↳ ${files(n)} ${n === 1 ? 'uses' : 'use'} changes in ${name}`,
@@ -45,6 +48,8 @@ interface Props {
   onOverlap: (files: string[], label: string) => void
   /** Present while the session is open: stops its agent and shell, keeps the worktree. */
   onClose?: () => void
+  /** A card dragged from `from` was dropped on this one. */
+  onMoveHere: (from: string) => void
 }
 
 export function WorktreeCard({
@@ -58,16 +63,35 @@ export function WorktreeCard({
   overlaps = [],
   onSelect,
   onOverlap,
-  onClose
+  onClose,
+  onMoveHere
 }: Props): React.JSX.Element {
   const branch = wt.branch ?? 'detached'
+  const [dropTarget, setDropTarget] = useState(false)
+  const carriesCard = (e: React.DragEvent): boolean => e.dataTransfer.types.includes(DRAG_TYPE)
   return (
     // Overlap lines are buttons of their own, so the card can't be one; its main button
     // stretches over the whole card instead.
     <div
-      className={`worktree card ${status} ${selected ? 'selected' : ''} ${needsYou ? 'needs-you' : ''}`}
+      className={`worktree card ${status} ${selected ? 'selected' : ''} ${needsYou ? 'needs-you' : ''} ${dropTarget ? 'drop-target' : ''}`}
       title={wt.path}
       data-path={wt.path}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DRAG_TYPE, wt.path)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
+      onDragOver={(e) => {
+        if (!carriesCard(e)) return
+        e.preventDefault()
+        setDropTarget(true)
+      }}
+      onDragLeave={() => setDropTarget(false)}
+      onDrop={(e) => {
+        setDropTarget(false)
+        const from = e.dataTransfer.getData(DRAG_TYPE)
+        if (from && from !== wt.path) onMoveHere(from)
+      }}
     >
       <button className="card-select" onClick={onSelect}>
         <span className="card-head">

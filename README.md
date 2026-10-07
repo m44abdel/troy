@@ -10,22 +10,22 @@ Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its ow
 
 Run many agents without babysitting them, colliding them, or taking their word for it. This table is based on [Conductor](https://www.conductor.build/docs/) and [Superset](https://docs.superset.sh)'s own docs as of October 2026, and it includes the rows where Troy loses. Corrections welcome.
 
-| | Troy | Conductor | Superset |
-|---|---|---|---|
-| License | MIT | Proprietary | Elastic License 2.0 (source-available) |
-| Account needed | None | GitHub sign-in | Superset account |
-| Agents | Any CLI on your PATH | Claude Code, Codex, Cursor, OpenCode | Any CLI |
-| Platforms | macOS | macOS | macOS, Linux (experimental) |
-| Agent status | Claude Code hooks; other agents are guessed from output | Notifications | Agent hooks |
-| **Warns when parallel worktrees touch the same or dependent code** | ✓ overlap radar | — | — |
-| **Runs your checks itself before you push or open a PR** | ✓ `.troy/check` | Gates merge on CI | Shows CI status |
-| **Shared code graph that every agent queries over MCP** | ✓ via graphify | — | — |
-| **Shared project knowledge that a person reviews** | ✓ | — | — |
-| Diff comments sent back to the agent | ✓ | ✓ | ✓ |
-| Push and open a PR | ✓ | ✓ plus merge | ✓ plus merge |
-| Setup script, `.env` copy, per-worktree ports | ✓ | ✓ | Ports detected, not assigned |
-| Checkpoints to undo an agent's turn | — | ✓ | — |
-| Windows | — | — | Planned |
+|                                                                    | Troy                                                    | Conductor                            | Superset                               |
+| ------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| License                                                            | MIT                                                     | Proprietary                          | Elastic License 2.0 (source-available) |
+| Account needed                                                     | None                                                    | GitHub sign-in                       | Superset account                       |
+| Agents                                                             | Any CLI on your PATH                                    | Claude Code, Codex, Cursor, OpenCode | Any CLI                                |
+| Platforms                                                          | macOS                                                   | macOS                                | macOS, Linux (experimental)            |
+| Agent status                                                       | Claude Code hooks; other agents are guessed from output | Notifications                        | Agent hooks                            |
+| **Warns when parallel worktrees touch the same or dependent code** | ✓ overlap radar                                         | —                                    | —                                      |
+| **Runs your checks itself before you push or open a PR**           | ✓ `.troy/check`                                         | Gates merge on CI                    | Shows CI status                        |
+| **Shared code graph that every agent queries over MCP**            | ✓ via graphify                                          | —                                    | —                                      |
+| **Shared project knowledge that a person reviews**                 | ✓                                                       | —                                    | —                                      |
+| Diff comments sent back to the agent                               | ✓                                                       | ✓                                    | ✓                                      |
+| Push and open a PR                                                 | ✓                                                       | ✓ plus merge                         | ✓ plus merge                           |
+| Setup script, `.env` copy, per-worktree ports                      | ✓                                                       | ✓                                    | Ports detected, not assigned           |
+| Checkpoints to undo an agent's turn                                | —                                                       | ✓                                    | —                                      |
+| Windows                                                            | —                                                       | —                                    | Planned                                |
 
 Troy also claims only ⌘ for its shortcuts. Ctrl and Alt always reach the terminal, so readline, zsh and the agents' own keys keep working.
 
@@ -52,7 +52,7 @@ Troy doesn't bundle any agent: it runs whichever CLIs (claude, codex, gemini, �
 - gives each worktree its own `PORT_BASE` (3100, 3200, …) so dev servers don't collide
 - runs `.troy/setup.sh` in the shell pane if the worktree has one (e.g. `npm i`)
 
-The agent pane waits for Enter before starting, so setup can finish first. Each worktree is a card in the sidebar, titled with the first line of its initial prompt, with the agent's state underneath: working (output flowing), waiting (quiet or rang the bell), finished, or exited with an error. A session that starts waiting while you're looking at another one turns amber until you open it or click **Clear all waiting**. Click a repo's name to fold its worktrees away; a folded repo's header still counts agents waiting on you. Hover a card and click **×** to close it: the agent and shell stop and the card leaves the sidebar, but the worktree and its changes stay. The repo's **N closed** list reopens it. Folded repos and closed worktrees are remembered across restarts.
+The agent pane waits for Enter before starting, so setup can finish first. Each worktree is a card in the sidebar, titled with the first line of its initial prompt, with the agent's state underneath: working (output flowing), waiting (quiet or rang the bell), finished, or exited with an error. A session that starts waiting while you're looking at another one turns amber until you open it or click **Clear all waiting**. Click a repo's name to fold its worktrees away; a folded repo's header still counts agents waiting on you. Hover a card and click **×** to close it: the agent and shell stop and the card leaves the sidebar, but the worktree and its changes stay. The repo's **N closed** list reopens it. Drag a card onto another to reorder a repo's worktrees, or move the selected one with **⌘↑** / **⌘↓**; ⌘1–9 follow your order. Order, folded repos and closed worktrees are remembered across restarts.
 
 Claude Code reports its own state through hooks Troy loads with `--settings`, merged with your settings and never written into the repo, so a long tool run reads as working and a permission prompt reads as waiting as soon as Claude asks. Other agents fall back to the output guess. When an agent starts waiting, finishes or fails while you're elsewhere, Troy sends a notification and counts waiting agents on the dock icon. A guessed wait never notifies.
 
@@ -107,6 +107,7 @@ App shortcuts use **⌘** on macOS (**Ctrl+Shift** on Linux/Windows). Every Ctrl
 | ⌘W       | Archive worktree                  |
 | ⌘1–9     | Jump to worktree                  |
 | ⌘[ / ⌘]  | Previous / next worktree          |
+| ⌘↑ / ⌘↓  | Move the worktree up / down       |
 | ⌘J / ⌘E  | Focus agent / shell               |
 | ⌘D       | Show the diff                     |
 | ⌘Enter   | Send review comments to the agent |

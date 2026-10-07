@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
 import type { Overlap } from '../../shared/overlap'
 import { isAlive, type AgentStatus } from '../../shared/status'
@@ -18,6 +18,7 @@ import { MOD } from './platform'
 import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
+import { applyOrder, moveTo } from './order'
 import { useStoredList } from './useStoredList'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
@@ -44,6 +45,8 @@ function App(): React.JSX.Element {
   // Closed worktrees leave the sidebar (and their terminals stop) until you reopen them.
   const [closed, setClosed] = useStoredList('troy.closedSessions')
   const [folded, setFolded] = useStoredList('troy.foldedRepos')
+  // Worktree paths in the order you arranged them; new worktrees go after.
+  const [order, setOrder] = useStoredList('troy.worktreeOrder')
   // Repos whose closed worktrees are listed for reopening.
   const [showClosed, setShowClosed] = useState<string[]>([])
   const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({})
@@ -69,7 +72,11 @@ function App(): React.JSX.Element {
   // Set while vim keys move the selection, so focus stays in the sidebar.
   const keepSidebarFocus = useRef(false)
 
-  const worktrees = repos.flatMap((r) => r.worktrees).filter((w) => !closed.includes(w.path))
+  const sorted = useMemo(
+    () => repos.map((r) => ({ ...r, worktrees: applyOrder(r.worktrees, order, (w) => w.path) })),
+    [repos, order]
+  )
+  const worktrees = sorted.flatMap((r) => r.worktrees).filter((w) => !closed.includes(w.path))
   const current = worktrees.find((w) => w.path === selected) ?? worktrees[0]
   const currentRepo = repos.find((r) => current && r.worktrees.includes(current)) ?? repos[0]
 
@@ -95,6 +102,18 @@ function App(): React.JSX.Element {
   // Terminals mount on first view and then stay alive in the background, until closed.
   if (current && !visited.includes(current.path) && !closed.includes(current.path))
     setVisited([...visited, current.path])
+
+  // Reorders within a repo; a drop from another repo is ignored.
+  const move = useCallback(
+    (from: string, to: string): void => {
+      const repo = repos.find((r) => r.worktrees.some((w) => w.path === from))
+      const paths = applyOrder(repo?.worktrees ?? [], order, (w) => w.path).map((w) => w.path)
+      if (!paths.includes(to)) return
+      const moved = moveTo(paths, from, to)
+      setOrder((o) => [...moved, ...o.filter((p) => !moved.includes(p))])
+    },
+    [repos, order, setOrder]
+  )
 
   const toggle = (list: string[], item: string): string[] =>
     list.includes(item) ? list.filter((i) => i !== item) : [...list, item]
@@ -265,10 +284,15 @@ function App(): React.JSX.Element {
         const n = worktrees.length
         if (action === 'prev') return select(worktrees[(i - 1 + n) % n].path)
         if (action === 'next') return select(worktrees[(i + 1) % n].path)
+        if (action === 'moveUp' || action === 'moveDown') {
+          const siblings = worktrees.filter((w) => currentRepo?.worktrees.includes(w))
+          const target = siblings[siblings.indexOf(current) + (action === 'moveUp' ? -1 : 1)]
+          return target && move(current.path, target.path)
+        }
         const target = worktrees[Number(action.split(':')[1]) - 1]
         if (target) select(target.path)
       }),
-    [worktrees, current, currentRepo, addRepo, archive, sendComments, select]
+    [worktrees, current, currentRepo, addRepo, archive, sendComments, select, move]
   )
 
   // A status change on the open worktree while Troy has focus happens in front of you.
@@ -332,7 +356,7 @@ function App(): React.JSX.Element {
           </button>
         </div>
         <nav className="repo-list">
-          {repos.map((repo) => (
+          {sorted.map((repo) => (
             <section key={repo.path} className="repo">
               <div className="repo-header" title={repo.path}>
                 <button
@@ -381,6 +405,7 @@ function App(): React.JSX.Element {
                       check={checks[wt.path]}
                       onSelect={() => select(wt.path)}
                       onClose={() => closeSession(wt.path)}
+                      onMoveHere={(from) => move(from, wt.path)}
                       onOverlap={(files, label) => {
                         setDiffFilters((f) => ({ ...f, [wt.path]: { files, label } }))
                         select(wt.path)
