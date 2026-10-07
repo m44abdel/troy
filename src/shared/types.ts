@@ -73,3 +73,14 @@ export interface CheckResult {
   output: string
   ranAt: number
 }
+
+/** A message one worktree's agent sent to another's. */
+export interface Mail {
+  /** Sender's worktree path. */
+  from: string
+  fromBranch: string | null
+  /** Receiver's worktree path. */
+  to: string
+  text: string
+  sentAt: string
+}

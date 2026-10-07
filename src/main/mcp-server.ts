@@ -2,7 +2,7 @@
 import { createInterface } from 'readline'
 import { createServer } from './mcp'
 
-const handle = createServer(process.cwd())
+const handle = createServer(process.cwd(), process.env.TROY_MAIL_DIR)
 
 createInterface({ input: process.stdin }).on('line', async (line) => {
   if (!line.trim()) return

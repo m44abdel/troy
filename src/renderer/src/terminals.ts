@@ -10,3 +10,12 @@ export const pasteToTerminal = (id: string, text: string): void => terminals.get
 
 export const agentId = (path: string): string => `${path}:agent`
 export const shellId = (path: string): string => `${path}:shell`
+
+/** Pastes text into a pane and presses Enter, as if typed and sent. */
+export function submitToTerminal(id: string, text: string): boolean {
+  const term = terminals.get(id)
+  if (!term) return false
+  term.paste(text)
+  term.input('\r')
+  return true
+}

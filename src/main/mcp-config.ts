@@ -13,10 +13,13 @@ export interface McpLaunch {
 const launch = (): McpLaunch => ({
   command: process.execPath,
   args: [join(__dirname, 'mcp-server.js')],
-  env: { ELECTRON_RUN_AS_NODE: '1' }
+  env: { ELECTRON_RUN_AS_NODE: '1', TROY_MAIL_DIR: mailDir() }
 })
 
-const configPath = (): string => join(app.getPath('userData'), 'mcp.json')
+/** Where agents' MCP servers leave messages for each other; Troy watches it. */
+export const mailDir = (): string => join(app.getPath('userData'), 'mail')
+
+export const configPath = (): string => join(app.getPath('userData'), 'mcp.json')
 
 const hooksPath = (): string => join(app.getPath('userData'), 'claude-hooks.json')
 

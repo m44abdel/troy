@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { execFileSync } from 'child_process'
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { formatEntry, readKnowledge } from './knowledge'
 import { createServer, search } from './mcp'
 import { hookFlags, hookSettings, mcpFlags } from './mcp-config'
+import { parseMail } from './mail'
 
 function tempRepo(): string {
   const repo = realpathSync(mkdtempSync(join(tmpdir(), 'troy-mcp-')))
@@ -50,7 +51,12 @@ describe('MCP server', () => {
     const list = (await handle({ id: 2, method: 'tools/list' })) as {
       result: { tools: { name: string }[] }
     }
-    expect(list.result.tools.map((t) => t.name)).toEqual(['knowledge_search', 'knowledge_propose'])
+    expect(list.result.tools.map((t) => t.name)).toEqual([
+      'knowledge_search',
+      'knowledge_propose',
+      'agents_list',
+      'agent_message'
+    ])
     expect(await handle({ id: 3, method: 'resources/list' })).toMatchObject({
       error: { code: -32601 }
     })
@@ -104,6 +110,44 @@ describe('search', () => {
     expect(search([e], '')).toEqual([e])
     expect(search([e], 'retries api.ts')).toEqual([e])
     expect(search([e], 'retries db')).toEqual([])
+  })
+})
+
+describe('agent messaging tools', () => {
+  const textOf = (reply: object | null): string =>
+    (reply as { result: { content: { text: string }[] } }).result.content[0].text
+  const isError = (reply: object | null): boolean =>
+    !!(reply as { result: { isError?: boolean } }).result.isError
+
+  it('lists the other worktrees and leaves a message for one of them', async () => {
+    const repo = tempRepo()
+    execFileSync('git', ['-C', repo, 'worktree', 'add', '-q', '-b', 'feat/b', `${repo}.b`])
+    const mail = realpathSync(mkdtempSync(join(tmpdir(), 'troy-mailbox-')))
+    const handle = createServer(repo, mail)
+
+    const list = textOf(await handle(call(1, 'agents_list', {})))
+    expect(list).toContain(`feat/b — ${repo}.b`)
+    expect(list).toContain(`main — ${repo} (you)`)
+
+    const sent = await handle(call(2, 'agent_message', { to: 'feat/b', text: 'I am editing a.ts' }))
+    expect(isError(sent)).toBe(false)
+    const [file] = readdirSync(mail)
+    expect(parseMail(readFileSync(join(mail, file), 'utf8'))).toMatchObject({
+      from: repo,
+      fromBranch: 'main',
+      to: `${repo}.b`,
+      text: 'I am editing a.ts'
+    })
+  })
+
+  it('refuses messages to itself, to unknown agents, or without Troy', async () => {
+    const repo = tempRepo()
+    const handle = createServer(repo, realpathSync(mkdtempSync(join(tmpdir(), 'troy-mailbox-'))))
+    expect(isError(await handle(call(1, 'agent_message', { to: 'main', text: 'hi' })))).toBe(true)
+    expect(isError(await handle(call(2, 'agent_message', { to: 'nope', text: 'hi' })))).toBe(true)
+    expect(
+      isError(await createServer(repo)(call(3, 'agent_message', { to: 'main', text: 'hi' })))
+    ).toBe(true)
   })
 })
 

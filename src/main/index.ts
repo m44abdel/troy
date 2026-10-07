@@ -5,7 +5,8 @@ import icon from '../../resources/icon.png?asset'
 import { DEFAULT_BINDINGS, routeKey } from '../shared/keys'
 import { registerPty } from './pty'
 import { registerRepos } from './repos'
-import { writeMcpConfig } from './mcp-config'
+import { watchMail } from './mail'
+import { mailDir, writeMcpConfig } from './mcp-config'
 import { withoutSessionMarkers } from './env'
 import { adoptLoginPath } from './path'
 import { loadBindings, registerSettings, watchBindings } from './settings'
@@ -89,6 +90,14 @@ app.whenReady().then(async () => {
   registerSettings()
   registerPty()
   registerRepos()
+  // The window asks once it can receive, so messages waiting from before aren't lost.
+  let stopMail: (() => void) | undefined
+  ipcMain.handle('mail:watch', (event) => {
+    stopMail?.()
+    stopMail = watchMail(mailDir(), (mail) => {
+      if (!event.sender.isDestroyed()) event.sender.send('agent:mail', mail)
+    })
+  })
   // The dock badge counts agents waiting on you.
   ipcMain.on('app:badge', (_e, count: unknown) => {
     if (Number.isInteger(count) && (count as number) >= 0) app.setBadgeCount(count as number)

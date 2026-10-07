@@ -3,6 +3,8 @@
 // brings an HTTP stack (express, hono) Troy never uses.
 import type { KnowledgeEntry } from '../shared/types'
 import { formatEntry, propose, readKnowledge, SOURCE_HELP } from './knowledge'
+import { sendMail } from './mail'
+import { listWorktrees } from './worktrees'
 
 const PROTOCOL_VERSION = '2025-06-18'
 
@@ -33,6 +35,28 @@ const TOOLS = [
       },
       required: ['fact', 'source']
     }
+  },
+  {
+    name: 'agents_list',
+    description:
+      "List this repository's worktrees. Each runs its own agent in Troy; agent_message reaches them by branch.",
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'agent_message',
+    description:
+      "Send a message to the agent working in another worktree of this repository, e.g. to say you are changing code it depends on. It is typed into that agent's session (or waits until it runs), labelled as from you, with how to reply.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        to: {
+          type: 'string',
+          description: "The other worktree's branch (see agents_list) or path."
+        },
+        text: { type: 'string', description: 'The message. Be specific and brief.' }
+      },
+      required: ['to', 'text']
+    }
   }
 ]
 
@@ -62,10 +86,41 @@ const text = (s: string, isError = false): object => ({
 })
 
 /** Handles one JSON-RPC message; returns the reply, or null for notifications. */
-export function createServer(cwd: string): (msg: Message) => Promise<object | null> {
+export function createServer(
+  cwd: string,
+  /** Troy's mail folder; without it (outside Troy) agents can't message each other. */
+  mailDir?: string
+): (msg: Message) => Promise<object | null> {
   let client = 'unknown'
 
+  async function message(args: Record<string, unknown>): Promise<object> {
+    if (!mailDir) return text('Messaging other agents only works inside Troy.', true)
+    if (typeof args.to !== 'string' || typeof args.text !== 'string')
+      return text('to and text must be strings.', true)
+    const worktrees = await listWorktrees(cwd)
+    const me = worktrees.find((w) => w.path === cwd)
+    const target = worktrees.find((w) => w.branch === args.to || w.path === args.to)
+    if (!target) return text(`No worktree "${args.to}". Call agents_list to see them.`, true)
+    if (target.path === cwd) return text('That is your own worktree.', true)
+    await sendMail(mailDir, {
+      from: cwd,
+      fromBranch: me?.branch ?? null,
+      to: target.path,
+      text: args.text
+    })
+    return text(
+      `Sent to ${target.branch ?? target.path}. It arrives now if that agent is running, otherwise when it starts.`
+    )
+  }
+
   async function callTool(name: unknown, args: Record<string, unknown>): Promise<object> {
+    if (name === 'agents_list') {
+      const lines = (await listWorktrees(cwd)).map(
+        (w) => `${w.branch ?? 'detached'} — ${w.path}${w.path === cwd ? ' (you)' : ''}`
+      )
+      return text(lines.join('\n'))
+    }
+    if (name === 'agent_message') return message(args)
     if (name === 'knowledge_search') {
       const { entries } = await readKnowledge(cwd)
       const query = typeof args.query === 'string' ? args.query : ''
