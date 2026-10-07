@@ -10,23 +10,30 @@ const ptys = new Map<string, pty.IPty>()
 const listeners = new Map<string, WebContents>()
 let nextId = 0
 
+const STATUS_SWEEP_MS = 2000
+
 const statusDir = (): string => join(app.getPath('userData'), 'status')
 
 // Hooks write "running" or "waiting" to the file named in TROY_STATUS_FILE, one per pane.
 function watchStatus(): void {
   rmSync(statusDir(), { recursive: true, force: true })
   mkdirSync(statusDir(), { recursive: true })
-  watch(statusDir(), (_event, id) => {
-    const target = id && listeners.get(id)
+  const report = (id: string): void => {
+    const target = listeners.get(id)
     if (!target) return
-    // A change event can arrive mid-write; an empty or partial read is just skipped.
+    // A read can land mid-write; an empty or partial status is just skipped.
     readFile(join(statusDir(), id), 'utf8')
       .then((text) => {
         const status = parseHookStatus(text.trim())
         if (status) send(target, `pty:status:${id}`, status)
       })
       .catch(() => {})
-  })
+  }
+  watch(statusDir(), (_event, id) => id && report(id))
+  // ponytail: macOS can deliver watch events late or drop them under load; rereading every
+  // pane's file now and then means a missed "waiting" can't leave a card stuck on working.
+  // Repeating a status is harmless: the tracker ignores no-change updates.
+  setInterval(() => listeners.forEach((_target, id) => report(id)), STATUS_SWEEP_MS)
 }
 
 function defaultShell(): { file: string; args: string[] } {

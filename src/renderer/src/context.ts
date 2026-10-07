@@ -11,6 +11,3 @@ export const formatTokens = (n: number): string =>
     : n >= 1000
       ? `${Math.round(n / 1000)}k`
       : String(n)
-
-export const describeContext = (u: ContextUsage): string =>
-  `${contextPercent(u)}% of context used (${formatTokens(u.used)} / ${formatTokens(u.window)})`

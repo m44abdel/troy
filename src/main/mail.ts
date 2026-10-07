@@ -9,6 +9,7 @@ import type { Mail } from '../shared/types'
 export type { Mail }
 
 const MAX_TEXT = 8000
+const SWEEP_MS = 2000
 
 export function parseMail(raw: string): Mail | null {
   try {
@@ -52,9 +53,20 @@ export function watchMail(dir: string, onMail: (mail: Mail) => void): () => void
     if (mail) onMail(mail)
     else if (raw !== null) console.warn(`Dropped an unreadable message: ${file}`)
   }
-  const watcher = watch(dir, (_event, file) => file && void take(file))
-  readdirSync(dir)
-    .sort()
-    .forEach((file) => void take(file))
-  return () => watcher.close()
+  // One at a time, in the order found, so messages arrive in the order they were sent.
+  // Files already waiting are queued first: watch events only fire after this returns.
+  let queue = Promise.resolve()
+  const enqueue = (file: string): void => {
+    queue = queue.then(() => take(file))
+  }
+  const sweep = (): void => readdirSync(dir).sort().forEach(enqueue)
+  const watcher = watch(dir, (_event, file) => file && enqueue(file))
+  sweep()
+  // ponytail: macOS can deliver watch events late or drop them under load; a slow rescan
+  // makes sure no message is lost. Taken files are skipped, so nothing arrives twice.
+  const backstop = setInterval(sweep, SWEEP_MS)
+  return () => {
+    watcher.close()
+    clearInterval(backstop)
+  }
 }

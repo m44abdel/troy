@@ -710,6 +710,41 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   box-shadow: 0 0 8px rgb(251 113 133 / 60%);
 }
 
+/* Above the card's stretched select layer, so hovering reaches it; clicks still select. */
+.ctx {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+}
+
+.ctx-tip {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 60%);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+
+.ctx-tip strong {
+  color: var(--text, #e6e6f0);
+  font-size: 13px;
+}
+
+.ctx-tip.warn strong {
+  color: var(--waiting);
+}
+
 .ctx-ring {
   flex: none;
   width: 16px;
