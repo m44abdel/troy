@@ -136,7 +136,7 @@ test('creates a bootstrapped worktree, runs its agent and archives it', async ()
 
     await chord(app, 'N', 'meta')
     await page.getByLabel('Branch', { exact: true }).fill('feat/e2e')
-    await page.getByLabel('Agent').fill('echo agent-port-$PORT_BASE')
+    await page.getByLabel('Agent', { exact: true }).fill('echo agent-port-$PORT_BASE')
     await page.getByLabel('Initial prompt').fill('Fix the login bug\nand add a test')
     await page.getByRole('button', { name: 'Create' }).click()
 
