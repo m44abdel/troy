@@ -924,3 +924,122 @@ test('an agent with an earlier conversation in its worktree resumes it', async (
     await app.close()
   }
 })
+
+// Talks to Troy's MCP server the way an agent would, from inside a worktree.
+function callMcp(cwd: string, mailDir: string, tool: string, args: object): string {
+  const lines = [
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: { clientInfo: { name: 'e2e' } } },
+    { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: tool, arguments: args } }
+  ]
+  return execFileSync(process.execPath, [join(__dirname, '..', 'out', 'main', 'mcp-server.js')], {
+    cwd,
+    env: { ...process.env, TROY_MAIL_DIR: mailDir },
+    input: lines.map((l) => JSON.stringify(l)).join('\n') + '\n'
+  }).toString()
+}
+
+test('an agent messages another, now if it runs and otherwise once it starts', async () => {
+  const repo = gitRepo('troy-mail-')
+  const git = (...args: string[]): Buffer =>
+    execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+  git('commit', '-q', '--allow-empty', '-m', 'init')
+  git('worktree', 'add', '-q', '-b', 'b', `${repo}.b`)
+  git('worktree', 'add', '-q', '-b', 'c', `${repo}.c`)
+  const userData = tempDir('troy-profile-')
+  const meta = (port: number): object => ({ agent: 'cat', port })
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({
+      repos: [repo],
+      worktrees: { [repo]: meta(3100), [`${repo}.b`]: meta(3200), [`${repo}.c`]: meta(3300) }
+    })
+  )
+  const mail = join(userData, 'mail')
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const agent = page.locator('.workspace:visible .pane-agent')
+    await expect(page.locator('.worktree')).toHaveCount(3)
+    await chord(app, '2', 'meta')
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', `${repo}.b`)
+    await agent.locator('.xterm').click()
+    await page.keyboard.press('Enter')
+    await expect(page.locator(`.worktree[title="${repo}.b"] .status-label`)).toHaveText(
+      /working|waiting/
+    )
+
+    expect(
+      callMcp(repo, mail, 'agent_message', { to: 'b', text: 'I am changing api.ts' })
+    ).toContain('Sent to b')
+    await expect(agent.locator('.xterm-rows')).toContainText(
+      '[Troy] Message from the agent in main'
+    )
+    await expect(agent.locator('.xterm-rows')).toContainText('I am changing api.ts')
+
+    // c's agent isn't running: the message waits on its card, then arrives when it starts.
+    callMcp(repo, mail, 'agent_message', { to: 'c', text: 'hold off on api.ts' })
+    const c = page.locator(`.worktree[title="${repo}.c"]`)
+    await expect(c.locator('.card-mail')).toHaveText('✉ 1 message waiting for this agent')
+    await chord(app, '3', 'meta')
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', `${repo}.c`)
+    await agent.locator('.xterm').click()
+    await page.keyboard.press('Enter')
+    await expect(agent.locator('.xterm-rows')).toContainText('hold off on api.ts')
+    await expect(c.locator('.card-mail')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('proposes knowledge from a finished session through a forked, read-only agent', async () => {
+  const repo = gitRepo('troy-harvest-')
+  execFileSync('git', [
+    '-C',
+    repo,
+    '-c',
+    'user.name=t',
+    '-c',
+    'user.email=t@t',
+    'commit',
+    '-q',
+    '--allow-empty',
+    '-m',
+    'init'
+  ])
+  const claudeHome = tempDir('troy-claude-')
+  const project = join(claudeHome, 'projects', repo.replace(/[^a-zA-Z0-9]/g, '-'))
+  mkdirSync(project, { recursive: true })
+  writeFileSync(join(project, 'earlier.jsonl'), '{}\n')
+  const bin = tempDir('troy-bin-')
+  const argsFile = join(bin, 'args.txt')
+  writeFileSync(join(bin, 'claude'), `#!/bin/sh\nprintf '%s\\n' "$@" > '${argsFile}'\n`, {
+    mode: 0o755
+  })
+  const userData = tempDir('troy-profile-')
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos: [repo], worktrees: { [repo]: { agent: 'claude', port: 3100 } } })
+  )
+
+  const app = await launchTroy({
+    ...shellEnv,
+    PATH: `${bin}:${process.env.PATH}`,
+    CLAUDE_CONFIG_DIR: claudeHome,
+    TROY_USER_DATA: userData
+  })
+  try {
+    const page = await app.firstWindow()
+    const workspace = page.locator('.workspace:visible')
+    await workspace.getByRole('button', { name: /^Knowledge/ }).click()
+    await workspace.getByRole('button', { name: 'Propose facts from this session' }).click()
+    await expect(workspace.locator('.knowledge-pane .notice')).toHaveText(
+      'The agent found nothing new worth proposing.'
+    )
+    const args = readFileSync(argsFile, 'utf8').split('\n')
+    expect(args.slice(0, 3)).toEqual(['--continue', '--fork-session', '--print'])
+    expect(args).toContain('mcp__troy__knowledge_propose')
+  } finally {
+    await app.close()
+  }
+})

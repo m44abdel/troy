@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { AgentStatus } from '../../shared/status'
+import { HARVEST_PROMPT } from '../../shared/harvest'
 import { isAlive } from '../../shared/status'
 import type { CheckResult, Knowledge, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
@@ -10,7 +11,7 @@ import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { Splitter } from './Splitter'
 import { Terminal } from './Terminal'
-import { agentId, shellId } from './terminals'
+import { agentId, shellId, submitToTerminal } from './terminals'
 import { STATUS_LABELS } from './statusLabels'
 import { AgentBadge } from './WorktreeCard'
 
@@ -161,7 +162,24 @@ export function Workspace({
           <DocsPane path={wt.path} visible={active && showColumn && tab === 'docs'} />
         </div>
         <div className="pane" style={{ display: tab === 'knowledge' ? 'block' : 'none' }}>
-          <KnowledgePane path={wt.path} knowledge={knowledge} onChanged={onKnowledgeChanged} />
+          <KnowledgePane
+            path={wt.path}
+            knowledge={knowledge}
+            onChanged={onKnowledgeChanged}
+            onHarvest={async () => {
+              // A running agent already has the session in mind; a finished one is resumed
+              // in a throwaway fork.
+              if (isAlive(status) && submitToTerminal(agentId(wt.path), HARVEST_PROMPT))
+                return { notice: 'Asked the agent. Its proposals will appear here for review.' }
+              const { proposed, error } = await window.api.harvestKnowledge(wt.path)
+              if (error) return { error }
+              return {
+                notice: proposed
+                  ? `The agent proposed ${proposed} fact${proposed === 1 ? '' : 's'} for review.`
+                  : 'The agent found nothing new worth proposing.'
+              }
+            }}
+          />
         </div>
         <div className="pane pane-diff" style={{ display: tab === 'diff' ? 'flex' : 'none' }}>
           <DiffPane

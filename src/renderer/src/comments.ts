@@ -17,3 +17,11 @@ export function formatComments(comments: ReviewComment[]): string {
 
 export const formatCheckFailure = (output: string): string =>
   ['.troy/check failed. Fix it and make sure it passes:', '```', output, '```'].join('\n')
+
+/** How a message from another worktree's agent reads in the receiving session. */
+export const formatMail = (from: string, text: string): string =>
+  [
+    `[Troy] Message from the agent in ${from}:`,
+    text,
+    `(Reply with the agent_message tool, to: "${from}". You don't have to reply.)`
+  ].join('\n')

@@ -86,6 +86,14 @@ Agents share what they learn through `.troy/knowledge.md`, a plain file in your 
 
 Proposals wait in the repository's git directory (`.git/troy/proposals`), so they are shared by all worktrees and never committed.
 
+### Agents talking to each other
+
+Agents in the same repo can message each other through the troy MCP server: `agents_list` shows the other worktrees and `agent_message` sends one a note, for example "I'm changing `api.ts`, hold off". Troy types it into that agent's session marked `[Troy]` with how to reply. If that agent isn't running, its card shows **✉ 1 message waiting** and the message arrives when it starts.
+
+### Knowledge from past sessions
+
+**Propose facts from this session** in the Knowledge tab asks the worktree's agent what durable facts it learned. A running agent is asked directly. A finished Claude Code conversation is resumed in a throwaway fork (`claude --continue --fork-session --print`) that may only read code and propose facts, so your real conversation is untouched. Proposals land in the usual review queue.
+
 ## Docs
 
 The **Docs** tab renders the worktree's markdown files (README first), including tables and ` ```mermaid ` diagrams. Relative links between docs open in the tab; web links open in your browser.

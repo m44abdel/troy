@@ -5,19 +5,20 @@ import { isAlive, type AgentStatus } from '../../shared/status'
 import type {
   CheckResult,
   ContextUsage,
+  Mail,
   Knowledge,
   Repo,
   Settings as SettingsData
 } from '../../shared/types'
 import type { VimCommand } from '../../shared/vim'
-import { formatCheckFailure, formatComments, type ReviewComment } from './comments'
+import { formatCheckFailure, formatComments, formatMail, type ReviewComment } from './comments'
 import type { DiffFilter } from './DiffPane'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { Icon, Logo } from './icons'
 import { MOD } from './platform'
 import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
-import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
+import { agentId, focusTerminal, pasteToTerminal, shellId, submitToTerminal } from './terminals'
 import { applyOrder, moveTo } from './order'
 import { Splitter } from './Splitter'
 import { isNumber, isStringList, useStored } from './useStored'
@@ -91,10 +92,34 @@ function App(): React.JSX.Element {
   const currentRepo = repos.find((r) => current && r.worktrees.includes(current)) ?? repos[0]
 
   const reposRef = useRef(repos)
+  const statusesRef = useRef(statuses)
   useEffect(() => {
     currentPath.current = current?.path
     reposRef.current = repos
+    statusesRef.current = statuses
   })
+
+  // Messages from other agents, held per receiving worktree until its agent is running.
+  const inbox = useRef<Record<string, Mail[]>>({})
+  const [queuedMail, setQueuedMail] = useState<Record<string, number>>({})
+  const deliverMail = useCallback((path: string) => {
+    const waiting = inbox.current[path] ?? []
+    const kept = waiting.filter(
+      (m) => !submitToTerminal(agentId(path), formatMail(m.fromBranch ?? basename(m.from), m.text))
+    )
+    inbox.current = { ...inbox.current, [path]: kept }
+    setQueuedMail((q) => (kept.length ? { ...q, [path]: kept.length } : omit(q, path)))
+  }, [])
+
+  useEffect(() => {
+    const off = window.api.onMail((mail) => {
+      inbox.current = { ...inbox.current, [mail.to]: [...(inbox.current[mail.to] ?? []), mail] }
+      if (isAlive(statusesRef.current[mail.to])) deliverMail(mail.to)
+      else setQueuedMail((q) => ({ ...q, [mail.to]: (q[mail.to] ?? 0) + 1 }))
+    })
+    void window.api.watchMail()
+    return off
+  }, [deliverMail])
 
   // Opening a worktree acknowledges whatever it is waiting on, reopens a closed session
   // and unfolds its repo.
@@ -314,6 +339,7 @@ function App(): React.JSX.Element {
       setStatuses((s) => ({ ...s, [path]: status }))
       const watching = path === currentPath.current && document.hasFocus()
       setSeen((s) => ({ ...s, [path]: watching }))
+      if (isAlive(status)) deliverMail(path)
       if (status !== 'running') refreshOverlaps()
       // Only a reported stop: a guessed pause may be the agent mid-edit.
       if (certain && status !== 'running') void runCheck(path)
@@ -321,7 +347,7 @@ function App(): React.JSX.Element {
       const note = new Notification(basename(path), { body: `Agent ${STATUS_LABELS[status]}` })
       note.onclick = () => select(path)
     },
-    [select, refreshOverlaps, runCheck]
+    [select, refreshOverlaps, runCheck, deliverMail]
   )
 
   // Coming back to Troy acknowledges the worktree that is open.
@@ -423,6 +449,7 @@ function App(): React.JSX.Element {
                       }))}
                       usage={contexts[wt.path]}
                       check={checks[wt.path]}
+                      mail={queuedMail[wt.path]}
                       onSelect={() => select(wt.path)}
                       onClose={() => closeSession(wt.path)}
                       onMoveHere={(from) => move(from, wt.path)}

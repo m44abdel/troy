@@ -6,6 +6,7 @@ import type { CreateRequest, Repo, ReposResult, Worktree } from '../shared/types
 import { runCheck } from './check'
 import { readContext, resumeFlag } from './context'
 import { buildGraph, graphDependencies, graphServer } from './graph'
+import { harvest } from './harvest'
 import { listDocs, readDoc } from './docs'
 import { changedFiles, commitAll, diffAgainst, openPullRequest, push } from './finish'
 import { stripInstructions, writeInstructions } from './instructions'
@@ -313,6 +314,13 @@ export function registerRepos(): void {
     })
   )
   ipcMain.handle('worktrees:overlaps', findOverlaps)
+  ipcMain.handle('knowledge:harvest', (_e, path) =>
+    attempt(async () => {
+      const wt = await locate(path)
+      const agent = (await loadState()).worktrees[wt.path]?.agent ?? DEFAULT_AGENT
+      return { proposed: await harvest(wt.path, agent) }
+    })
+  )
   ipcMain.handle('check:run', (_e, path) =>
     attempt(async () => ({ result: await runCheck((await locate(path)).path) }))
   )

@@ -4,6 +4,7 @@ import type { AgentStatus } from '../shared/status'
 import type { Overlap } from '../shared/overlap'
 import type {
   CheckResult,
+  Mail,
   ContextUsage,
   CreateRequest,
   Knowledge,
@@ -53,6 +54,8 @@ const api = {
     ipcRenderer.invoke('knowledge:get', path),
   approveFact: (path: string, id: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('knowledge:approve', path, id),
+  harvestKnowledge: (path: string): Promise<{ proposed?: number; error?: string }> =>
+    ipcRenderer.invoke('knowledge:harvest', path),
   rejectFact: (path: string, id: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('knowledge:reject', path, id),
 
@@ -71,6 +74,8 @@ const api = {
   onPtyStatus: (id: string, cb: (status: AgentStatus) => void) => subscribe(`pty:status:${id}`, cb),
 
   setBadge: (count: number): void => ipcRenderer.send('app:badge', count),
+  watchMail: (): Promise<void> => ipcRenderer.invoke('mail:watch'),
+  onMail: (cb: (mail: Mail) => void) => subscribe('agent:mail', cb),
   onAction: (cb: (action: AppAction) => void) => subscribe('app:action', cb)
 }
 

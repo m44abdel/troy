@@ -41,6 +41,8 @@ interface Props {
   needsYou: boolean
   usage?: ContextUsage | null
   check?: CheckResult
+  /** Messages from other agents waiting for this one to run. */
+  mail?: number
   /** Other worktrees whose changes meet this one's. */
   overlaps?: { name: string; kind: OverlapKind; files: string[] }[]
   onSelect: () => void
@@ -60,6 +62,7 @@ export function WorktreeCard({
   needsYou,
   usage,
   check,
+  mail,
   overlaps = [],
   onSelect,
   onOverlap,
@@ -114,6 +117,11 @@ export function WorktreeCard({
           )}
           {usage && <ContextRing usage={usage} />}
         </span>
+        {!!mail && (
+          <span className="card-mail">
+            ✉ {mail} message{mail === 1 ? '' : 's'} waiting for this agent
+          </span>
+        )}
       </button>
       {onClose && (
         <button

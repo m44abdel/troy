@@ -13,6 +13,8 @@ const BLOCK = `${START}
 If the \`troy\` MCP server is available, \`knowledge_search\` searches the latest approved facts and flags entries whose source file changed since. To record a fact, call \`knowledge_propose\` with the fact and a source (\`path:line\`, a commit hash or \`session:<id>\`); a person reviews it first. Don't edit \`.troy/knowledge.md\` yourself.
 
 If the \`graph\` MCP server is available, it holds a code graph of this repository. Ask it how code connects (\`query_graph\`, \`get_neighbors\`, \`shortest_path\`) before grepping through files. It reflects the base branch, not your uncommitted changes.
+
+Other agents work on this repository in parallel, one per worktree. \`agents_list\` shows them; \`agent_message\` sends one a message, e.g. before you change code its branch relies on. Messages from them arrive in your session marked \`[Troy]\`.
 ${END}`
 
 const FILES = ['CLAUDE.md', 'AGENTS.md']

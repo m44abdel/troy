@@ -5,6 +5,8 @@ interface Props {
   path: string
   knowledge?: Knowledge | { error: string }
   onChanged: () => void
+  /** Has the agent propose what it learned; resolves to a note for the person. */
+  onHarvest: () => Promise<{ notice?: string; error?: string }>
 }
 
 function Meta({ entry }: { entry: KnowledgeEntry }): React.JSX.Element {
@@ -15,8 +17,9 @@ function Meta({ entry }: { entry: KnowledgeEntry }): React.JSX.Element {
   )
 }
 
-export function KnowledgePane({ path, knowledge, onChanged }: Props): React.JSX.Element {
+export function KnowledgePane({ path, knowledge, onChanged, onHarvest }: Props): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   if (!knowledge) return <div className="knowledge-pane muted">Loading…</div>
@@ -35,8 +38,28 @@ export function KnowledgePane({ path, knowledge, onChanged }: Props): React.JSX.
     onChanged()
   }
 
+  const harvest = async (): Promise<void> => {
+    setBusy(true)
+    setNotice('Asking the agent what it learned…')
+    const result = await onHarvest()
+    setBusy(false)
+    setNotice(result.notice ?? null)
+    setError(result.error ?? null)
+    onChanged()
+  }
+
   return (
     <div className="knowledge-pane">
+      <div className="harvest-bar">
+        <button className="secondary" disabled={busy} onClick={harvest}>
+          Propose facts from this session
+        </button>
+      </div>
+      {notice && (
+        <p className="notice" role="status">
+          {notice}
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
       {knowledge.proposals.length > 0 && (
         <section>
