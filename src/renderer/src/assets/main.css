@@ -267,13 +267,41 @@ html[data-platform='mac'] .sidebar {
   visibility: hidden;
 }
 
-.closed-session {
+.closed-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  height: 100%;
+  gap: 2px;
+  margin: 2px 0 6px;
+}
+
+.closed-toggle,
+.closed-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.closed-item:hover,
+.closed-toggle:hover {
+  background: var(--raised);
+  color: inherit;
+}
+
+.closed-item .card-title {
+  max-width: 100%;
+  font-size: 12.5px;
+  font-weight: 500;
 }
 
 .repo-header .icon-button {

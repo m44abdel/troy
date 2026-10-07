@@ -18,28 +18,18 @@ import { MOD } from './platform'
 import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
 import { agentId, focusTerminal, pasteToTerminal, shellId } from './terminals'
+import { useStoredList } from './useStoredList'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
-import { WorktreeCard } from './WorktreeCard'
+import { ClosedList, WorktreeCard } from './WorktreeCard'
 
 // ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
 const CONTEXT_POLL_MS = 5000
-
-const FOLDED_KEY = 'troy.foldedRepos'
 
 const omit = <T,>(record: Record<string, T>, key: string): Record<string, T> => {
   const next = { ...record }
   delete next[key]
   return next
-}
-
-// Folding is a per-machine convenience, so browser storage is enough; it may be unavailable.
-function loadFolded(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(FOLDED_KEY) ?? '[]')
-  } catch {
-    return []
-  }
 }
 
 const basename = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
@@ -51,9 +41,11 @@ function App(): React.JSX.Element {
   const [repos, setRepos] = useState<Repo[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [visited, setVisited] = useState<string[]>([])
-  // Sessions you closed: their terminals stay unmounted until you open them again.
-  const [closed, setClosed] = useState<string[]>([])
-  const [folded, setFolded] = useState<string[]>(loadFolded)
+  // Closed worktrees leave the sidebar (and their terminals stop) until you reopen them.
+  const [closed, setClosed] = useStoredList('troy.closedSessions')
+  const [folded, setFolded] = useStoredList('troy.foldedRepos')
+  // Repos whose closed worktrees are listed for reopening.
+  const [showClosed, setShowClosed] = useState<string[]>([])
   const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({})
   // Worktrees whose current wait you have already seen; a new status clears the mark.
   const [seen, setSeen] = useState<Record<string, boolean>>({})
@@ -77,7 +69,7 @@ function App(): React.JSX.Element {
   // Set while vim keys move the selection, so focus stays in the sidebar.
   const keepSidebarFocus = useRef(false)
 
-  const worktrees = repos.flatMap((r) => r.worktrees)
+  const worktrees = repos.flatMap((r) => r.worktrees).filter((w) => !closed.includes(w.path))
   const current = worktrees.find((w) => w.path === selected) ?? worktrees[0]
   const currentRepo = repos.find((r) => current && r.worktrees.includes(current)) ?? repos[0]
 
@@ -89,28 +81,23 @@ function App(): React.JSX.Element {
 
   // Opening a worktree acknowledges whatever it is waiting on, reopens a closed session
   // and unfolds its repo.
-  const select = useCallback((path: string) => {
-    setSelected(path)
-    setSeen((s) => ({ ...s, [path]: true }))
-    setClosed((c) => c.filter((p) => p !== path))
-    const repo = reposRef.current.find((r) => r.worktrees.some((w) => w.path === path))
-    if (repo) setFolded((f) => f.filter((r) => r !== repo.path))
-  }, [])
+  const select = useCallback(
+    (path: string) => {
+      setSelected(path)
+      setSeen((s) => ({ ...s, [path]: true }))
+      setClosed((c) => c.filter((p) => p !== path))
+      const repo = reposRef.current.find((r) => r.worktrees.some((w) => w.path === path))
+      if (repo) setFolded((f) => f.filter((r) => r !== repo.path))
+    },
+    [setClosed, setFolded]
+  )
 
   // Terminals mount on first view and then stay alive in the background, until closed.
   if (current && !visited.includes(current.path) && !closed.includes(current.path))
     setVisited([...visited, current.path])
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(FOLDED_KEY, JSON.stringify(folded))
-    } catch (err) {
-      console.warn('Could not remember folded repos', err)
-    }
-  }, [folded])
-
-  const toggleFold = (repo: string): void =>
-    setFolded((f) => (f.includes(repo) ? f.filter((r) => r !== repo) : [...f, repo]))
+  const toggle = (list: string[], item: string): string[] =>
+    list.includes(item) ? list.filter((i) => i !== item) : [...list, item]
 
   useEffect(() => {
     window.api.listRepos().then(setRepos)
@@ -212,7 +199,7 @@ function App(): React.JSX.Element {
       setStatuses((s) => omit(s, path))
       setFirstRuns((f) => omit(f, path))
     },
-    [statuses]
+    [statuses, setClosed]
   )
 
   const sendCheck = useCallback(
@@ -350,7 +337,7 @@ function App(): React.JSX.Element {
               <div className="repo-header" title={repo.path}>
                 <button
                   className="repo-toggle"
-                  onClick={() => toggleFold(repo.path)}
+                  onClick={() => setFolded((f) => toggle(f, repo.path))}
                   aria-expanded={!folded.includes(repo.path)}
                 >
                   <Icon name="chevron" size={13} />
@@ -375,30 +362,38 @@ function App(): React.JSX.Element {
               </div>
               {repo.error && <p className="error">{repo.error}</p>}
               {!folded.includes(repo.path) &&
-                repo.worktrees.map((wt) => (
-                  <WorktreeCard
-                    key={wt.path}
-                    wt={wt}
-                    index={worktrees.indexOf(wt)}
-                    selected={wt === current}
-                    status={statuses[wt.path] ?? 'idle'}
-                    needsYou={needsYou(wt.path)}
-                    overlaps={overlaps[wt.path]?.map((o) => ({
-                      name: nameOf(o.other),
-                      kind: o.kind,
-                      files: o.files
-                    }))}
-                    usage={contexts[wt.path]}
-                    check={checks[wt.path]}
-                    onSelect={() => select(wt.path)}
-                    onClose={visited.includes(wt.path) ? () => closeSession(wt.path) : undefined}
-                    onOverlap={(files, label) => {
-                      setDiffFilters((f) => ({ ...f, [wt.path]: { files, label } }))
-                      select(wt.path)
-                      showTab('diff')
-                    }}
-                  />
-                ))}
+                repo.worktrees
+                  .filter((wt) => !closed.includes(wt.path))
+                  .map((wt) => (
+                    <WorktreeCard
+                      key={wt.path}
+                      wt={wt}
+                      index={worktrees.indexOf(wt)}
+                      selected={wt === current}
+                      status={statuses[wt.path] ?? 'idle'}
+                      needsYou={needsYou(wt.path)}
+                      overlaps={overlaps[wt.path]?.map((o) => ({
+                        name: nameOf(o.other),
+                        kind: o.kind,
+                        files: o.files
+                      }))}
+                      usage={contexts[wt.path]}
+                      check={checks[wt.path]}
+                      onSelect={() => select(wt.path)}
+                      onClose={() => closeSession(wt.path)}
+                      onOverlap={(files, label) => {
+                        setDiffFilters((f) => ({ ...f, [wt.path]: { files, label } }))
+                        select(wt.path)
+                        showTab('diff')
+                      }}
+                    />
+                  ))}
+              <ClosedList
+                worktrees={repo.worktrees.filter((wt) => closed.includes(wt.path))}
+                open={showClosed.includes(repo.path) && !folded.includes(repo.path)}
+                onToggle={() => setShowClosed((r) => toggle(r, repo.path))}
+                onReopen={select}
+              />
             </section>
           ))}
         </nav>
@@ -465,16 +460,6 @@ function App(): React.JSX.Element {
           </div>
         ) : (
           <>
-            {current && closed.includes(current.path) && (
-              <div className="closed-session">
-                <p className="muted">
-                  This session is closed. The worktree and its changes are still here.
-                </p>
-                <button className="primary" onClick={() => select(current.path)}>
-                  Open session
-                </button>
-              </div>
-            )}
             {worktrees
               .filter((wt) => visited.includes(wt.path))
               .map((wt) => (
