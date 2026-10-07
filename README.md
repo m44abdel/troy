@@ -46,7 +46,7 @@ Troy doesn't bundle any agent: it runs whichever CLIs (claude, codex, gemini, �
 
 ## Worktrees
 
-**⌘N** asks for a branch, a base branch (defaults to the remote's default branch), an agent CLI (Troy suggests the ones it finds on your PATH) and an optional first prompt. Troy fetches the base, runs `git worktree add` into a sibling directory `<repo>.<branch>`, then bootstraps it:
+**⌘N** asks for a branch, a base branch (defaults to the remote's default branch), an agent CLI (Troy suggests the ones it finds on your PATH) and an optional first prompt. Troy fetches the base and fast-forwards your local copy of it (where it's checked out too, only ever forward), then starts a new branch of that name from the latest `origin/<base>`. If a branch of that name is already on origin, the worktree continues it and tracks it instead. If the fetch fails, Troy says so and starts from what you have. The worktree goes into a sibling directory `<repo>.<branch>` and is bootstrapped:
 
 - copies untracked files matching the globs in `.troy/copy` (default `.env*`) from the main checkout
 - gives each worktree its own `PORT_BASE` (3100, 3200, …) so dev servers don't collide
