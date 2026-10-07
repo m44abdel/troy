@@ -14,8 +14,10 @@ describe('mail', () => {
     const stop = watchMail(box, (m) => got.push(m))
     await sendMail(box, { from: '/a', fromBranch: 'a', to: '/b', text: 'hello b' })
 
-    await vi.waitFor(() =>
-      expect(got.map((m) => m.text)).toEqual(['waiting since before', 'hello b'])
+    // The rescan delivers it even if the watch event comes late, so allow one sweep.
+    await vi.waitFor(
+      () => expect(got.map((m) => m.text)).toEqual(['waiting since before', 'hello b']),
+      { timeout: 5000 }
     )
     expect(readdirSync(box)).toEqual([])
     stop()

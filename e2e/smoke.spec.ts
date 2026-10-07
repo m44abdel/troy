@@ -256,15 +256,21 @@ test('shows context usage from the Claude Code session log', async () => {
   try {
     const page = await app.firstWindow()
     const ring = page.locator('.worktree.selected .ctx-ring')
-    await expect(ring.locator('title')).toHaveText(
-      '75% of context used (150k / 200k)\nclaude-sonnet-5-5'
-    )
+    const tip = page.getByRole('tooltip')
+    // A real hover: the card's full-size select layer must not swallow it.
+    await ring.hover()
+    await expect(tip).toContainText('75% of context used')
+    await expect(tip).toContainText('150k of 200k tokens')
+    await expect(tip).toContainText('claude-sonnet-5-5')
     await expect(ring).not.toHaveClass(/warn/)
+    await page.mouse.move(0, 0)
+    await expect(tip).toHaveCount(0)
 
     appendFileSync(log, turn(170_000))
     await expect(ring).toHaveClass(/warn/, { timeout: 10_000 })
-    await expect(ring.locator('title')).toContainText('85% of context used')
-    await expect(ring.locator('title')).toContainText('/compact')
+    await ring.hover()
+    await expect(tip).toContainText('85% of context used')
+    await expect(tip).toContainText('/compact')
   } finally {
     await app.close()
   }
