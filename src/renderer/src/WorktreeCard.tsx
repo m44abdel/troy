@@ -2,6 +2,7 @@ import type { OverlapKind } from '../../shared/overlap'
 import type { AgentStatus } from '../../shared/status'
 import type { CheckResult, ContextUsage, WorktreeView } from '../../shared/types'
 import { ContextRing } from './ContextRing'
+import { Icon } from './icons'
 import { MOD } from './platform'
 import { STATUS_LABELS } from './statusLabels'
 
@@ -42,6 +43,8 @@ interface Props {
   onSelect: () => void
   /** Opens the diff narrowed to an overlap's files, with its line as the label. */
   onOverlap: (files: string[], label: string) => void
+  /** Present while the session is open: stops its agent and shell, keeps the worktree. */
+  onClose?: () => void
 }
 
 export function WorktreeCard({
@@ -54,7 +57,8 @@ export function WorktreeCard({
   check,
   overlaps = [],
   onSelect,
-  onOverlap
+  onOverlap,
+  onClose
 }: Props): React.JSX.Element {
   const branch = wt.branch ?? 'detached'
   return (
@@ -87,6 +91,16 @@ export function WorktreeCard({
           {usage && <ContextRing usage={usage} />}
         </span>
       </button>
+      {onClose && (
+        <button
+          className="card-close icon-button"
+          onClick={onClose}
+          title="Close session (stops the agent and shell, keeps the worktree)"
+          aria-label={`Close session ${wt.title ?? branch}`}
+        >
+          <Icon name="x" size={12} />
+        </button>
+      )}
       {overlaps.map((o) => {
         const label = OVERLAP_TEXT[o.kind](o.files.length, o.name)
         return (

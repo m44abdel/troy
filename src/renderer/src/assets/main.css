@@ -218,8 +218,62 @@ html[data-platform='mac'] .sidebar {
   letter-spacing: 0.06em;
 }
 
-.repo-header .repo-name {
+.repo-toggle {
+  display: flex;
   flex: 1;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.repo-toggle[aria-expanded='false'] .icon:first-child {
+  transform: rotate(-90deg);
+}
+
+.repo-toggle .icon:first-child {
+  transition: transform 150ms var(--ease);
+}
+
+.count.waiting {
+  color: var(--waiting);
+  border-color: rgb(251 191 36 / 40%);
+}
+
+.card-close {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+  transition: opacity 150ms var(--ease);
+}
+
+.worktree.card:hover .card-close,
+.card-close:focus-visible {
+  opacity: 1;
+}
+
+/* The close button takes the corner on hover, so the shortcut hint steps aside. */
+.worktree.card:has(.card-close):hover .card-head kbd {
+  visibility: hidden;
+}
+
+.closed-session {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
 }
 
 .repo-header .icon-button {

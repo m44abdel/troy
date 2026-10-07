@@ -1,6 +1,7 @@
 // Lucide icon paths (ISC), inlined so the app needs no icon dependency.
 const PATHS = {
   plus: 'M5 12h14M12 5v14',
+  chevron: 'm6 9 6 6 6-6',
   folderPlus:
     'M12 10v6M9 13h6M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z',
   folder:
