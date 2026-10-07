@@ -6,6 +6,7 @@ import { DEFAULT_BINDINGS, routeKey } from '../shared/keys'
 import { registerPty } from './pty'
 import { registerRepos } from './repos'
 import { writeMcpConfig } from './mcp-config'
+import { withoutSessionMarkers } from './env'
 import { adoptLoginPath } from './path'
 import { loadBindings, registerSettings, watchBindings } from './settings'
 
@@ -67,6 +68,9 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+// Everything Troy spawns inherits process.env, so clean it once, before anything runs.
+process.env = withoutSessionMarkers(process.env)
 
 // Lets tests run against a throwaway profile instead of the real one.
 if (process.env.TROY_USER_DATA) app.setPath('userData', process.env.TROY_USER_DATA)
