@@ -42,6 +42,8 @@ interface Props {
   prompt?: string
   /** Appended to the agent command on every launch, after the prompt. */
   args?: string
+  /** Continues the last conversation; used on a launch that has no new prompt to send. */
+  resume?: string
   /** Typed into a plain shell on its first launch only. */
   initialInput?: string
   onStatus?: StatusListener
@@ -54,10 +56,16 @@ export function Terminal({
   command,
   prompt,
   args = '',
+  resume = '',
   initialInput,
   onStatus
 }: Props): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null)
+  // Read at launch, not a reason to remount: the repo list refreshes it while agents run.
+  const resumeRef = useRef(resume)
+  useEffect(() => {
+    resumeRef.current = resume
+  })
   const reportStatus = useEffectEvent<StatusListener>((status, certain) =>
     onStatus?.(status, certain)
   )
@@ -94,8 +102,10 @@ export function Terminal({
 
     const start = (): void => {
       const firstRun = launches++ === 0
+      // A new task starts with its prompt; otherwise pick up the last conversation.
+      const opening = firstRun && prompt ? ` ${shellQuote(prompt)}` : resumeRef.current
       const input = command
-        ? `exec ${command}${firstRun && prompt ? ` ${shellQuote(prompt)}` : ''}${args}\r`
+        ? `exec ${command}${opening}${args}\r`
         : firstRun
           ? initialInput
           : undefined
@@ -124,7 +134,8 @@ export function Terminal({
         .finally(() => (starting = false))
     }
 
-    if (command) xterm.write(`Press Enter to start \x1b[1m${command}\x1b[0m\r\n`)
+    const verb = resumeRef.current && !prompt ? 'resume' : 'start'
+    if (command) xterm.write(`Press Enter to ${verb} \x1b[1m${command}\x1b[0m\r\n`)
     else start()
 
     const input = xterm.onData((data) => {

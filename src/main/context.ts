@@ -1,3 +1,4 @@
+import { readdirSync } from 'fs'
 import { glob, open, readdir, stat } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
@@ -145,4 +146,21 @@ export async function readContext(path: string, agent: string): Promise<ContextU
   if (cli === 'claude') return claudeContext(path)
   if (cli === 'codex') return codexContext(path)
   return null
+}
+
+/**
+ * What to add to the agent's command line to pick up where it left off in this worktree.
+ * Claude's --continue takes the latest conversation in the current folder, which is this
+ * worktree's. Empty when there is nothing to continue, since --continue would then fail.
+ */
+// ponytail: Claude only; add Codex once its resume command is verified here.
+export function resumeFlag(agent: string, path: string): string {
+  if (commandName(agent) !== 'claude') return ''
+  try {
+    return readdirSync(claudeProjectDir(path)).some((f) => f.endsWith('.jsonl'))
+      ? ' --continue'
+      : ''
+  } catch {
+    return ''
+  }
 }

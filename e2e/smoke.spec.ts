@@ -876,3 +876,51 @@ test('resizes the sidebar and the agent pane by dragging, and remembers the size
     await app.close()
   }
 })
+
+test('an agent with an earlier conversation in its worktree resumes it', async () => {
+  const repo = gitRepo('troy-resume-')
+  const fresh = gitRepo('troy-fresh-')
+  const claudeHome = tempDir('troy-claude-')
+  // Claude Code keeps a folder's conversations under projects/<path with dashes>.
+  const project = join(claudeHome, 'projects', repo.replace(/[^a-zA-Z0-9]/g, '-'))
+  mkdirSync(project, { recursive: true })
+  writeFileSync(join(project, 'earlier.jsonl'), '{}\n')
+  const bin = tempDir('troy-bin-')
+  writeFileSync(join(bin, 'claude'), '#!/bin/sh\necho "claude-args:[$1]"\n', { mode: 0o755 })
+  const userData = tempDir('troy-profile-')
+  const meta = { agent: 'claude', port: 3100 }
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({
+      repos: [repo, fresh],
+      worktrees: { [repo]: meta, [fresh]: { ...meta, port: 3200 } }
+    })
+  )
+
+  const app = await launchTroy({
+    ...shellEnv,
+    PATH: `${bin}:${process.env.PATH}`,
+    CLAUDE_CONFIG_DIR: claudeHome,
+    TROY_USER_DATA: userData
+  })
+  try {
+    const page = await app.firstWindow()
+    const agent = page.locator('.workspace:visible .pane-agent')
+    await expect(agent.locator('.xterm-rows')).toContainText('Press Enter to resume claude')
+    await agent.locator('.xterm').click()
+    await page.keyboard.press('Enter')
+    await expect(agent.locator('.xterm-rows')).toContainText('claude-args:[--continue]', {
+      timeout: 15_000
+    })
+
+    await chord(app, '2', 'meta')
+    await expect(agent.locator('.xterm-rows')).toContainText('Press Enter to start claude')
+    await agent.locator('.xterm').click()
+    await page.keyboard.press('Enter')
+    await expect(agent.locator('.xterm-rows')).toContainText('claude-args:[--settings]', {
+      timeout: 15_000
+    })
+  } finally {
+    await app.close()
+  }
+})

@@ -8,6 +8,8 @@ export interface WorktreeView extends Worktree {
   agent: string
   /** Appended to the agent's command line, e.g. to load Troy's MCP server. */
   agentArgs: string
+  /** Added on launch to continue the worktree's last conversation; empty if there is none. */
+  resume: string
   /** What the session is for: the first line of its initial prompt. */
   title?: string
   port?: number
