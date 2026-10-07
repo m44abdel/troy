@@ -542,9 +542,9 @@ test('flags worktrees that changed the same files', async () => {
   try {
     const page = await app.firstWindow()
     const card = (branch: string): Locator => page.locator(`.worktree[title="${repo}.${branch}"]`)
-    await expect(card('feat-a').locator('.card-overlap')).toHaveText('⚠ Same files as feat-b (1)')
+    await expect(card('feat-a').locator('.card-overlap')).toHaveText('⚠ 1 file shared with feat-b')
     await expect(card('feat-a').locator('.card-overlap')).toHaveAttribute('title', 'api.ts')
-    await expect(card('feat-b').locator('.card-overlap')).toHaveText('⚠ Same files as feat-a (1)')
+    await expect(card('feat-b').locator('.card-overlap')).toHaveText('⚠ 1 file shared with feat-a')
     await expect(page.locator(`.worktree[title="${repo}"] .card-overlap`)).toHaveCount(0)
   } finally {
     await app.close()
@@ -640,11 +640,9 @@ test('links worktrees through the code graph when one uses code another changed'
     const page = await app.firstWindow()
     const card = (branch: string): Locator => page.locator(`.worktree[title="${repo}.${branch}"]`)
     await expect(card('ui-work').locator('.card-overlap')).toHaveText(
-      '↳ Uses code api-work changed (1)'
+      '↳ 1 file uses changes in api-work'
     )
-    await expect(card('api-work').locator('.card-overlap')).toHaveText(
-      '↳ ui-work uses code this changed (1)'
-    )
+    await expect(card('api-work').locator('.card-overlap')).toHaveText('↳ 1 file used by ui-work')
   } finally {
     await app.close()
   }

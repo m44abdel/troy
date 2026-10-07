@@ -18,10 +18,13 @@ export function AgentBadge({ agent }: { agent: string }): React.JSX.Element {
   )
 }
 
-const OVERLAP_TEXT: Record<OverlapKind, (name: string) => string> = {
-  same: (name) => `⚠ Same files as ${name}`,
-  uses: (name) => `↳ Uses code ${name} changed`,
-  usedBy: (name) => `↳ ${name} uses code this changed`
+const files = (n: number): string => `${n} file${n === 1 ? '' : 's'}`
+
+// Count and relation first, name last: a narrow sidebar cuts the end off.
+const OVERLAP_TEXT: Record<OverlapKind, (n: number, name: string) => string> = {
+  same: (n, name) => `⚠ ${files(n)} shared with ${name}`,
+  uses: (n, name) => `↳ ${files(n)} ${n === 1 ? 'uses' : 'use'} changes in ${name}`,
+  usedBy: (n, name) => `↳ ${files(n)} used by ${name}`
 }
 
 interface Props {
@@ -84,7 +87,7 @@ export function WorktreeCard({
           className={`card-overlap ${o.kind}`}
           title={o.files.join('\n')}
         >
-          {OVERLAP_TEXT[o.kind](o.name)} ({o.files.length})
+          {OVERLAP_TEXT[o.kind](o.files.length, o.name)}
         </span>
       ))}
     </button>
