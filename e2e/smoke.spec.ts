@@ -370,11 +370,12 @@ test('vim keys move through the sidebar only when enabled, and keybindings.json 
   try {
     const page = await app.firstWindow()
     const selected = page.locator('.worktree.selected')
+    const selectedButton = selected.locator('.card-select')
     await expect(selected).toHaveAttribute('title', repos[0])
 
     // Off by default: j does nothing in the sidebar.
-    await selected.focus()
-    await expect(selected).toBeFocused()
+    await selectedButton.focus()
+    await expect(selectedButton).toBeFocused()
     await page.keyboard.press('j')
     await expect(selected).toHaveAttribute('title', repos[0])
 
@@ -383,11 +384,11 @@ test('vim keys move through the sidebar only when enabled, and keybindings.json 
     await page.getByRole('button', { name: 'Done' }).click()
     expect(JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8'))).toEqual({ vim: true })
 
-    await selected.focus()
-    await expect(selected).toBeFocused()
+    await selectedButton.focus()
+    await expect(selectedButton).toBeFocused()
     await page.keyboard.press('j')
     await expect(selected).toHaveAttribute('title', repos[1])
-    await expect(selected).toBeFocused()
+    await expect(selectedButton).toBeFocused()
     await page.keyboard.press('g')
     await page.keyboard.press('g')
     await expect(selected).toHaveAttribute('title', repos[0])
@@ -543,9 +544,22 @@ test('flags worktrees that changed the same files', async () => {
     const page = await app.firstWindow()
     const card = (branch: string): Locator => page.locator(`.worktree[title="${repo}.${branch}"]`)
     await expect(card('feat-a').locator('.card-overlap')).toHaveText('⚠ 1 file shared with feat-b')
-    await expect(card('feat-a').locator('.card-overlap')).toHaveAttribute('title', 'api.ts')
+    await expect(card('feat-a').locator('.card-overlap')).toHaveAttribute(
+      'title',
+      'api.ts\n\nClick to see these changes'
+    )
     await expect(card('feat-b').locator('.card-overlap')).toHaveText('⚠ 1 file shared with feat-a')
     await expect(page.locator(`.worktree[title="${repo}"] .card-overlap`)).toHaveCount(0)
+
+    // Clicking the line opens that worktree's diff narrowed to the shared files.
+    await card('feat-b').locator('.card-overlap').click()
+    const workspace = page.locator('.workspace:visible')
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', `${repo}.feat-b`)
+    await expect(workspace.locator('.filter-bar')).toContainText('1 file shared with feat-a')
+    await expect(workspace.locator('.diff-file h3')).toHaveText(['api.ts'])
+    await workspace.getByRole('button', { name: 'Show all' }).click()
+    await expect(workspace.locator('.diff-file h3')).toHaveText(['api.ts', 'db.ts'])
+    await expect(workspace.locator('.filter-bar')).toHaveCount(0)
   } finally {
     await app.close()
   }

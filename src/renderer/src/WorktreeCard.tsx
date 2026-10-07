@@ -40,6 +40,8 @@ interface Props {
   /** Other worktrees whose changes meet this one's. */
   overlaps?: { name: string; kind: OverlapKind; files: string[] }[]
   onSelect: () => void
+  /** Opens the diff narrowed to an overlap's files, with its line as the label. */
+  onOverlap: (files: string[], label: string) => void
 }
 
 export function WorktreeCard({
@@ -51,45 +53,53 @@ export function WorktreeCard({
   usage,
   check,
   overlaps = [],
-  onSelect
+  onSelect,
+  onOverlap
 }: Props): React.JSX.Element {
   const branch = wt.branch ?? 'detached'
   return (
-    <button
+    // Overlap lines are buttons of their own, so the card can't be one; its main button
+    // stretches over the whole card instead.
+    <div
       className={`worktree card ${status} ${selected ? 'selected' : ''} ${needsYou ? 'needs-you' : ''}`}
-      onClick={onSelect}
       title={wt.path}
       data-path={wt.path}
     >
-      <span className="card-head">
-        {/* With a title, the branch moves up here; without one, the branch is the title. */}
-        <span className="branch">{wt.title ? branch : wt.agent}</span>
-        {index < 9 && <kbd>{`${MOD}${index + 1}`}</kbd>}
-      </span>
-      <span className="card-title">{wt.title ?? branch}</span>
-      <span className="card-status">
-        <span className={`dot ${status}`} />
-        <span className="status-label">{STATUS_LABELS[status]}</span>
-        {wt.title && <AgentBadge agent={wt.agent} />}
-        {check && (
-          <span
-            className={`card-check ${check.ok ? 'ok' : 'failed'}`}
-            title={check.ok ? '.troy/check passed' : '.troy/check failed'}
-          >
-            {check.ok ? '✓' : '✗'} check
-          </span>
-        )}
-        {usage && <ContextRing usage={usage} />}
-      </span>
-      {overlaps.map((o) => (
-        <span
-          key={`${o.kind}:${o.name}`}
-          className={`card-overlap ${o.kind}`}
-          title={o.files.join('\n')}
-        >
-          {OVERLAP_TEXT[o.kind](o.files.length, o.name)}
+      <button className="card-select" onClick={onSelect}>
+        <span className="card-head">
+          {/* With a title, the branch moves up here; without one, the branch is the title. */}
+          <span className="branch">{wt.title ? branch : wt.agent}</span>
+          {index < 9 && <kbd>{`${MOD}${index + 1}`}</kbd>}
         </span>
-      ))}
-    </button>
+        <span className="card-title">{wt.title ?? branch}</span>
+        <span className="card-status">
+          <span className={`dot ${status}`} />
+          <span className="status-label">{STATUS_LABELS[status]}</span>
+          {wt.title && <AgentBadge agent={wt.agent} />}
+          {check && (
+            <span
+              className={`card-check ${check.ok ? 'ok' : 'failed'}`}
+              title={check.ok ? '.troy/check passed' : '.troy/check failed'}
+            >
+              {check.ok ? '✓' : '✗'} check
+            </span>
+          )}
+          {usage && <ContextRing usage={usage} />}
+        </span>
+      </button>
+      {overlaps.map((o) => {
+        const label = OVERLAP_TEXT[o.kind](o.files.length, o.name)
+        return (
+          <button
+            key={`${o.kind}:${o.name}`}
+            className={`card-overlap ${o.kind}`}
+            title={`${o.files.join('\n')}\n\nClick to see these changes`}
+            onClick={() => onOverlap(o.files, label)}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
   )
 }

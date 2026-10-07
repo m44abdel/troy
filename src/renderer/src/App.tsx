@@ -11,6 +11,7 @@ import type {
 } from '../../shared/types'
 import type { VimCommand } from '../../shared/vim'
 import { formatCheckFailure, formatComments, type ReviewComment } from './comments'
+import type { DiffFilter } from './DiffPane'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { Icon, Logo } from './icons'
 import { MOD } from './platform'
@@ -40,6 +41,8 @@ function App(): React.JSX.Element {
   const [showColumn, setShowColumn] = useState(true)
   const [tab, setTab] = useState<ColumnTab>('shell')
   const [checks, setChecks] = useState<Record<string, CheckResult>>({})
+  // An overlap line narrows that worktree's diff to its files until "Show all".
+  const [diffFilters, setDiffFilters] = useState<Record<string, DiffFilter>>({})
   const [overlaps, setOverlaps] = useState<Record<string, Overlap[]>>({})
   const [contexts, setContexts] = useState<Record<string, ContextUsage | null>>({})
   const [comments, setComments] = useState<Record<string, ReviewComment[]>>({})
@@ -191,7 +194,9 @@ function App(): React.JSX.Element {
       // A key typed before this frame (e.g. Enter) may already have moved focus on.
       if (!document.activeElement?.closest('.sidebar')) return
       document
-        .querySelector<HTMLElement>(`.worktree[data-path="${CSS.escape(target.path)}"]`)
+        .querySelector<HTMLElement>(
+          `.worktree[data-path="${CSS.escape(target.path)}"] .card-select`
+        )
         ?.focus()
     })
   })
@@ -325,6 +330,11 @@ function App(): React.JSX.Element {
                   usage={contexts[wt.path]}
                   check={checks[wt.path]}
                   onSelect={() => select(wt.path)}
+                  onOverlap={(files, label) => {
+                    setDiffFilters((f) => ({ ...f, [wt.path]: { files, label } }))
+                    select(wt.path)
+                    showTab('diff')
+                  }}
                 />
               ))}
             </section>
@@ -412,6 +422,14 @@ function App(): React.JSX.Element {
                 check={checks[wt.path]}
                 onRunCheck={runCheck}
                 onSendCheck={sendCheck}
+                diffFilter={diffFilters[wt.path]}
+                onClearDiffFilter={() =>
+                  setDiffFilters((f) => {
+                    const next = { ...f }
+                    delete next[wt.path]
+                    return next
+                  })
+                }
                 knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
                 onKnowledgeChanged={refreshKnowledge}
               />

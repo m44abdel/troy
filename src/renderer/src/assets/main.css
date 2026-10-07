@@ -394,7 +394,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .worktree.card:hover .card-head kbd,
 .worktree.card.selected .card-head kbd,
-.worktree.card:focus-visible .card-head kbd {
+.worktree.card:has(:focus-visible) .card-head kbd {
   opacity: 1;
 }
 
@@ -413,6 +413,23 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .card-check.failed {
   color: var(--danger);
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--waiting);
+}
+
+.filter-bar span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .check-bar {
@@ -447,6 +464,50 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   overflow: auto;
   font: 11.5px/1.4 var(--mono);
   color: var(--muted);
+}
+
+.card-select {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+/* The whole card selects; the outline goes on the card, not the inner button. */
+.card-select::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.card-select:focus-visible {
+  outline: none;
+}
+
+.worktree.card:has(.card-select:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.card-overlap {
+  position: relative;
+  z-index: 1;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card-overlap:hover {
+  text-decoration: underline;
 }
 
 .card-overlap {
