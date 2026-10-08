@@ -11,7 +11,8 @@ import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { Splitter } from './Splitter'
 import { Terminal } from './Terminal'
-import { agentId, shellId, submitToTerminal } from './terminals'
+import { agentId, drawerId, shellId, submitToTerminal } from './terminals'
+import { TerminalDrawer } from './TerminalDrawer'
 import { STATUS_LABELS } from './statusLabels'
 import { AgentBadge } from './WorktreeCard'
 
@@ -50,6 +51,10 @@ interface Props {
   /** Shared by every worktree of the repo. */
   knowledge?: Knowledge | { error: string }
   onKnowledgeChanged: () => void
+  drawerOpen: boolean
+  onToggleDrawer: () => void
+  drawerHeight: number
+  onDrawerHeight: (height: number) => void
 }
 
 export function Workspace({
@@ -74,7 +79,11 @@ export function Workspace({
   diffFilter,
   onClearDiffFilter,
   knowledge,
-  onKnowledgeChanged
+  onKnowledgeChanged,
+  drawerOpen,
+  onToggleDrawer,
+  drawerHeight,
+  onDrawerHeight
 }: Props): React.JSX.Element {
   const pending = knowledge && 'proposals' in knowledge ? knowledge.proposals.length : 0
   const tabButton = (
@@ -197,6 +206,16 @@ export function Workspace({
             onClearFilter={onClearDiffFilter}
           />
         </div>
+        <TerminalDrawer
+          id={drawerId(wt.path)}
+          cwd={wt.path}
+          port={wt.port}
+          // Only the visible worktree starts a shell when the drawer opens.
+          open={drawerOpen && active}
+          onToggle={onToggleDrawer}
+          height={drawerHeight}
+          onHeight={onDrawerHeight}
+        />
       </div>
     </div>
   )

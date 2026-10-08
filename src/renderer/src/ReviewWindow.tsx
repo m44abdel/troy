@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReviewEvent, ReviewMeta } from '../../shared/types'
 import { formatComments, type ReviewComment } from './comments'
 import { DiffView } from './DiffPane'
@@ -6,7 +6,9 @@ import { parseFiles } from './diff'
 import { Icon } from './icons'
 import { Splitter } from './Splitter'
 import { Terminal } from './Terminal'
-import { agentId, submitToTerminal } from './terminals'
+import { agentId, drawerId, focusTerminal, submitToTerminal } from './terminals'
+import { TerminalDrawer } from './TerminalDrawer'
+import { useDrawer } from './useDrawer'
 
 const AGENT = 'claude'
 const AGENT_SHARE = { initial: 45, min: 20, max: 80 }
@@ -51,6 +53,7 @@ export function ReviewWindow({
   const [busy, setBusy] = useState(false)
   const [agentShare, setAgentShare] = useState(AGENT_SHARE.initial)
   const root = useRef<HTMLDivElement>(null)
+  const { open: drawerOpen, setOpen: setDrawerOpen, height, setHeight } = useDrawer()
   const files = useMemo(() => (review ? parseFiles(review.diff) : null), [review])
 
   useEffect(() => {
@@ -61,6 +64,16 @@ export function ReviewWindow({
       document.title = `Review #${number} · ${r.meta?.title}`
     })
   }, [repo, number])
+
+  const toggleDrawer = useCallback(() => {
+    setDrawerOpen((was) => !was)
+    if (!drawerOpen && review) requestAnimationFrame(() => focusTerminal(drawerId(review.path)))
+  }, [drawerOpen, setDrawerOpen, review])
+
+  useEffect(
+    () => window.api.onAction((action) => action === 'toggleTerminal' && toggleDrawer()),
+    [toggleDrawer]
+  )
 
   const submit = async (event: ReviewEvent): Promise<void> => {
     setBusy(true)
@@ -145,6 +158,14 @@ export function ReviewWindow({
               placeholder="Comment for the PR (Enter saves)"
             />
           </div>
+          <TerminalDrawer
+            id={drawerId(review.path)}
+            cwd={review.path}
+            open={drawerOpen}
+            onToggle={toggleDrawer}
+            height={height}
+            onHeight={setHeight}
+          />
         </div>
         <Splitter
           label="Resize diff and agent"
