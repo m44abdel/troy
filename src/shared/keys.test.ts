@@ -22,6 +22,7 @@ describe('routeKey on macOS', () => {
     expect(routeKey(key('KeyJ', { meta: true }), 'darwin')).toBe('focusAgent')
     expect(routeKey(key('KeyE', { meta: true }), 'darwin')).toBe('focusShell')
     expect(routeKey(key('Backslash', { meta: true }), 'darwin')).toBe('toggleColumn')
+    expect(routeKey(key('KeyT', { meta: true }), 'darwin')).toBe('toggleTerminal')
     expect(routeKey(key('KeyD', { meta: true }), 'darwin')).toBe('showDiff')
     expect(routeKey(key('Enter', { meta: true }), 'darwin')).toBe('sendToAgent')
     expect(routeKey(key('Comma', { meta: true }), 'darwin')).toBe('openSettings')

@@ -18,11 +18,19 @@ import { Icon, Logo } from './icons'
 import { MOD } from './platform'
 import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
-import { agentId, focusTerminal, pasteToTerminal, shellId, submitToTerminal } from './terminals'
+import {
+  agentId,
+  drawerId,
+  focusTerminal,
+  pasteToTerminal,
+  shellId,
+  submitToTerminal
+} from './terminals'
 import { applyOrder, moveTo } from './order'
 import { ReviewList } from './ReviewList'
 import { Splitter } from './Splitter'
 import { isNumber, isStringList, useStored } from './useStored'
+import { useDrawer } from './useDrawer'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 import { ClosedList, WorktreeCard } from './WorktreeCard'
@@ -62,6 +70,7 @@ function App(): React.JSX.Element {
   const [agentShare, setAgentShare] = useStored('troy.agentShare', AGENT_SHARE.initial, isNumber)
   // Worktree paths in the order you arranged them; new worktrees go after.
   const [order, setOrder] = useStored('troy.worktreeOrder', [], isStringList)
+  const { open: drawerOpen, setOpen: setDrawerOpen, ...drawer } = useDrawer()
   // Repos whose closed worktrees are listed for reopening.
   const [showClosed, setShowClosed] = useState<string[]>([])
   const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({})
@@ -317,6 +326,17 @@ function App(): React.JSX.Element {
     setTab(name)
   }
 
+  // Opening the drawer shows the column it sits in and puts the cursor in it.
+  const toggleDrawer = useCallback(
+    (path: string): void => {
+      if (drawerOpen) return setDrawerOpen(false)
+      setDrawerOpen(true)
+      setShowColumn(true)
+      focusSoon(drawerId(path))
+    },
+    [drawerOpen, setDrawerOpen]
+  )
+
   useEffect(
     () =>
       window.api.onAction((action: AppAction) => {
@@ -332,6 +352,7 @@ function App(): React.JSX.Element {
           return focusSoon(shellId(current.path))
         }
         if (action === 'showDiff') return showTab('diff')
+        if (action === 'toggleTerminal') return toggleDrawer(current.path)
         if (action === 'sendToAgent') return sendComments(current.path)
         const i = worktrees.indexOf(current)
         const n = worktrees.length
@@ -345,7 +366,7 @@ function App(): React.JSX.Element {
         const target = worktrees[Number(action.split(':')[1]) - 1]
         if (target) select(target.path)
       }),
-    [worktrees, current, currentRepo, addRepo, archive, sendComments, select, move]
+    [worktrees, current, currentRepo, addRepo, archive, sendComments, select, move, toggleDrawer]
   )
 
   // A status change on the open worktree while Troy has focus happens in front of you.
@@ -602,6 +623,10 @@ function App(): React.JSX.Element {
                   onClearDiffFilter={() => setDiffFilters((f) => omit(f, wt.path))}
                   knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
                   onKnowledgeChanged={refreshKnowledge}
+                  drawerOpen={drawerOpen}
+                  onToggleDrawer={() => toggleDrawer(wt.path)}
+                  drawerHeight={drawer.height}
+                  onDrawerHeight={drawer.setHeight}
                 />
               ))}
           </>

@@ -2019,3 +2019,64 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   color: var(--muted);
   font-size: 11px;
 }
+
+/* ───── Terminal drawer ───── */
+
+.review .column > .diff-pane {
+  flex: 1;
+  height: auto;
+}
+
+.drawer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.drawer-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border: none;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drawer-bar:hover {
+  color: var(--text);
+}
+
+.drawer-bar .icon:last-child {
+  margin-left: auto;
+  transform: rotate(180deg);
+}
+
+.drawer-bar[aria-expanded='true'] .icon:last-child {
+  transform: none;
+}
+
+.drawer-body {
+  min-height: 0;
+}
+
+.drawer-body .terminal {
+  padding-top: 6px;
+}
+
+/* Sits on the drawer's top edge; the visible line appears on hover or focus. */
+.splitter.horizontal {
+  flex: 0 0 8px;
+  margin: -4px 0;
+  cursor: row-resize;
+}
+
+.splitter.horizontal::after {
+  inset: 3px 8px;
+}

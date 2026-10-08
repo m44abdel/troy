@@ -1182,3 +1182,37 @@ esac
     await app.close()
   }
 })
+
+test('a terminal drawer under the side column keeps its shell while folded', async () => {
+  const repo = gitRepo('troy-drawer-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const workspace = page.locator('.workspace:visible')
+    const agent = workspace.locator('.pane-agent')
+    const bar = workspace.getByRole('button', { name: /^Terminal/ })
+    const drawer = workspace.locator('.drawer-body')
+    await expect(bar).toHaveAttribute('aria-expanded', 'false')
+    await expect(drawer).toHaveCount(0)
+    const agentBox = await agent.boundingBox()
+
+    await chord(app, 'T', 'meta')
+    await expect(bar).toHaveAttribute('aria-expanded', 'true')
+    await expect(drawer).toBeVisible()
+    await page.keyboard.type('echo drawer-$((40+2))')
+    await page.keyboard.press('Enter')
+    await expect(drawer.locator('.xterm-rows')).toContainText('drawer-42', { timeout: 15_000 })
+    // The drawer takes room from the side column, never from the agent.
+    expect(await agent.boundingBox()).toEqual(agentBox)
+
+    await bar.click()
+    await expect(drawer).toBeHidden()
+    await bar.click()
+    await expect(drawer.locator('.xterm-rows')).toContainText('drawer-42')
+  } finally {
+    await app.close()
+  }
+})
