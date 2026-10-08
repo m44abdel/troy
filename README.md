@@ -60,10 +60,7 @@ Claude Code reports its own state through hooks Troy loads with `--settings`, me
 
 When two agents are working at the same time on the same files, both cards say so (**⚠ 2 files shared with feat-b**; hover for the list), and if you're not looking at Troy you get a notification. That's when clashes happen, so a worktree whose agent isn't running doesn't count: its edits are history. While two or more agents are live, Troy checks every 10 seconds, so you hear about it while they're still editing, not at merge time. Changes count from where each worktree left its base: commits, uncommitted edits and new files. Click a line to open that worktree's diff showing only those files. **Show all** brings the rest back.
 
-<p>
-  <img src="docs/overlap-radar.png" alt="Sidebar cards: two cart worktrees each show '1 file shared with' the other, and a third shows '1 file used by' a worktree that imports its code" width="272">
-  <img src="docs/overlap-diff.png" alt="Clicking an overlap line opens the diff narrowed to the shared file, under a 'Showing only' bar with a Show all button" width="540">
-</p>
+<img src="docs/overlap-diff.png" alt="Clicking an overlap line opens the diff narrowed to the shared file, under a 'Showing only' bar with a Show all button" width="540">
 
 Agents say the tests pass; Troy checks. Put any command in `.troy/check` (e.g. `npm test && npm run lint`) and Troy runs it whenever Claude Code reports it has stopped, and again before **Push** or **Open PR**. The card shows **✓ check** or **✗ check**, the diff tab shows the output, and **Send failure to agent** pastes it back to the agent. A result is reused until the worktree changes, so re-checking an unchanged tree is instant. Shipping with a failing check asks first.
 
