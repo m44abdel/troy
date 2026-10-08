@@ -84,3 +84,38 @@ export interface Mail {
   text: string
   sentAt: string
 }
+
+export interface ReviewComment {
+  file: string
+  /** react-diff-view change key, where the comment renders. */
+  changeKey: string
+  line: number
+  /** True when the comment is on a removed line, so `line` is the old line number. */
+  removed: boolean
+  text: string
+}
+
+/** An open PR that asks for your review. */
+export interface PullRequest {
+  number: number
+  title: string
+  url: string
+  updatedAt: string
+  /** "owner/name" on GitHub. */
+  slug: string
+  author: string
+  /** The local clone Troy knows for it, or null when it has none. */
+  repo: string | null
+}
+
+export interface ReviewMeta {
+  number: number
+  slug: string
+  title: string
+  body: string
+  url: string
+  author: string
+  base: string
+}
+
+export type ReviewEvent = 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES'

@@ -8,8 +8,12 @@ import type {
   ContextUsage,
   CreateRequest,
   Knowledge,
+  PullRequest,
   Repo,
   ReposResult,
+  ReviewComment,
+  ReviewEvent,
+  ReviewMeta,
   Settings
 } from '../shared/types'
 
@@ -58,6 +62,29 @@ const api = {
     ipcRenderer.invoke('knowledge:harvest', path),
   rejectFact: (path: string, id: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('knowledge:reject', path, id),
+  reviews: (): Promise<{ prs?: PullRequest[]; error?: string }> =>
+    ipcRenderer.invoke('review:list'),
+  openReviewWindow: (repo: string, n: number): Promise<void> =>
+    ipcRenderer.invoke('review:window', repo, n),
+  openReview: (
+    repo: string,
+    n: number
+  ): Promise<{
+    path?: string
+    diff?: string
+    meta?: ReviewMeta
+    agentArgs?: string
+    resume?: string
+    error?: string
+  }> => ipcRenderer.invoke('review:open', repo, n),
+  submitReview: (
+    repo: string,
+    n: number,
+    event: ReviewEvent,
+    body: string,
+    comments: ReviewComment[]
+  ): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('review:submit', repo, n, event, body, comments),
 
   ptySpawn: (
     cwd: string,

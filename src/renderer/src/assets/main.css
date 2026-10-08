@@ -206,7 +206,8 @@ html[data-platform='mac'] .sidebar {
   overflow-y: auto;
 }
 
-.repo-header {
+.repo-header,
+.reviews-header {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1921,4 +1922,100 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 8px;
+}
+
+/* ───── Review window ───── */
+
+.review {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--canvas);
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Room for the macOS traffic lights; the strip doubles as the window drag area. */
+  padding: 12px 16px 12px 88px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  -webkit-app-region: drag;
+}
+
+.review-header a {
+  -webkit-app-region: no-drag;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.review > .workspace {
+  flex: 1;
+  min-height: 0;
+}
+
+.review-submit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--grad-soft);
+}
+
+.review-submit textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  resize: vertical;
+}
+
+.review-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.review-actions .comment-count {
+  flex: 1;
+}
+
+.reviews .pr {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reviews .pr:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.reviews .pr:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.reviews .pr-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reviews .pr-meta {
+  color: var(--muted);
+  font-size: 11px;
 }
