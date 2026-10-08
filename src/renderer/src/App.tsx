@@ -20,6 +20,7 @@ import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
 import { agentId, focusTerminal, pasteToTerminal, shellId, submitToTerminal } from './terminals'
 import { applyOrder, moveTo } from './order'
+import { ReviewList } from './ReviewList'
 import { Splitter } from './Splitter'
 import { isNumber, isStringList, useStored } from './useStored'
 import { useVimKeys } from './useVimKeys'
@@ -500,6 +501,7 @@ function App(): React.JSX.Element {
               />
             </section>
           ))}
+          <ReviewList />
         </nav>
         {waiting.length > 0 && (
           <button className="link clear-waiting" onClick={clearWaiting}>

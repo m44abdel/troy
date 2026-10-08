@@ -37,8 +37,19 @@ function launchTroy(env: Record<string, string | undefined>): Promise<ElectronAp
     : electron.launch({ args: ['.'], env })
 }
 
-// Empty ZDOTDIR keeps the developer's own zsh config (prompts, auto-attach) out of the test.
-const shellEnv = { ...process.env, SHELL: '/bin/zsh', ZDOTDIR: tempDir('troy-zdotdir-') }
+/** A ZDOTDIR whose login profile puts `bin` first on PATH, ahead of Homebrew's tools. */
+function zdotdirWith(bin: string): string {
+  const zdotdir = tempDir('troy-zdotdir-')
+  writeFileSync(join(zdotdir, '.zprofile'), `export PATH='${bin}':$PATH\n`)
+  return zdotdir
+}
+
+// A gh that always fails, so no test reaches the developer's real GitHub account.
+const noGitHub = tempDir('troy-nogh-')
+writeFileSync(join(noGitHub, 'gh'), '#!/bin/sh\nexit 1\n', { mode: 0o755 })
+
+// This ZDOTDIR keeps the developer's own zsh config (prompts, auto-attach) out of the test.
+const shellEnv = { ...process.env, SHELL: '/bin/zsh', ZDOTDIR: zdotdirWith(noGitHub) }
 
 test('opens a saved repo in a working terminal', async () => {
   const repo = gitRepo('troy-repo-')
@@ -1086,6 +1097,87 @@ test('proposes knowledge from a finished session through a forked, read-only age
     const args = readFileSync(argsFile, 'utf8').split('\n')
     expect(args.slice(0, 3)).toEqual(['--continue', '--fork-session', '--print'])
     expect(args).toContain('mcp__troy__knowledge_propose')
+  } finally {
+    await app.close()
+  }
+})
+
+test('reviews a requested PR in its own window and submits the review to GitHub', async () => {
+  // A clone whose origin names github.com/acme/widgets but fetches from a local bare repo.
+  const root = tempDir('troy-pr-')
+  const remote = join(root, 'remote.git')
+  const repo = join(root, 'widgets')
+  const git = (...args: string[]): string =>
+    execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+      .toString()
+      .trim()
+  execFileSync('git', ['init', '-q', '--bare', remote])
+  execFileSync('git', ['init', '-q', '-b', 'main', repo])
+  writeFileSync(join(repo, 'a.txt'), 'one\n')
+  git('add', '.')
+  git('commit', '-qm', 'init')
+  git('remote', 'add', 'origin', 'https://github.com/acme/widgets.git')
+  git('config', `url.${remote}.insteadOf`, 'https://github.com/acme/widgets.git')
+  git('push', '-q', 'origin', 'main')
+  writeFileSync(join(repo, 'a.txt'), 'one\ntwo\n')
+  git('commit', '-qam', 'two')
+  const head = git('rev-parse', 'HEAD')
+  const diff = git('diff', 'HEAD~1', 'HEAD')
+  git('push', '-q', 'origin', 'HEAD:refs/pull/7/head')
+  git('reset', '-q', '--hard', 'HEAD~1')
+
+  // A fake gh, put first on the login shell's PATH, that records the review it is sent.
+  const bin = join(root, 'bin')
+  const posted = join(root, 'posted.json')
+  mkdirSync(bin)
+  writeFileSync(join(root, 'diff.txt'), diff + '\n')
+  writeFileSync(
+    join(bin, 'gh'),
+    `#!/bin/sh
+case "$1 $2" in
+  "search prs") echo '[{"number":7,"title":"Add two","url":"https://github.com/acme/widgets/pull/7","updatedAt":"2026-10-07T00:00:00Z","repository":{"nameWithOwner":"acme/widgets"},"author":{"login":"sam"}}]' ;;
+  "pr diff") cat '${join(root, 'diff.txt')}' ;;
+  "pr view") echo '{"title":"Add two","body":"Adds a line.","url":"https://github.com/acme/widgets/pull/7","author":{"login":"sam"},"baseRefName":"main"}' ;;
+  "api --method") while [ "$1" != "--input" ]; do shift; done; cp "$2" '${posted}' ;;
+esac
+`,
+    { mode: 0o755 }
+  )
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({ ...shellEnv, ZDOTDIR: zdotdirWith(bin), TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const pr = page.locator('.reviews .pr')
+    await expect(pr).toContainText('Add two')
+    await expect(pr).toContainText('acme/widgets#7 · @sam')
+
+    const [review] = await Promise.all([app.waitForEvent('window'), pr.click()])
+    await expect(review.locator('.review-header')).toContainText('#7 Add two')
+    await expect(review.locator('.pane-agent .xterm-rows')).toContainText('Press Enter to start')
+    const checkout = join(userData, 'reviews', 'widgets-7')
+    expect(readFileSync(join(checkout, 'a.txt'), 'utf8')).toBe('one\ntwo\n')
+    // The checkout belongs to the review window, not the main window's sidebar.
+    await expect(page.locator('.worktree')).toHaveCount(1)
+
+    await review.locator('.diff-gutter-insert').first().click()
+    await review.keyboard.type('nice line')
+    await review.keyboard.press('Enter')
+    await expect(review.locator('.comment')).toContainText('nice line')
+    await review.getByPlaceholder('Review summary (optional)').fill('Looks good')
+
+    const closed = review.waitForEvent('close')
+    await review.getByRole('button', { name: 'Approve' }).click()
+    await closed
+
+    expect(JSON.parse(readFileSync(posted, 'utf8'))).toEqual({
+      commit_id: head,
+      event: 'APPROVE',
+      body: 'Looks good',
+      comments: [{ path: 'a.txt', line: 2, side: 'RIGHT', body: 'nice line' }]
+    })
+    await expect.poll(() => existsSync(checkout)).toBe(false)
   } finally {
     await app.close()
   }
