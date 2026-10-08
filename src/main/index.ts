@@ -4,7 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { DEFAULT_BINDINGS, routeKey } from '../shared/keys'
 import { registerPty } from './pty'
-import { registerRepos } from './repos'
+import { discardReview, prNumber, registerRepos } from './repos'
 import { watchMail } from './mail'
 import { mailDir, writeMcpConfig } from './mcp-config'
 import { withoutSessionMarkers } from './env'
@@ -13,7 +13,8 @@ import { loadBindings, registerSettings, watchBindings } from './settings'
 
 let bindings = DEFAULT_BINDINGS
 
-function createWindow(): void {
+/** `hash` picks what the window shows; the main window has none. */
+function createWindow(hash?: string): BrowserWindow {
   // Troy is dark-only; this keeps native vibrancy and menus dark too.
   nativeTheme.themeSource = 'dark'
   const mainWindow = new BrowserWindow({
@@ -64,10 +65,30 @@ function createWindow(): void {
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + (hash ? `#${hash}` : ''))
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'), { hash })
   }
+  return mainWindow
+}
+
+const reviewWindows = new Map<string, BrowserWindow>()
+
+/** One window per PR; closing it, submitted or not, drops the PR's checkout. */
+function openReviewWindow(repo: unknown, n: unknown): void {
+  if (typeof repo !== 'string') throw new Error(`Unknown repository: ${repo}`)
+  const number = prNumber(n)
+  const key = `${repo}#${number}`
+  const open = reviewWindows.get(key)
+  if (open) return open.focus()
+  const win = createWindow(`review=${encodeURIComponent(JSON.stringify({ repo, number }))}`)
+  reviewWindows.set(key, win)
+  win.on('closed', () => {
+    reviewWindows.delete(key)
+    discardReview(repo, number).catch((err) =>
+      console.error(`Could not remove the checkout of PR #${number}`, err)
+    )
+  })
 }
 
 // Everything Troy spawns inherits process.env, so clean it once, before anything runs.
@@ -99,6 +120,7 @@ app.whenReady().then(async () => {
     })
   })
   // The dock badge counts agents waiting on you.
+  ipcMain.handle('review:window', (_e, repo, n) => openReviewWindow(repo, n))
   ipcMain.on('app:badge', (_e, count: unknown) => {
     if (Number.isInteger(count) && (count as number) >= 0) app.setBadgeCount(count as number)
   })
