@@ -1,18 +1,15 @@
-export interface ReviewComment {
-  file: string
-  /** react-diff-view change key, where the comment renders. */
-  changeKey: string
-  line: number
-  /** True when the comment is on a removed line, so `line` is the old line number. */
-  removed: boolean
-  text: string
-}
+import type { ReviewComment } from '../../shared/types'
 
-export function formatComments(comments: ReviewComment[]): string {
+export type { ReviewComment }
+
+export function formatComments(
+  comments: ReviewComment[],
+  heading = 'Review comments on your changes:'
+): string {
   const lines = comments.map(
     (c) => `- ${c.file}${c.removed ? ` (removed line ${c.line})` : `:${c.line}`}: ${c.text}`
   )
-  return ['Review comments on your changes:', ...lines].join('\n')
+  return [heading, ...lines].join('\n')
 }
 
 export const formatCheckFailure = (output: string): string =>

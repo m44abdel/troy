@@ -1,8 +1,15 @@
 import { app, dialog, ipcMain, BrowserWindow, type IpcMainInvokeEvent } from 'electron'
 import { readFile, writeFile } from 'fs/promises'
-import { join } from 'path'
+import { join, sep } from 'path'
 import { overlaps, type Overlap } from '../shared/overlap'
-import type { CreateRequest, Repo, ReposResult, Worktree } from '../shared/types'
+import type {
+  CreateRequest,
+  Repo,
+  ReposResult,
+  ReviewComment,
+  ReviewEvent,
+  Worktree
+} from '../shared/types'
 import { runCheck } from './check'
 import { readContext, resumeFlag } from './context'
 import { buildGraph, graphDependencies, graphServer } from './graph'
@@ -11,6 +18,7 @@ import { listDocs, readDoc } from './docs'
 import { changedFiles, commitAll, diffAgainst, openPullRequest, push } from './finish'
 import { stripInstructions, writeInstructions } from './instructions'
 import { approve, readKnowledge, reject } from './knowledge'
+import { REVIEW_EVENTS, closeReview, listRequested, openReview, submitReview } from './reviews'
 import { hookFlags, mcpFlags } from './mcp-config'
 import {
   createWorktree,
@@ -39,6 +47,10 @@ interface State {
 }
 
 const statePath = (): string => join(app.getPath('userData'), 'state.json')
+
+/** Where PR review checkouts live. They belong to review windows, not the sidebar. */
+export const reviewsDir = (): string => join(app.getPath('userData'), 'reviews')
+const isReview = (wt: Worktree): boolean => wt.path.startsWith(reviewsDir() + sep)
 
 const isMeta = (m: unknown): m is WorktreeMeta =>
   typeof (m as WorktreeMeta)?.agent === 'string' && typeof (m as WorktreeMeta)?.port === 'number'
@@ -70,7 +82,8 @@ async function describeRepos(state: State): Promise<Repo[]> {
       try {
         // ponytail: a graph built after this listing reaches agents on the next one.
         const graph = graphServer(path)
-        const worktrees = (await listWorktrees(path)).map((wt) => {
+        const shown = (await listWorktrees(path)).filter((wt) => !isReview(wt))
+        const worktrees = shown.map((wt) => {
           const meta = state.worktrees[wt.path]
           const agent = meta?.agent ?? DEFAULT_AGENT
           const title = typeof meta?.title === 'string' ? meta.title : undefined
@@ -237,7 +250,7 @@ async function findOverlaps(): Promise<Record<string, Overlap[]>> {
   const state = await loadState()
   const perRepo = await Promise.all(
     state.repos.map(async (repo) => {
-      const worktrees = await listWorktrees(repo).catch(() => [])
+      const worktrees = (await listWorktrees(repo).catch(() => [])).filter((wt) => !isReview(wt))
       const changes = await Promise.all(
         worktrees.map(async (wt) => [
           wt.path,
@@ -248,6 +261,65 @@ async function findOverlaps(): Promise<Record<string, Overlap[]>> {
     })
   )
   return Object.assign({}, ...perRepo)
+}
+
+export function prNumber(n: unknown): number {
+  if (!Number.isInteger(n) || (n as number) <= 0) throw new Error(`Not a PR number: ${n}`)
+  return n as number
+}
+
+function parseReviewComments(comments: unknown): ReviewComment[] {
+  const valid =
+    Array.isArray(comments) &&
+    comments.every(
+      (c) =>
+        typeof c?.file === 'string' &&
+        typeof c.changeKey === 'string' &&
+        Number.isInteger(c.line) &&
+        c.line > 0 &&
+        typeof c.removed === 'boolean' &&
+        typeof c.text === 'string'
+    )
+  if (!valid) throw new Error('Malformed review comments.')
+  return comments
+}
+
+function registerReviews(): void {
+  ipcMain.handle('review:list', () =>
+    attempt(async () => ({ prs: await listRequested((await loadState()).repos) }))
+  )
+  ipcMain.handle('review:open', (_e, repo, n) =>
+    attempt(async () => {
+      const review = await openReview(reviewsDir(), await knownRepo(repo), prNumber(n))
+      return {
+        ...review,
+        // --mcp-config swallows every argument after it, so it goes last.
+        agentArgs: hookFlags(DEFAULT_AGENT) + mcpFlags(DEFAULT_AGENT),
+        resume: resumeFlag(DEFAULT_AGENT, review.path)
+      }
+    })
+  )
+  ipcMain.handle('review:submit', (_e, repo, n, event, body, comments) =>
+    attempt(async () => {
+      if (!REVIEW_EVENTS.includes(event)) throw new Error(`Unknown review verdict: ${event}`)
+      if (typeof body !== 'string') throw new Error('The review body must be text.')
+      const valid = parseReviewComments(comments)
+      await submitReview(
+        reviewsDir(),
+        await knownRepo(repo),
+        prNumber(n),
+        event as ReviewEvent,
+        body,
+        valid
+      )
+      return {}
+    })
+  )
+}
+
+/** Drops a review's checkout once its window is gone. */
+export async function discardReview(repo: string, n: number): Promise<void> {
+  await closeReview(reviewsDir(), await knownRepo(repo), n)
 }
 
 async function attempt<T extends object>(fn: () => Promise<T>): Promise<T | { error: string }> {
@@ -328,4 +400,5 @@ export function registerRepos(): void {
   ipcMain.handle('repos:add', addRepo)
   ipcMain.handle('worktree:create', (_e, repo, req) => create(repo, req))
   ipcMain.handle('worktree:archive', archive)
+  registerReviews()
 }

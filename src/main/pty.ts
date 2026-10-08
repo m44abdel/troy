@@ -69,6 +69,8 @@ export function registerPty(): void {
     })
     proc.onData((data) => send(event.sender, `pty:data:${id}`, data))
     listeners.set(id, event.sender)
+    // A closed window never unmounts its terminals, so its shells go with it.
+    event.sender.once('destroyed', () => proc.kill())
     proc.onExit(({ exitCode }) => {
       ptys.delete(id)
       listeners.delete(id)
