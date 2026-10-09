@@ -1212,6 +1212,18 @@ test('a terminal drawer under the side column keeps its shell while folded', asy
     await expect(drawer).toBeHidden()
     await bar.click()
     await expect(drawer.locator('.xterm-rows')).toContainText('drawer-42')
+
+    // A second tab is its own shell; the first keeps running behind it and dies when closed.
+    const panes = drawer.locator('.drawer-pane')
+    await workspace.getByRole('button', { name: 'New terminal' }).click()
+    await expect(panes).toHaveCount(2)
+    await expect(panes.nth(0)).toBeHidden()
+    await page.keyboard.type('echo second-$((1+1))')
+    await page.keyboard.press('Enter')
+    await expect(panes.nth(1).locator('.xterm-rows')).toContainText('second-2', { timeout: 15_000 })
+    await workspace.getByRole('button', { name: 'Close terminal 1' }).click()
+    await expect(panes).toHaveCount(1)
+    await expect(panes.nth(0).locator('.xterm-rows')).toContainText('second-2')
   } finally {
     await app.close()
   }
