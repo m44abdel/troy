@@ -6,7 +6,7 @@ import { parseFiles } from './diff'
 import { Icon } from './icons'
 import { Splitter } from './Splitter'
 import { Terminal } from './Terminal'
-import { agentId, drawerId, focusDrawer, submitToTerminal } from './terminals'
+import { agentId, drawerId, submitToTerminal } from './terminals'
 import { TerminalDrawer } from './TerminalDrawer'
 import { useDrawer } from './useDrawer'
 
@@ -67,8 +67,7 @@ export function ReviewWindow({
 
   const toggleDrawer = useCallback(() => {
     setDrawerOpen((was) => !was)
-    if (!drawerOpen && review) requestAnimationFrame(() => focusDrawer(drawerId(review.path)))
-  }, [drawerOpen, setDrawerOpen, review])
+  }, [setDrawerOpen])
 
   useEffect(
     () => window.api.onAction((action) => action === 'toggleTerminal' && toggleDrawer()),
@@ -162,6 +161,7 @@ export function ReviewWindow({
             id={drawerId(review.path)}
             cwd={review.path}
             open={drawerOpen}
+            visible
             onToggle={toggleDrawer}
             height={height}
             onHeight={setHeight}

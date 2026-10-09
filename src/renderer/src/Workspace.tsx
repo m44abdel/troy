@@ -215,6 +215,7 @@ export function Workspace({
           port={wt.port}
           // Only the visible worktree starts a shell when the drawer opens.
           open={drawerOpen && active}
+          visible={active}
           onToggle={onToggleDrawer}
           height={drawerHeight}
           onHeight={onDrawerHeight}
