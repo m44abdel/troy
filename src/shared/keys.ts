@@ -1,5 +1,6 @@
 // App shortcuts live on Cmd (macOS) or Ctrl+Shift (elsewhere) so that every
-// Ctrl and Alt chord reaches the terminal untouched.
+// Ctrl and Alt chord reaches the terminal untouched. Adding Shift (Alt elsewhere)
+// gives a second layer, bound as "Shift+<code>".
 
 export const ACTIONS = [
   'addRepo',
@@ -12,6 +13,9 @@ export const ACTIONS = [
   'toggleColumn',
   'toggleTerminal',
   'toggleBoard',
+  'newTerminal',
+  'prevTerminal',
+  'nextTerminal',
   'prev',
   'next',
   'moveUp',
@@ -21,7 +25,7 @@ export const ACTIONS = [
 
 export type AppAction = (typeof ACTIONS)[number] | `jump:${number}`
 
-/** Key code → action. null hands the key to the page and terminal instead. */
+/** Key code ("Shift+" for the second layer) → action. null hands the key to the page and terminal. */
 export type Bindings = Record<string, AppAction | null>
 
 export interface KeyInput {
@@ -44,6 +48,9 @@ export const DEFAULT_BINDINGS: Bindings = {
   Backslash: 'toggleColumn',
   KeyT: 'toggleTerminal',
   KeyB: 'toggleBoard',
+  'Shift+KeyT': 'newTerminal',
+  'Shift+BracketLeft': 'prevTerminal',
+  'Shift+BracketRight': 'nextTerminal',
   BracketLeft: 'prev',
   BracketRight: 'next',
   ArrowUp: 'moveUp',
@@ -66,11 +73,14 @@ export function parseBindings(raw: unknown): { bindings: Bindings; ignored: stri
   return { bindings, ignored }
 }
 
-function hasAppModifier(input: KeyInput, platform: string): boolean {
+/** 'base' for the app modifier alone, 'shift' for its second layer, null for neither. */
+function appLayer(input: KeyInput, platform: string): 'base' | 'shift' | null {
   if (platform === 'darwin') {
-    return input.meta && !input.control && !input.alt && !input.shift
+    if (!input.meta || input.control || input.alt) return null
+    return input.shift ? 'shift' : 'base'
   }
-  return input.control && input.shift && !input.alt && !input.meta
+  if (!input.control || !input.shift || input.meta) return null
+  return input.alt ? 'shift' : 'base'
 }
 
 export function routeKey(
@@ -78,7 +88,10 @@ export function routeKey(
   platform: string,
   bindings: Bindings = DEFAULT_BINDINGS
 ): AppAction | null {
-  if (input.type !== 'keyDown' || !hasAppModifier(input, platform)) return null
+  if (input.type !== 'keyDown') return null
+  const layer = appLayer(input, platform)
+  if (layer === 'shift') return bindings[`Shift+${input.code}`] ?? null
+  if (layer !== 'base') return null
   const digit = /^Digit([1-9])$/.exec(input.code)
   if (digit) return `jump:${Number(digit[1])}`
   return bindings[input.code] ?? null

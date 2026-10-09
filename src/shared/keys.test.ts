@@ -48,8 +48,23 @@ describe('routeKey on macOS', () => {
     expect(routeKey(key('KeyQ', { meta: true }), 'darwin')).toBeNull()
   })
 
-  it('ignores Cmd combined with other modifiers and keyUp events', () => {
-    expect(routeKey(key('KeyO', { meta: true, shift: true }), 'darwin')).toBeNull()
+  it('maps Cmd-Shift chords to the terminal tabs, like Chrome tabs', () => {
+    const shifted = (code: string): KeyInput => key(code, { meta: true, shift: true })
+    expect(routeKey(shifted('KeyT'), 'darwin')).toBe('newTerminal')
+    expect(routeKey(shifted('BracketLeft'), 'darwin')).toBe('prevTerminal')
+    expect(routeKey(shifted('BracketRight'), 'darwin')).toBe('nextTerminal')
+    // Unbound Cmd-Shift keys (and digits) stay with the OS and the page.
+    expect(routeKey(shifted('KeyO'), 'darwin')).toBeNull()
+    expect(routeKey(shifted('Digit1'), 'darwin')).toBeNull()
+  })
+
+  it('gives every default shortcut its own chord', () => {
+    const actions = Object.values(DEFAULT_BINDINGS).filter(Boolean)
+    expect(new Set(actions).size).toBe(actions.length)
+  })
+
+  it('ignores Cmd combined with Ctrl or Alt, and keyUp events', () => {
+    expect(routeKey(key('KeyO', { meta: true, alt: true }), 'darwin')).toBeNull()
     expect(routeKey(key('KeyO', { meta: true, control: true }), 'darwin')).toBeNull()
     expect(routeKey({ ...key('KeyO', { meta: true }), type: 'keyUp' }, 'darwin')).toBeNull()
   })
@@ -59,6 +74,11 @@ describe('routeKey on Linux/Windows', () => {
   it('uses Ctrl+Shift for app actions', () => {
     expect(routeKey(key('KeyO', { control: true, shift: true }), 'linux')).toBe('addRepo')
     expect(routeKey(key('Digit1', { control: true, shift: true }), 'win32')).toBe('jump:1')
+  })
+
+  it('adds Alt for the shifted layer', () => {
+    const input = key('KeyT', { control: true, shift: true, alt: true })
+    expect(routeKey(input, 'linux')).toBe('newTerminal')
   })
 
   it('passes plain Ctrl through to the terminal', () => {

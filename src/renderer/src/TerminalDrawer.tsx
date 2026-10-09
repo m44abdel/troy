@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import type { AppAction } from '../../shared/keys'
 import { Icon } from './icons'
 import { MOD } from './platform'
 import { Splitter } from './Splitter'
 import { Terminal } from './Terminal'
-import { activeDrawerTab, focusTerminal } from './terminals'
+import { focusTerminal } from './terminals'
 import { DRAWER_HEIGHT } from './useDrawer'
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   cwd: string
   port?: number
   open: boolean
+  /** Whether this drawer's column is on screen, so the tab shortcuts are its own. */
+  visible: boolean
   onToggle: () => void
   height: number
   onHeight: (height: number) => void
@@ -22,6 +25,7 @@ export function TerminalDrawer({
   cwd,
   port,
   open,
+  visible,
   onToggle,
   height,
   onHeight
@@ -34,11 +38,21 @@ export function TerminalDrawer({
   const [tabs, setTabs] = useState([id])
   const [active, setActive] = useState(id)
   const nextTab = useRef(2)
-  activeDrawerTab.set(id, active)
+
+  // Focus waits for an effect: by then the tab's Terminal has mounted and can take it.
+  const pendingFocus = useRef<string | null>(null)
+  const wasOpen = useRef(open)
+  useEffect(() => {
+    const opened = open && !wasOpen.current
+    wasOpen.current = open
+    const target = pendingFocus.current ?? (opened && visible ? active : null)
+    pendingFocus.current = null
+    if (target) focusTerminal(target)
+  })
 
   const show = (tab: string): void => {
     setActive(tab)
-    requestAnimationFrame(() => focusTerminal(tab))
+    pendingFocus.current = tab
   }
   const addTab = (): void => {
     const tab = `${id}:${nextTab.current++}`
@@ -51,6 +65,22 @@ export function TerminalDrawer({
     setTabs(rest)
     if (tab === active) show(rest[Math.min(i, rest.length - 1)])
   }
+
+  // Steps through the tabs and wraps at either end, like Chrome's Cmd-Shift-[ and ].
+  const cycle = (by: number): void =>
+    show(tabs[(tabs.indexOf(active) + by + tabs.length) % tabs.length])
+
+  const onAction = useEffectEvent((action: AppAction) => {
+    if (action === 'newTerminal') {
+      if (!open) onToggle()
+      // A drawer opened for the first time starts with a fresh shell already.
+      return started ? addTab() : undefined
+    }
+    if (!open) return
+    if (action === 'prevTerminal') cycle(-1)
+    if (action === 'nextTerminal') cycle(1)
+  })
+  useEffect(() => (visible ? window.api.onAction(onAction) : undefined), [visible])
 
   return (
     <div className="drawer" ref={root}>
@@ -87,7 +117,12 @@ export function TerminalDrawer({
                 )}
               </span>
             ))}
-            <button className="drawer-add" aria-label="New terminal" onClick={addTab}>
+            <button
+              className="drawer-add"
+              aria-label="New terminal"
+              title={`New terminal (${MOD}⇧T)`}
+              onClick={addTab}
+            >
               <Icon name="plus" size={13} />
             </button>
           </div>
