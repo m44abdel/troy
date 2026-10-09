@@ -6,6 +6,7 @@ import type {
   CheckResult,
   ContextUsage,
   Mail,
+  SpawnRequest,
   Knowledge,
   Repo,
   Settings as SettingsData,
@@ -137,6 +138,33 @@ function App(): React.JSX.Element {
     void window.api.watchMail()
     return off
   }, [deliverMail])
+
+  // Another agent asked for a worktree; it starts in the background, without taking focus.
+  const spawnAgent = useEffectEvent(async (req: SpawnRequest) => {
+    const from = reposRef.current.flatMap((r) => r.worktrees).find((w) => w.path === req.from)
+    const agent = req.agent ?? from?.agent ?? installed?.[0] ?? ''
+    const result = await window.api.createWorktree(req.repo, {
+      branch: req.branch,
+      base: '',
+      agent,
+      prompt: req.prompt
+    })
+    setRepos(result.repos)
+    if (result.error || !result.path) {
+      const why = result.error ?? 'Could not create the worktree.'
+      setError(`Spawning ${req.branch}: ${why}`)
+      submitToTerminal(agentId(req.from), `[Troy] Could not spawn ${req.branch}: ${why}`)
+      return
+    }
+    const path = result.path
+    setFirstRuns((f) => ({
+      ...f,
+      [path]: { prompt: req.prompt, setup: !!result.setup, autoStart: true }
+    }))
+    setVisited((v) => [...v, path])
+  })
+
+  useEffect(() => window.api.onSpawn((req) => void spawnAgent(req)), [])
 
   // Opening a worktree acknowledges whatever it is waiting on, reopens a closed session
   // and unfolds its repo.

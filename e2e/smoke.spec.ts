@@ -1050,6 +1050,53 @@ test('an agent messages another, now if it runs and otherwise once it starts', a
   }
 })
 
+test('an agent spawns another in a new worktree, which starts on its own', async () => {
+  const repo = gitRepo('troy-spawn-')
+  execFileSync('git', [
+    '-C',
+    repo,
+    '-c',
+    'user.name=t',
+    '-c',
+    'user.email=t@t',
+    'commit',
+    '-q',
+    '--allow-empty',
+    '-m',
+    'init'
+  ])
+  const userData = tempDir('troy-profile-')
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({ repos: [repo], worktrees: { [repo]: { agent: 'cat', port: 3100 } } })
+  )
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.worktree')).toHaveCount(1)
+
+    expect(
+      callMcp(repo, join(userData, 'mail'), 'agent_spawn', {
+        branch: 'feat/spawned',
+        prompt: 'build the thing',
+        agent: 'echo'
+      })
+    ).toContain('Requested feat/spawned')
+    const spawned = page.locator('.worktree').filter({ hasText: 'feat/spawned' })
+    // Nobody pressed Enter: the agent ran by itself, and the requester kept focus.
+    await expect(spawned.locator('.status-label')).toHaveText('finished', { timeout: 15_000 })
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', repo)
+
+    await spawned.locator('.card-select').click()
+    await expect(page.locator('.workspace:visible .pane-agent .xterm-rows')).toContainText(
+      'build the thing'
+    )
+  } finally {
+    await app.close()
+  }
+})
+
 test('proposes knowledge from a finished session through a forked, read-only agent', async () => {
   const repo = gitRepo('troy-harvest-')
   execFileSync('git', [

@@ -6,7 +6,7 @@ import { join } from 'path'
 import { formatEntry, readKnowledge } from './knowledge'
 import { createServer, search } from './mcp'
 import { hookFlags, hookSettings, mcpFlags } from './mcp-config'
-import { parseMail } from './mail'
+import { parseMail, parseSpawn, spawnDir } from './mail'
 
 function tempRepo(): string {
   const repo = realpathSync(mkdtempSync(join(tmpdir(), 'troy-mcp-')))
@@ -55,7 +55,8 @@ describe('MCP server', () => {
       'knowledge_search',
       'knowledge_propose',
       'agents_list',
-      'agent_message'
+      'agent_message',
+      'agent_spawn'
     ])
     expect(await handle({ id: 3, method: 'resources/list' })).toMatchObject({
       error: { code: -32601 }
@@ -138,6 +139,35 @@ describe('agent messaging tools', () => {
       to: `${repo}.b`,
       text: 'I am editing a.ts'
     })
+  })
+
+  it('asks Troy to spawn an agent from a linked worktree, naming the main checkout', async () => {
+    const repo = tempRepo()
+    execFileSync('git', ['-C', repo, 'worktree', 'add', '-q', '-b', 'feat/b', `${repo}.b`])
+    const mail = realpathSync(mkdtempSync(join(tmpdir(), 'troy-mailbox-')))
+    const handle = createServer(`${repo}.b`, mail)
+
+    const sent = await handle(call(1, 'agent_spawn', { branch: 'feat/c', prompt: 'Write tests' }))
+    expect(isError(sent)).toBe(false)
+    const [file] = readdirSync(spawnDir(mail))
+    expect(parseSpawn(readFileSync(join(spawnDir(mail), file), 'utf8'))).toMatchObject({
+      from: `${repo}.b`,
+      repo,
+      branch: 'feat/c',
+      agent: null,
+      prompt: 'Write tests'
+    })
+  })
+
+  it('refuses a spawn onto a branch that has a worktree, without a prompt, or without Troy', async () => {
+    const repo = tempRepo()
+    const handle = createServer(repo, realpathSync(mkdtempSync(join(tmpdir(), 'troy-mailbox-'))))
+    const spawn = (args: object): Promise<object | null> => handle(call(1, 'agent_spawn', args))
+    expect(isError(await spawn({ branch: 'main', prompt: 'x' }))).toBe(true)
+    expect(isError(await spawn({ branch: 'feat/c', prompt: ' ' }))).toBe(true)
+    expect(
+      isError(await createServer(repo)(call(2, 'agent_spawn', { branch: 'feat/c', prompt: 'x' })))
+    ).toBe(true)
   })
 
   it('refuses messages to itself, to unknown agents, or without Troy', async () => {
