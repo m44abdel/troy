@@ -1545,6 +1545,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 }
 
 .dialog input:not([type='checkbox']),
+.dialog select,
 .dialog textarea {
   font: inherit;
   font-size: 13px;
@@ -1569,6 +1570,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 }
 
 .dialog input:not([type='checkbox']):focus,
+.dialog select:focus,
 .dialog textarea:focus {
   outline: none;
   border-color: var(--accent-strong);
@@ -2147,8 +2149,10 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   background: var(--canvas);
 }
 
+/* Lanes share the width, so all five fit; below their minimum the board scrolls. */
 .board-lane {
-  flex: 0 0 260px;
+  flex: 1 1 0;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2164,7 +2168,10 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
-  text-transform: capitalize;
+}
+
+.board-lane h3::first-letter {
+  text-transform: uppercase;
 }
 
 .board-lane h3 .count {
