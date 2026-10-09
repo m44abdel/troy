@@ -6,7 +6,7 @@ import { parseFiles } from './diff'
 import { Icon } from './icons'
 import { Splitter } from './Splitter'
 import { Terminal } from './Terminal'
-import { agentId, drawerId, focusTerminal, submitToTerminal } from './terminals'
+import { agentId, drawerId, focusDrawer, submitToTerminal } from './terminals'
 import { TerminalDrawer } from './TerminalDrawer'
 import { useDrawer } from './useDrawer'
 
@@ -67,7 +67,7 @@ export function ReviewWindow({
 
   const toggleDrawer = useCallback(() => {
     setDrawerOpen((was) => !was)
-    if (!drawerOpen && review) requestAnimationFrame(() => focusTerminal(drawerId(review.path)))
+    if (!drawerOpen && review) requestAnimationFrame(() => focusDrawer(drawerId(review.path)))
   }, [drawerOpen, setDrawerOpen, review])
 
   useEffect(
