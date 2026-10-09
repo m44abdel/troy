@@ -2134,3 +2134,39 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 .splitter.horizontal::after {
   inset: 3px 8px;
 }
+
+/* Covers the workspaces while open; they keep running underneath. */
+.board {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  overflow-x: auto;
+  background: var(--canvas);
+}
+
+.board-lane {
+  flex: 0 0 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.board-lane h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.board-lane h3 .count {
+  margin-left: auto;
+}

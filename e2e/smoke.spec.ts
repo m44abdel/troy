@@ -1183,6 +1183,32 @@ esac
   }
 })
 
+test('the board lays worktrees out by agent status and opens the one you pick', async () => {
+  const repo = gitRepo('troy-board-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const board = page.locator('.board')
+    await expect(page.getByRole('button', { name: 'Board', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+    await expect(page.locator('.workspace:visible')).toBeVisible()
+
+    await chord(app, 'B', 'meta')
+    const lane = board.getByRole('region', { name: 'not started' })
+    await expect(lane.locator('.card-select')).toBeVisible()
+
+    await lane.locator('.card-select').click()
+    await expect(board).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
 test('a terminal drawer under the side column keeps its shell while folded', async () => {
   const repo = gitRepo('troy-drawer-')
   const userData = tempDir('troy-profile-')

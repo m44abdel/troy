@@ -8,7 +8,8 @@ import type {
   Mail,
   Knowledge,
   Repo,
-  Settings as SettingsData
+  Settings as SettingsData,
+  WorktreeView
 } from '../../shared/types'
 import type { VimCommand } from '../../shared/vim'
 import { formatCheckFailure, formatComments, formatMail, type ReviewComment } from './comments'
@@ -35,6 +36,7 @@ import { useDrawer } from './useDrawer'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 import { ClosedList, WorktreeCard } from './WorktreeCard'
+import { Board } from './Board'
 
 // ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
 const CONTEXT_POLL_MS = 5000
@@ -79,6 +81,7 @@ function App(): React.JSX.Element {
   const [seen, setSeen] = useState<Record<string, boolean>>({})
   const [firstRuns, setFirstRuns] = useState<Record<string, FirstRun>>({})
   const [showColumn, setShowColumn] = useState(true)
+  const [showBoard, setShowBoard] = useState(false)
   const [tab, setTab] = useState<ColumnTab>('shell')
   const [checks, setChecks] = useState<Record<string, CheckResult>>({})
   // An overlap line narrows that worktree's diff to its files until "Show all".
@@ -344,6 +347,7 @@ function App(): React.JSX.Element {
         if (action === 'addRepo') return void addRepo()
         if (action === 'newWorktree') return currentRepo && setDialogRepo(currentRepo.path)
         if (action === 'toggleColumn') return setShowColumn((s) => !s)
+        if (action === 'toggleBoard') return setShowBoard((s) => !s)
         if (action === 'openSettings') return setShowSettings(true)
         if (!current) return
         if (action === 'archive') return void archive()
@@ -431,6 +435,36 @@ function App(): React.JSX.Element {
     []
   )
 
+  const cardFor = (wt: WorktreeView): React.JSX.Element => (
+    <WorktreeCard
+      key={wt.path}
+      wt={wt}
+      index={worktrees.indexOf(wt)}
+      selected={wt === current}
+      status={statuses[wt.path] ?? 'idle'}
+      needsYou={needsYou(wt.path)}
+      overlaps={clashes[wt.path]?.map((o) => ({
+        name: nameOf(o.other),
+        kind: o.kind,
+        files: o.files
+      }))}
+      usage={contexts[wt.path]}
+      check={checks[wt.path]}
+      mail={queuedMail[wt.path]}
+      onSelect={() => {
+        select(wt.path)
+        setShowBoard(false)
+      }}
+      onClose={() => closeSession(wt.path)}
+      onMoveHere={(from) => move(from, wt.path)}
+      onOverlap={(files, label) => {
+        setDiffFilters((f) => ({ ...f, [wt.path]: { files, label } }))
+        select(wt.path)
+        showTab('diff')
+      }}
+    />
+  )
+
   return (
     <div
       className="app"
@@ -447,6 +481,15 @@ function App(): React.JSX.Element {
             <Logo size={22} />
             Troy
           </span>
+          <button
+            className="icon-button"
+            onClick={() => setShowBoard((s) => !s)}
+            title={`Board (${MOD}B)`}
+            aria-label="Board"
+            aria-pressed={showBoard}
+          >
+            <Icon name="panel" />
+          </button>
           <button
             className="icon-button"
             onClick={addRepo}
@@ -487,34 +530,7 @@ function App(): React.JSX.Element {
               </div>
               {repo.error && <p className="error">{repo.error}</p>}
               {!folded.includes(repo.path) &&
-                repo.worktrees
-                  .filter((wt) => !closed.includes(wt.path))
-                  .map((wt) => (
-                    <WorktreeCard
-                      key={wt.path}
-                      wt={wt}
-                      index={worktrees.indexOf(wt)}
-                      selected={wt === current}
-                      status={statuses[wt.path] ?? 'idle'}
-                      needsYou={needsYou(wt.path)}
-                      overlaps={clashes[wt.path]?.map((o) => ({
-                        name: nameOf(o.other),
-                        kind: o.kind,
-                        files: o.files
-                      }))}
-                      usage={contexts[wt.path]}
-                      check={checks[wt.path]}
-                      mail={queuedMail[wt.path]}
-                      onSelect={() => select(wt.path)}
-                      onClose={() => closeSession(wt.path)}
-                      onMoveHere={(from) => move(from, wt.path)}
-                      onOverlap={(files, label) => {
-                        setDiffFilters((f) => ({ ...f, [wt.path]: { files, label } }))
-                        select(wt.path)
-                        showTab('diff')
-                      }}
-                    />
-                  ))}
+                repo.worktrees.filter((wt) => !closed.includes(wt.path)).map((wt) => cardFor(wt))}
               <ClosedList
                 worktrees={repo.worktrees.filter((wt) => closed.includes(wt.path))}
                 open={showClosed.includes(repo.path) && !folded.includes(repo.path)}
@@ -550,6 +566,9 @@ function App(): React.JSX.Element {
       />
 
       <main className="workspaces">
+        {showBoard && (
+          <Board items={worktrees} status={(wt) => statuses[wt.path] ?? 'idle'} card={cardFor} />
+        )}
         {repos.length === 0 ? (
           <div className="empty">
             <div className="hero-logo">
