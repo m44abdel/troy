@@ -1097,6 +1097,60 @@ test('an agent spawns another in a new worktree, which starts on its own', async
   }
 })
 
+test('a due automation starts its agent in a fresh worktree, and the dialog saves new ones', async () => {
+  const repo = gitRepo('troy-auto-')
+  execFileSync('git', [
+    '-C',
+    repo,
+    '-c',
+    'user.name=t',
+    '-c',
+    'user.email=t@t',
+    'commit',
+    '-q',
+    '--allow-empty',
+    '-m',
+    'init'
+  ])
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+  const every = {
+    id: 'a',
+    name: 'Nightly check',
+    repo,
+    schedule: '* * * * *',
+    agent: 'echo',
+    prompt: 'look at the logs'
+  }
+  writeFileSync(join(userData, 'automations.json'), JSON.stringify([every]))
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const run = page.locator('.worktree').filter({ hasText: 'auto/nightly-check-' })
+    await expect(run.locator('.status-label')).toHaveText('finished', { timeout: 15_000 })
+
+    await page.getByRole('button', { name: 'Automations' }).click()
+    const dialog = page.locator('dialog.automations')
+    await expect(dialog.getByText('Nightly check')).toBeVisible()
+    await dialog.getByLabel('Name').fill('Weekly tidy')
+    await dialog.getByLabel('Schedule').fill('0 9 * * 1')
+    await dialog.getByLabel('Prompt').fill('tidy up')
+    await dialog.getByRole('button', { name: 'Add' }).click()
+    await expect(dialog.getByText('Weekly tidy')).toBeVisible()
+    await dialog.getByLabel('Schedule').fill('every day')
+    await dialog.getByLabel('Name').fill('Bad')
+    await dialog.getByLabel('Prompt').fill('x')
+    await dialog.getByRole('button', { name: 'Add' }).click()
+    await expect(dialog.locator('.error')).toContainText('five fields')
+
+    const saved = JSON.parse(readFileSync(join(userData, 'automations.json'), 'utf8'))
+    expect(saved.map((a: { name: string }) => a.name)).toEqual(['Nightly check', 'Weekly tidy'])
+  } finally {
+    await app.close()
+  }
+})
+
 test('proposes knowledge from a finished session through a forked, read-only agent', async () => {
   const repo = gitRepo('troy-harvest-')
   execFileSync('git', [
