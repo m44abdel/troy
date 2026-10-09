@@ -20,15 +20,7 @@ import { Icon, Logo } from './icons'
 import { MOD } from './platform'
 import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
-import {
-  agentId,
-  drawerId,
-  focusDrawer,
-  focusTerminal,
-  pasteToTerminal,
-  shellId,
-  submitToTerminal
-} from './terminals'
+import { agentId, focusTerminal, pasteToTerminal, shellId, submitToTerminal } from './terminals'
 import { applyOrder, moveTo } from './order'
 import { ReviewList } from './ReviewList'
 import { Splitter } from './Splitter'
@@ -360,16 +352,12 @@ function App(): React.JSX.Element {
     setTab(name)
   }
 
-  // Opening the drawer shows the column it sits in and puts the cursor in it.
-  const toggleDrawer = useCallback(
-    (path: string): void => {
-      if (drawerOpen) return setDrawerOpen(false)
-      setDrawerOpen(true)
-      setShowColumn(true)
-      requestAnimationFrame(() => focusDrawer(drawerId(path)))
-    },
-    [drawerOpen, setDrawerOpen]
-  )
+  // Opening the drawer shows the column it sits in; the drawer then takes the cursor.
+  const toggleDrawer = useCallback((): void => {
+    if (drawerOpen) return setDrawerOpen(false)
+    setDrawerOpen(true)
+    setShowColumn(true)
+  }, [drawerOpen, setDrawerOpen])
 
   useEffect(
     () =>
@@ -387,7 +375,7 @@ function App(): React.JSX.Element {
           return focusSoon(shellId(current.path))
         }
         if (action === 'showDiff') return showTab('diff')
-        if (action === 'toggleTerminal') return toggleDrawer(current.path)
+        if (action === 'toggleTerminal') return toggleDrawer()
         if (action === 'sendToAgent') return sendComments(current.path)
         const i = worktrees.indexOf(current)
         const n = worktrees.length
@@ -678,7 +666,7 @@ function App(): React.JSX.Element {
                   knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
                   onKnowledgeChanged={refreshKnowledge}
                   drawerOpen={drawerOpen}
-                  onToggleDrawer={() => toggleDrawer(wt.path)}
+                  onToggleDrawer={toggleDrawer}
                   drawerHeight={drawer.height}
                   onDrawerHeight={drawer.setHeight}
                 />

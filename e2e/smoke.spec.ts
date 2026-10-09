@@ -87,15 +87,15 @@ test('shows the welcome screen with no repos', async () => {
 function chord(
   app: ElectronApplication,
   keyCode: string,
-  modifier: 'meta' | 'control'
+  modifier: 'meta' | 'control' | Array<'meta' | 'control' | 'shift'>
 ): Promise<void> {
   return app.evaluate(
     ({ BrowserWindow }, [k, m]) => {
       const wc = BrowserWindow.getAllWindows()[0].webContents
-      wc.sendInputEvent({ type: 'keyDown', keyCode: k, modifiers: [m] })
-      wc.sendInputEvent({ type: 'keyUp', keyCode: k, modifiers: [m] })
+      wc.sendInputEvent({ type: 'keyDown', keyCode: k, modifiers: m })
+      wc.sendInputEvent({ type: 'keyUp', keyCode: k, modifiers: m })
     },
-    [keyCode, modifier] as const
+    [keyCode, ([] as string[]).concat(modifier)] as const
   )
 }
 
@@ -1351,6 +1351,15 @@ test('a terminal drawer under the side column keeps its shell while folded', asy
     await workspace.getByRole('button', { name: 'Close terminal 1' }).click()
     await expect(panes).toHaveCount(1)
     await expect(panes.nth(0).locator('.xterm-rows')).toContainText('second-2')
+
+    // Cmd-Shift-T adds a tab; Cmd-Shift-[ and ] step through them and wrap.
+    await chord(app, 'T', ['meta', 'shift'])
+    await expect(panes).toHaveCount(2)
+    await expect(panes.nth(1)).toBeVisible()
+    await chord(app, ']', ['meta', 'shift'])
+    await expect(panes.nth(0)).toBeVisible()
+    await chord(app, '[', ['meta', 'shift'])
+    await expect(panes.nth(1)).toBeVisible()
   } finally {
     await app.close()
   }
