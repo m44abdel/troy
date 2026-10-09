@@ -77,6 +77,8 @@ export function TerminalDrawer({
       return started ? addTab() : undefined
     }
     if (!open) return
+    // The last tab can't close (the drawer always has a shell), so it folds the drawer instead.
+    if (action === 'closeTerminal') return tabs.length > 1 ? closeTab(active) : onToggle()
     if (action === 'prevTerminal') cycle(-1)
     if (action === 'nextTerminal') cycle(1)
   })
@@ -111,7 +113,11 @@ export function TerminalDrawer({
               <span key={tab} className="drawer-tab" aria-selected={tab === active} role="tab">
                 <button onClick={() => show(tab)}>{i + 1}</button>
                 {tabs.length > 1 && (
-                  <button aria-label={`Close terminal ${i + 1}`} onClick={() => closeTab(tab)}>
+                  <button
+                    aria-label={`Close terminal ${i + 1}`}
+                    title={`Close terminal (${MOD}⇧W)`}
+                    onClick={() => closeTab(tab)}
+                  >
                     <Icon name="x" size={11} />
                   </button>
                 )}

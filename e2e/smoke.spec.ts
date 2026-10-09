@@ -1360,6 +1360,13 @@ test('a terminal drawer under the side column keeps its shell while folded', asy
     await expect(panes.nth(0)).toBeVisible()
     await chord(app, '[', ['meta', 'shift'])
     await expect(panes.nth(1)).toBeVisible()
+
+    // Cmd-Shift-W closes the active tab; on the last one it folds the drawer.
+    await chord(app, 'W', ['meta', 'shift'])
+    await expect(panes).toHaveCount(1)
+    await chord(app, 'W', ['meta', 'shift'])
+    await expect(bar).toHaveAttribute('aria-expanded', 'false')
+    await expect(panes).toHaveCount(1)
   } finally {
     await app.close()
   }

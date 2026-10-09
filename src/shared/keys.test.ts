@@ -51,6 +51,7 @@ describe('routeKey on macOS', () => {
   it('maps Cmd-Shift chords to the terminal tabs, like Chrome tabs', () => {
     const shifted = (code: string): KeyInput => key(code, { meta: true, shift: true })
     expect(routeKey(shifted('KeyT'), 'darwin')).toBe('newTerminal')
+    expect(routeKey(shifted('KeyW'), 'darwin')).toBe('closeTerminal')
     expect(routeKey(shifted('BracketLeft'), 'darwin')).toBe('prevTerminal')
     expect(routeKey(shifted('BracketRight'), 'darwin')).toBe('nextTerminal')
     // Unbound Cmd-Shift keys (and digits) stay with the OS and the page.
