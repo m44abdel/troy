@@ -38,6 +38,7 @@ import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 import { ClosedList, WorktreeCard } from './WorktreeCard'
 import { Board } from './Board'
+import { Automations } from './Automations'
 
 // ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
 const CONTEXT_POLL_MS = 5000
@@ -83,6 +84,7 @@ function App(): React.JSX.Element {
   const [firstRuns, setFirstRuns] = useState<Record<string, FirstRun>>({})
   const [showColumn, setShowColumn] = useState(true)
   const [showBoard, setShowBoard] = useState(false)
+  const [showAutomations, setShowAutomations] = useState(false)
   const [tab, setTab] = useState<ColumnTab>('shell')
   const [checks, setChecks] = useState<Record<string, CheckResult>>({})
   // An overlap line narrows that worktree's diff to its files until "Show all".
@@ -576,6 +578,10 @@ function App(): React.JSX.Element {
         )}
         {error && <p className="error">{error}</p>}
         <footer className="sidebar-footer">
+          <button className="footer-button" onClick={() => setShowAutomations(true)}>
+            <Icon name="refresh" size={15} />
+            Automations
+          </button>
           <button className="footer-button" onClick={() => setShowSettings(true)}>
             <Icon name="settings" size={15} />
             Settings
@@ -687,6 +693,13 @@ function App(): React.JSX.Element {
           installed={installed ?? []}
           onCancel={() => setDialogRepo(null)}
           onCreate={createWorktree}
+        />
+      )}
+      {showAutomations && (
+        <Automations
+          repos={repos.map((r) => r.path)}
+          installed={installed ?? []}
+          onClose={() => setShowAutomations(false)}
         />
       )}
       {showSettings && (

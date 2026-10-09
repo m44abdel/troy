@@ -4,6 +4,7 @@ import type { AgentStatus } from '../shared/status'
 import type { Overlap } from '../shared/overlap'
 import type {
   CheckResult,
+  Automation,
   Mail,
   SpawnRequest,
   ContextUsage,
@@ -105,6 +106,9 @@ const api = {
   watchMail: (): Promise<void> => ipcRenderer.invoke('mail:watch'),
   onMail: (cb: (mail: Mail) => void) => subscribe('agent:mail', cb),
   onSpawn: (cb: (req: SpawnRequest) => void) => subscribe('agent:spawn', cb),
+  getAutomations: (): Promise<Automation[]> => ipcRenderer.invoke('automations:get'),
+  setAutomations: (list: Automation[]): Promise<Automation[]> =>
+    ipcRenderer.invoke('automations:set', list),
   onAction: (cb: (action: AppAction) => void) => subscribe('app:action', cb)
 }
 

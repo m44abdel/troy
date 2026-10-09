@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { DEFAULT_BINDINGS, routeKey } from '../shared/keys'
 import { registerPty } from './pty'
 import { discardReview, prNumber, registerRepos } from './repos'
+import { registerAutomations } from './automations'
 import { watchMail, watchSpawns } from './mail'
 import { mailDir, writeMcpConfig } from './mcp-config'
 import { withoutSessionMarkers } from './env'
@@ -111,6 +112,7 @@ app.whenReady().then(async () => {
   registerSettings()
   registerPty()
   registerRepos()
+  registerAutomations()
   // The window asks once it can receive, so messages waiting from before aren't lost.
   let stopMail: (() => void) | undefined
   ipcMain.handle('mail:watch', (event) => {
