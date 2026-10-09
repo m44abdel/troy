@@ -5,6 +5,7 @@ import type { Overlap } from '../shared/overlap'
 import type {
   CheckResult,
   Mail,
+  SpawnRequest,
   ContextUsage,
   CreateRequest,
   Knowledge,
@@ -103,6 +104,7 @@ const api = {
   setBadge: (count: number): void => ipcRenderer.send('app:badge', count),
   watchMail: (): Promise<void> => ipcRenderer.invoke('mail:watch'),
   onMail: (cb: (mail: Mail) => void) => subscribe('agent:mail', cb),
+  onSpawn: (cb: (req: SpawnRequest) => void) => subscribe('agent:spawn', cb),
   onAction: (cb: (action: AppAction) => void) => subscribe('app:action', cb)
 }
 

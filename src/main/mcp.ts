@@ -1,9 +1,10 @@
-// Troy's MCP server: lets any agent search approved knowledge and propose new facts.
+// Troy's MCP server: lets any agent search approved knowledge, propose new facts, and
+// message or spawn other agents.
 // ponytail: hand-rolled JSON-RPC for the three methods it needs; the official SDK
 // brings an HTTP stack (express, hono) Troy never uses.
 import type { KnowledgeEntry } from '../shared/types'
 import { formatEntry, propose, readKnowledge, SOURCE_HELP } from './knowledge'
-import { sendMail } from './mail'
+import { requestSpawn, sendMail } from './mail'
 import { listWorktrees } from './worktrees'
 
 const PROTOCOL_VERSION = '2025-06-18'
@@ -56,6 +57,23 @@ const TOOLS = [
         text: { type: 'string', description: 'The message. Be specific and brief.' }
       },
       required: ['to', 'text']
+    }
+  },
+  {
+    name: 'agent_spawn',
+    description:
+      'Start another agent on a task in a new worktree of this repository. It runs alongside you in Troy; check on it with agents_list and talk to it with agent_message. Give each task its own branch.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        branch: { type: 'string', description: 'A new branch name for the task.' },
+        prompt: { type: 'string', description: 'The task, complete enough to work from alone.' },
+        agent: {
+          type: 'string',
+          description: 'Agent command line, e.g. "codex". Omit to run the same agent as you.'
+        }
+      },
+      required: ['branch', 'prompt']
     }
   }
 ]
@@ -113,6 +131,29 @@ export function createServer(
     )
   }
 
+  async function spawn(args: Record<string, unknown>): Promise<object> {
+    if (!mailDir) return text('Spawning agents only works inside Troy.', true)
+    if (typeof args.branch !== 'string' || typeof args.prompt !== 'string')
+      return text('branch and prompt must be strings.', true)
+    if (args.agent !== undefined && typeof args.agent !== 'string')
+      return text('agent must be a string.', true)
+    const worktrees = await listWorktrees(cwd)
+    const repo = worktrees.find((w) => w.primary)
+    if (!repo) return text('Could not find the main checkout of this repository.', true)
+    if (worktrees.some((w) => w.branch === args.branch))
+      return text(`Branch "${args.branch}" already has a worktree. Pick a new name.`, true)
+    await requestSpawn(mailDir, {
+      from: cwd,
+      repo: repo.path,
+      branch: args.branch.trim(),
+      agent: args.agent?.trim() || null,
+      prompt: args.prompt
+    })
+    return text(
+      `Requested ${args.branch}. Troy creates the worktree and starts the agent; if that fails, a message tells you why.`
+    )
+  }
+
   async function callTool(name: unknown, args: Record<string, unknown>): Promise<object> {
     if (name === 'agents_list') {
       const lines = (await listWorktrees(cwd)).map(
@@ -121,6 +162,7 @@ export function createServer(
       return text(lines.join('\n'))
     }
     if (name === 'agent_message') return message(args)
+    if (name === 'agent_spawn') return spawn(args)
     if (name === 'knowledge_search') {
       const { entries } = await readKnowledge(cwd)
       const query = typeof args.query === 'string' ? args.query : ''

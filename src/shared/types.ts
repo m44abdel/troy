@@ -85,6 +85,18 @@ export interface Mail {
   sentAt: string
 }
 
+/** An agent asking Troy to start another agent in a new worktree. */
+export interface SpawnRequest {
+  /** Requester's worktree path. */
+  from: string
+  repo: string
+  branch: string
+  /** null runs the requester's own agent. */
+  agent: string | null
+  prompt: string
+  sentAt: string
+}
+
 export interface ReviewComment {
   file: string
   /** react-diff-view change key, where the comment renders. */

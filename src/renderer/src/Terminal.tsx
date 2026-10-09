@@ -46,6 +46,8 @@ interface Props {
   resume?: string
   /** Typed into a plain shell on its first launch only. */
   initialInput?: string
+  /** Launches the agent right away instead of waiting for Enter. */
+  autoStart?: boolean
   onStatus?: StatusListener
 }
 
@@ -58,6 +60,7 @@ export function Terminal({
   args = '',
   resume = '',
   initialInput,
+  autoStart = false,
   onStatus
 }: Props): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null)
@@ -135,7 +138,7 @@ export function Terminal({
     }
 
     const verb = resumeRef.current && !prompt ? 'resume' : 'start'
-    if (command) xterm.write(`Press Enter to ${verb} \x1b[1m${command}\x1b[0m\r\n`)
+    if (command && !autoStart) xterm.write(`Press Enter to ${verb} \x1b[1m${command}\x1b[0m\r\n`)
     else start()
 
     const input = xterm.onData((data) => {
@@ -166,7 +169,7 @@ export function Terminal({
       terminals.delete(id)
       xterm.dispose()
     }
-  }, [id, cwd, port, command, prompt, args, initialInput])
+  }, [id, cwd, port, command, prompt, args, initialInput, autoStart])
 
   return <div ref={host} className="terminal" />
 }
