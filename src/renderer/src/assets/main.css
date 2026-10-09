@@ -2034,7 +2034,14 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   border-top: 1px solid var(--border);
 }
 
+.drawer-head {
+  display: flex;
+  align-items: center;
+  background: var(--panel);
+}
+
 .drawer-bar {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -2064,6 +2071,53 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .drawer-body {
   min-height: 0;
+}
+
+.drawer-pane {
+  height: 100%;
+}
+
+.drawer-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 8px;
+}
+
+.drawer-tab {
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+.drawer-tab[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.drawer-tabs button {
+  display: flex;
+  align-items: center;
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.drawer-tab button + button {
+  padding-left: 0;
+}
+
+.drawer-tabs button:hover {
+  color: var(--text);
+}
+
+.drawer-add {
+  color: var(--muted);
 }
 
 .drawer-body .terminal {

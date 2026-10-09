@@ -21,6 +21,7 @@ import { STATUS_LABELS } from './statusLabels'
 import {
   agentId,
   drawerId,
+  focusDrawer,
   focusTerminal,
   pasteToTerminal,
   shellId,
@@ -332,7 +333,7 @@ function App(): React.JSX.Element {
       if (drawerOpen) return setDrawerOpen(false)
       setDrawerOpen(true)
       setShowColumn(true)
-      focusSoon(drawerId(path))
+      requestAnimationFrame(() => focusDrawer(drawerId(path)))
     },
     [drawerOpen, setDrawerOpen]
   )
