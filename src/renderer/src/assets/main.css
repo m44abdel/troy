@@ -2170,3 +2170,27 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 .board-lane h3 .count {
   margin-left: auto;
 }
+
+.automation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.automation-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.automation-list small {
+  display: block;
+  color: var(--muted);
+}

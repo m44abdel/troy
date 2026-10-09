@@ -131,3 +131,14 @@ export interface ReviewMeta {
 }
 
 export type ReviewEvent = 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES'
+
+/** A prompt that starts an agent in a fresh worktree on a schedule. */
+export interface Automation {
+  id: string
+  name: string
+  repo: string
+  /** Five-field cron, local time. */
+  schedule: string
+  agent: string
+  prompt: string
+}
