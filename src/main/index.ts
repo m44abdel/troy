@@ -5,7 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { DEFAULT_BINDINGS, routeKey } from '../shared/keys'
 import { registerPty } from './pty'
 import { discardReview, prNumber, registerRepos } from './repos'
-import { watchMail } from './mail'
+import { watchMail, watchSpawns } from './mail'
 import { mailDir, writeMcpConfig } from './mcp-config'
 import { withoutSessionMarkers } from './env'
 import { adoptLoginPath } from './path'
@@ -115,9 +115,14 @@ app.whenReady().then(async () => {
   let stopMail: (() => void) | undefined
   ipcMain.handle('mail:watch', (event) => {
     stopMail?.()
-    stopMail = watchMail(mailDir(), (mail) => {
-      if (!event.sender.isDestroyed()) event.sender.send('agent:mail', mail)
-    })
+    const send = (channel: string, item: unknown): void => {
+      if (!event.sender.isDestroyed()) event.sender.send(channel, item)
+    }
+    const stops = [
+      watchMail(mailDir(), (mail) => send('agent:mail', mail)),
+      watchSpawns(mailDir(), (req) => send('agent:spawn', req))
+    ]
+    stopMail = () => stops.forEach((stop) => stop())
   })
   // The dock badge counts agents waiting on you.
   ipcMain.handle('review:window', (_e, repo, n) => openReviewWindow(repo, n))

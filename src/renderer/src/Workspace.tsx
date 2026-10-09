@@ -24,6 +24,8 @@ export type ColumnTab = 'shell' | 'diff' | 'knowledge' | 'docs'
 export interface FirstRun {
   prompt: string
   setup: boolean
+  /** Launch the agent without waiting for Enter: nobody is watching a spawned one start. */
+  autoStart?: boolean
 }
 
 interface Props {
@@ -136,6 +138,7 @@ export function Workspace({
           args={wt.agentArgs}
           resume={wt.resume}
           prompt={firstRun?.prompt || undefined}
+          autoStart={firstRun?.autoStart}
           onStatus={(s, certain) => onStatus(wt.path, s, certain)}
         />
       </div>
