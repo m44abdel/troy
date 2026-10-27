@@ -32,7 +32,7 @@ const THEME = {
   brightWhite: '#ffffff'
 }
 
-interface Props {
+export interface TerminalProps {
   id: string
   cwd: string
   port?: number
@@ -62,7 +62,7 @@ export function Terminal({
   initialInput,
   autoStart = false,
   onStatus
-}: Props): React.JSX.Element {
+}: TerminalProps): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null)
   // Read at launch only; the repo list refreshes it while agents run.
   const resumeRef = useRef(resume)
@@ -99,6 +99,8 @@ export function Terminal({
     const tracker = command ? trackStatus(reportStatus) : null
     let ptyId: string | null = null
     let starting = false
+    // Keys typed while the shell starts, e.g. right after a split; sent once it is up.
+    let typedEarly = ''
     let launches = 0
     let disposed = false
     let unsubscribe: Array<() => void> = []
@@ -132,6 +134,8 @@ export function Terminal({
             })
           ]
           if (input) window.api.ptyWrite(pid, input)
+          if (typedEarly) window.api.ptyWrite(pid, typedEarly)
+          typedEarly = ''
         })
         .catch((err) => xterm.write(`Could not start a shell: ${err.message}\r\n`))
         .finally(() => (starting = false))
@@ -143,7 +147,8 @@ export function Terminal({
 
     const input = xterm.onData((data) => {
       if (ptyId) window.api.ptyWrite(ptyId, data)
-      else if (data === '\r' && !starting) start()
+      else if (starting) typedEarly += data
+      else if (data === '\r') start()
     })
     const bell = xterm.onBell(() => tracker?.bell())
     const resize = xterm.onResize(({ cols, rows }) => {

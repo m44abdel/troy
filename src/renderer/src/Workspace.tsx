@@ -10,15 +10,12 @@ import { KnowledgePane } from './KnowledgePane'
 import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { Splitter } from './Splitter'
-import { Terminal } from './Terminal'
-import { agentId, drawerId, shellId, submitToTerminal } from './terminals'
-import { TerminalDrawer } from './TerminalDrawer'
+import { TerminalArea } from './TerminalArea'
+import { agentId, submitToTerminal } from './terminals'
 import { STATUS_LABELS } from './statusLabels'
 import { AgentBadge } from './WorktreeCard'
 
-const SETUP_COMMAND = 'sh .troy/setup.sh\r'
-
-export type ColumnTab = 'shell' | 'diff' | 'knowledge' | 'docs'
+export type ColumnTab = 'diff' | 'knowledge' | 'docs'
 
 /** What a worktree created this session still needs on its first launch. */
 export interface FirstRun {
@@ -53,10 +50,8 @@ interface Props {
   /** Shared by every worktree of the repo. */
   knowledge?: Knowledge | { error: string }
   onKnowledgeChanged: () => void
-  drawerOpen: boolean
-  onToggleDrawer: () => void
-  drawerHeight: number
-  onDrawerHeight: (height: number) => void
+  /** Closing the agent's pane or tab closes the session, like the card's ×. */
+  onCloseSession: () => void
 }
 
 export function Workspace({
@@ -82,10 +77,7 @@ export function Workspace({
   onClearDiffFilter,
   knowledge,
   onKnowledgeChanged,
-  drawerOpen,
-  onToggleDrawer,
-  drawerHeight,
-  onDrawerHeight
+  onCloseSession
 }: Props): React.JSX.Element {
   const pending = knowledge && 'proposals' in knowledge ? knowledge.proposals.length : 0
   const tabButton = (
@@ -106,42 +98,47 @@ export function Workspace({
 
   return (
     <div className="workspace" ref={root} style={{ display: active ? 'flex' : 'none' }}>
-      <div className="pane pane-agent">
-        <header className="pane-header">
-          <span className={`status-pill ${state}`}>
-            <span className={`dot ${state}`} />
-            {STATUS_LABELS[state]}
-          </span>
-          <span className="pane-title">{wt.title ?? branch}</span>
-          {wt.title && (
-            <span className="branch-chip">
-              <Icon name="branch" size={12} />
-              {branch}
-            </span>
-          )}
-          <AgentBadge agent={wt.agent} />
-          <button
-            className={`icon-button ${showColumn ? 'on' : ''}`}
-            onClick={onToggleColumn}
-            title={`Toggle side panel (${MOD}\\)`}
-            aria-label="Toggle side panel"
-            aria-pressed={showColumn}
-          >
-            <Icon name="panel" />
-          </button>
-        </header>
-        <Terminal
-          id={agentId(wt.path)}
-          cwd={wt.path}
-          port={wt.port}
-          command={wt.agent}
-          args={wt.agentArgs}
-          resume={wt.resume}
-          prompt={firstRun?.prompt || undefined}
-          autoStart={firstRun?.autoStart}
-          onStatus={(s, certain) => onStatus(wt.path, s, certain)}
-        />
-      </div>
+      <TerminalArea
+        path={wt.path}
+        port={wt.port}
+        visible={active}
+        agent={{
+          command: wt.agent,
+          args: wt.agentArgs,
+          resume: wt.resume,
+          prompt: firstRun?.prompt || undefined,
+          autoStart: firstRun?.autoStart,
+          onStatus: (s, certain) => onStatus(wt.path, s, certain)
+        }}
+        agentTitle={
+          <>
+            <span className={`dot ${state}`} aria-label={STATUS_LABELS[state]} />
+            {wt.title ?? branch}
+          </>
+        }
+        firstRun={firstRun && { setup: firstRun.setup }}
+        onCloseAgent={onCloseSession}
+        toolbar={
+          <>
+            {wt.title && (
+              <span className="branch-chip">
+                <Icon name="branch" size={12} />
+                {branch}
+              </span>
+            )}
+            <AgentBadge agent={wt.agent} />
+            <button
+              className={`icon-button ${showColumn ? 'on' : ''}`}
+              onClick={onToggleColumn}
+              title={`Toggle side panel (${MOD}L)`}
+              aria-label="Toggle side panel"
+              aria-pressed={showColumn}
+            >
+              <Icon name="panel" />
+            </button>
+          </>
+        }
+      />
       {showColumn && (
         <Splitter
           label="Resize agent and side panel"
@@ -157,18 +154,9 @@ export function Workspace({
       )}
       <div className="column" style={{ display: showColumn ? 'flex' : 'none' }}>
         <div className="tabs">
-          {tabButton('shell', 'terminal', 'Shell', 'E')}
-          {tabButton('diff', 'diff', comments.length ? `Diff · ${comments.length}` : 'Diff', 'D')}
+          {tabButton('diff', 'diff', comments.length ? `Diff · ${comments.length}` : 'Diff', '⇧G')}
           {tabButton('docs', 'book', 'Docs')}
           {tabButton('knowledge', 'library', pending ? `Knowledge · ${pending}` : 'Knowledge')}
-        </div>
-        <div className="pane pane-shell" style={{ display: tab === 'shell' ? 'block' : 'none' }}>
-          <Terminal
-            id={shellId(wt.path)}
-            cwd={wt.path}
-            port={wt.port}
-            initialInput={firstRun?.setup ? SETUP_COMMAND : undefined}
-          />
         </div>
         <div className="pane" style={{ display: tab === 'docs' ? 'block' : 'none' }}>
           <DocsPane path={wt.path} visible={active && showColumn && tab === 'docs'} />
@@ -209,17 +197,6 @@ export function Workspace({
             onClearFilter={onClearDiffFilter}
           />
         </div>
-        <TerminalDrawer
-          id={drawerId(wt.path)}
-          cwd={wt.path}
-          port={wt.port}
-          // Only the visible worktree starts a shell when the drawer opens.
-          open={drawerOpen && active}
-          visible={active}
-          onToggle={onToggleDrawer}
-          height={drawerHeight}
-          onHeight={onDrawerHeight}
-        />
       </div>
     </div>
   )
