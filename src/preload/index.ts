@@ -3,8 +3,10 @@ import type { AppAction } from '../shared/keys'
 import type { AgentStatus } from '../shared/status'
 import type { Overlap } from '../shared/overlap'
 import type {
+  AwakeMode,
   BranchPr,
   CheckResult,
+  ClaudeUsage,
   Automation,
   Issue,
   OpenPr,
@@ -14,6 +16,7 @@ import type {
   MergeMethod,
   Preview,
   SessionSummary,
+  Stats,
   MergeOptions,
   PrStatus,
   Mail,
@@ -138,6 +141,10 @@ const api = {
   onPtyStatus: (id: string, cb: (status: AgentStatus) => void) => subscribe(`pty:status:${id}`, cb),
 
   setBadge: (count: number): void => ipcRenderer.send('app:badge', count),
+  stats: (): Promise<Stats | null> => ipcRenderer.invoke('stats:get'),
+  usage: (): Promise<ClaudeUsage | null> => ipcRenderer.invoke('usage:get'),
+  setAwake: (mode: AwakeMode, working: boolean): void =>
+    ipcRenderer.send('awake:set', mode, working),
   watchMail: (): Promise<void> => ipcRenderer.invoke('mail:watch'),
   onMail: (cb: (mail: Mail) => void) => subscribe('agent:mail', cb),
   onSpawn: (cb: (req: SpawnRequest) => void) => subscribe('agent:spawn', cb),

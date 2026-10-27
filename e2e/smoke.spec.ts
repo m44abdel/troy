@@ -1542,6 +1542,44 @@ esac
   }
 })
 
+test('status bar counts terminals and finds a dev server port', async () => {
+  const repo = gitRepo('troy-status-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const bar = page.locator('.status-bar')
+    // No Claude login in this profile, so no usage meter.
+    await expect(bar.getByText(/^Used/)).toHaveCount(0)
+    await expect(bar.getByRole('button', { name: 'Keep awake: Off' })).toBeVisible()
+    await bar.getByRole('button', { name: 'Keep awake: Off' }).click()
+    await expect(bar.getByRole('button', { name: 'Keep awake: Auto' })).toBeVisible()
+
+    await chord(app, 'T', 'meta')
+    await expect(
+      page.locator('.workspace:visible .pane-shell:visible .xterm-helper-textarea')
+    ).toBeFocused()
+    await page.keyboard.type(
+      `node -e "require('net').createServer().listen(0, function () { console.log('port=' + this.address().port) })"`
+    )
+    await page.keyboard.press('Enter')
+    const rows = page.locator('.workspace:visible .pane-shell:visible .xterm-rows')
+    await expect(rows).toContainText(/port=\d+/, { timeout: 15_000 })
+    const port = /port=(\d+)/.exec((await rows.textContent()) ?? '')![1]
+
+    await expect(bar.getByRole('button', { name: /ports$/ })).not.toHaveAccessibleName('0 ports', {
+      timeout: 25_000
+    })
+    await bar.getByRole('button', { name: /ports$/ }).click()
+    await expect(bar.locator('.ports-menu')).toContainText(`:${port}`)
+    await expect(bar.locator('.ports-menu')).toContainText(repo.split('/').pop()!)
+  } finally {
+    await app.close()
+  }
+})
+
 test('splits and tabs keep every shell alive', async () => {
   const repo = gitRepo('troy-panes-')
   const userData = tempDir('troy-profile-')

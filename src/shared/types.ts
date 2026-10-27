@@ -243,3 +243,21 @@ export interface OpenPr {
   author: string
   isDraft: boolean
 }
+
+/** What the status bar shows about the machine. */
+export interface Stats {
+  /** Troy plus everything its terminals started. */
+  memoryMb: number
+  terminals: number
+  /** Ports something in a worktree's terminals listens on. */
+  ports: Array<{ port: number; path: string }>
+}
+
+/** Claude's 5-hour usage window. */
+export interface ClaudeUsage {
+  percent: number
+  /** ms; null when Anthropic doesn't say. */
+  resetsAt: number | null
+}
+
+export type AwakeMode = 'off' | 'auto' | 'on'
