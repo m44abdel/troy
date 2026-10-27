@@ -1390,6 +1390,8 @@ esac
   const app = await launchTroy({ ...shellEnv, ZDOTDIR: zdotdirWith(bin), TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
+    // Review requests sit on the Tasks page.
+    await page.getByRole('button', { name: 'Tasks' }).click()
     const pr = page.locator('.reviews .pr')
     await expect(pr).toContainText('Add two')
     await expect(pr).toContainText('acme/widgets#7 · @sam')
@@ -1445,6 +1447,96 @@ test('board view', async () => {
 
     await lane.locator('.card-select').click()
     await expect(board).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('Cmd-J jumps to a worktree by name', async () => {
+  const repos = [gitRepo('troy-jump-a-'), gitRepo('troy-jump-b-')]
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos }))
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', repos[0])
+    await chord(app, 'J', 'meta')
+    await page.keyboard.type(repos[1].split('/').pop()!)
+    await expect(page.getByRole('option')).toHaveCount(1)
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.worktree.selected')).toHaveAttribute('title', repos[1])
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('Cmd-B hides the sidebar and it stays hidden', async () => {
+  const repo = gitRepo('troy-hide-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+  const env = { ...shellEnv, TROY_USER_DATA: userData }
+
+  let app = await launchTroy(env)
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.sidebar')).toBeVisible()
+    await chord(app, 'B', 'meta')
+    await expect(page.locator('.sidebar')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+  app = await launchTroy(env)
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.workspace:visible')).toBeVisible()
+    await expect(page.locator('.sidebar')).toHaveCount(0)
+    await chord(app, 'B', 'meta')
+    await expect(page.locator('.sidebar')).toBeVisible()
+  } finally {
+    await app.close()
+  }
+})
+
+test('tasks start a worktree from an issue', async () => {
+  const repo = gitRepo('troy-tasks-')
+  const bin = tempDir('troy-bin-')
+  const issue = {
+    number: 12,
+    title: 'Totals are off by a cent',
+    url: 'https://github.com/o/r/issues/12',
+    updatedAt: '2026-10-27T10:00:00Z',
+    labels: [{ name: 'bug' }],
+    body: 'Seen on carts.'
+  }
+  writeFileSync(
+    join(bin, 'gh'),
+    `#!/bin/sh
+case "$1 $2" in
+  "issue list") echo '${JSON.stringify([issue])}' ;;
+  "pr list") echo '[]' ;;
+  *) exit 1 ;;
+esac
+`,
+    { mode: 0o755 }
+  )
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({ ...shellEnv, ZDOTDIR: zdotdirWith(bin), TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    await page.getByRole('button', { name: 'Tasks' }).click()
+    const row = page.locator('.task-row', { hasText: 'Totals are off by a cent' })
+    await expect(row).toContainText('bug')
+    await row.getByRole('button', { name: 'Start' }).click()
+    await expect(page.getByLabel('Branch', { exact: true })).toHaveValue(
+      'issue-12-totals-are-off-by-a-cent'
+    )
+    await expect(page.getByLabel('Initial prompt')).toHaveValue(
+      'Work on issue #12: Totals are off by a cent\n\nhttps://github.com/o/r/issues/12\n\nSeen on carts.'
+    )
   } finally {
     await app.close()
   }

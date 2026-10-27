@@ -1,13 +1,16 @@
 import { ipcMain } from 'electron'
 import type {
+  BranchPr,
   CheckState,
+  Issue,
   MergeMethod,
   MergeOptions,
+  OpenPr,
   PrCheck,
   PrComment,
   PrStatus
 } from '../shared/types'
-import { attempt, locate, prNumber } from './repos'
+import { attempt, knownRepo, locate, prNumber } from './repos'
 import { run } from './worktrees'
 
 const GH_TIMEOUT_MS = 30_000
@@ -16,6 +19,8 @@ const PR_FIELDS = 'number,title,state,url,updatedAt,isDraft,mergeable,statusChec
 const MERGE_FIELDS =
   'squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed,viewerDefaultMergeMethod'
 const NO_PR = /no pull requests? found/i
+const LIST_LIMIT = '100'
+const TASK_LIMIT = '50'
 
 const METHODS: Record<MergeMethod, string> = {
   squash: 'squashMergeAllowed',
@@ -62,7 +67,7 @@ export function parsePr(json: unknown): PrStatus {
   return {
     number: pr.number,
     title: str(pr.title),
-    state: pr.state === 'MERGED' || pr.state === 'CLOSED' ? pr.state : 'OPEN',
+    state: prState(pr.state),
     url: str(pr.url),
     updatedAt: str(pr.updatedAt),
     isDraft: pr.isDraft === true,
@@ -79,6 +84,44 @@ export function parseMergeOptions(json: unknown): MergeOptions {
   const wanted = str(repo.viewerDefaultMergeMethod).toLowerCase() as MergeMethod
   return { allowed, preferred: allowed.includes(wanted) ? wanted : allowed[0] }
 }
+
+const prState = (v: unknown): PrStatus['state'] => (v === 'MERGED' || v === 'CLOSED' ? v : 'OPEN')
+
+/** Each branch's open PR, or else its newest one. `gh pr list` lists newest first. */
+export function latestPrByBranch(list: unknown): Record<string, BranchPr> {
+  const byBranch: Record<string, BranchPr> = {}
+  for (const pr of Array.isArray(list) ? (list as Json[]) : []) {
+    const branch = str(pr.headRefName)
+    if (typeof pr.number !== 'number' || !branch) continue
+    const seen = byBranch[branch]
+    if (!seen || (seen.state !== 'OPEN' && pr.state === 'OPEN'))
+      byBranch[branch] = { number: pr.number, state: prState(pr.state) }
+  }
+  return byBranch
+}
+
+export const parseIssues = (list: unknown): Issue[] =>
+  (Array.isArray(list) ? (list as Json[]) : []).map((i) => ({
+    number: Number(i.number),
+    title: str(i.title),
+    url: str(i.url),
+    updatedAt: str(i.updatedAt),
+    labels: Array.isArray(i.labels) ? i.labels.map((l: Json) => str(l.name)) : [],
+    body: str(i.body)
+  }))
+
+const parseOpenPrs = (list: unknown): OpenPr[] =>
+  (Array.isArray(list) ? (list as Json[]) : []).map((p) => ({
+    number: Number(p.number),
+    title: str(p.title),
+    url: str(p.url),
+    updatedAt: str(p.updatedAt),
+    author: str((p.author as Json | undefined)?.login),
+    isDraft: p.isDraft === true
+  }))
+
+const gh = async (args: string[], cwd: string): Promise<unknown> =>
+  JSON.parse(await run('gh', args, cwd, { timeout: GH_TIMEOUT_MS }))
 
 /** The PR of the branch checked out in `path`, or null when it has none. */
 async function prStatus(path: string): Promise<PrStatus | null> {
@@ -106,6 +149,44 @@ const mergeMethod = (m: unknown): MergeMethod => {
 }
 
 export function registerGithub(): void {
+  ipcMain.handle('pr:byBranch', (_e, repo) =>
+    attempt(async () => {
+      const args = ['pr', 'list', '--state', 'all', '--json', 'number,state,headRefName']
+      return {
+        prs: latestPrByBranch(await gh([...args, '--limit', LIST_LIMIT], await knownRepo(repo)))
+      }
+    })
+  )
+  ipcMain.handle('tasks:list', (_e, repo) =>
+    attempt(async () => {
+      const cwd = await knownRepo(repo)
+      const [issues, prs] = await Promise.all([
+        gh(
+          [
+            'issue',
+            'list',
+            '--json',
+            'number,title,url,updatedAt,labels,body',
+            '--limit',
+            TASK_LIMIT
+          ],
+          cwd
+        ),
+        gh(
+          [
+            'pr',
+            'list',
+            '--json',
+            'number,title,url,updatedAt,author,isDraft',
+            '--limit',
+            TASK_LIMIT
+          ],
+          cwd
+        )
+      ])
+      return { issues: parseIssues(issues), prs: parseOpenPrs(prs) }
+    })
+  )
   ipcMain.handle('pr:get', (_e, path) =>
     attempt(async () => {
       const wt = await locate(path)

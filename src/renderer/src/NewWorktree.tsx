@@ -12,9 +12,17 @@ interface Props {
   onCancel: () => void
   /** Resolves to an error message, or null once the worktree exists. */
   onCreate: (req: NewWorktreeRequest) => Promise<string | null>
+  /** Filled in, e.g. from an issue on the Tasks page. */
+  initial?: { branch: string; prompt: string }
 }
 
-export function NewWorktree({ repoName, installed, onCancel, onCreate }: Props): React.JSX.Element {
+export function NewWorktree({
+  repoName,
+  installed,
+  onCancel,
+  onCreate,
+  initial
+}: Props): React.JSX.Element {
   const dialog = useRef<HTMLDialogElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -49,7 +57,13 @@ export function NewWorktree({ repoName, installed, onCancel, onCreate }: Props):
         </div>
         <label>
           Branch
-          <input name="branch" required autoFocus placeholder="feat/login" />
+          <input
+            name="branch"
+            required
+            autoFocus
+            placeholder="feat/login"
+            defaultValue={initial?.branch}
+          />
         </label>
         <label>
           Base branch
@@ -66,7 +80,7 @@ export function NewWorktree({ repoName, installed, onCancel, onCreate }: Props):
         </label>
         <label>
           Initial prompt
-          <textarea name="prompt" rows={3} placeholder="optional" />
+          <textarea name="prompt" rows={3} placeholder="optional" defaultValue={initial?.prompt} />
         </label>
         {error && <p className="error">{error}</p>}
         <div className="actions">

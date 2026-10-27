@@ -2,11 +2,18 @@ import { useState } from 'react'
 import type { OverlapKind } from '../../shared/overlap'
 import { commandName } from '../../shared/shell'
 import type { AgentStatus } from '../../shared/status'
-import type { CheckResult, ContextUsage, WorktreeView } from '../../shared/types'
+import type {
+  BranchPr,
+  CheckResult,
+  ContextUsage,
+  SessionSummary,
+  WorktreeView
+} from '../../shared/types'
 import { ContextRing } from './ContextRing'
 import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { STATUS_LABELS } from './statusLabels'
+import { timeAgo } from './timeAgo'
 
 /** A stable hue per agent name. */
 const agentHue = (agent: string): number =>
@@ -52,6 +59,10 @@ interface Props {
   mail?: number
   /** Other worktrees whose changes meet this one's. */
   overlaps?: { name: string; kind: OverlapKind; files: string[] }[]
+  /** The branch's PR on GitHub. */
+  pr?: BranchPr
+  /** The latest agent conversation that ran in this worktree. */
+  session?: SessionSummary
   onSelect: () => void
   /** Opens the diff narrowed to an overlap's files, with its line as the label. */
   onOverlap: (files: string[], label: string) => void
@@ -71,6 +82,8 @@ export function WorktreeCard({
   check,
   mail,
   overlaps = [],
+  pr,
+  session,
   onSelect,
   onOverlap,
   onClose,
@@ -104,16 +117,27 @@ export function WorktreeCard({
       }}
     >
       <button className="card-select" onClick={onSelect}>
+        <span className="card-line">
+          <span className={`dot ${status}`} />
+          <span className="card-title">{wt.title ?? branch}</span>
+          {pr && (
+            <span
+              className={`card-pr ${pr.state.toLowerCase()}`}
+              title={`PR #${pr.number}, ${pr.state.toLowerCase()}`}
+              aria-label={`PR #${pr.number}, ${pr.state.toLowerCase()}`}
+            >
+              <Icon name={pr.state === 'MERGED' ? 'merge' : 'pr'} size={13} />
+            </span>
+          )}
+        </span>
         <span className="card-head">
-          {/* With a title, the branch moves up here; without one, the branch is the title. */}
-          <span className="branch">{wt.title ? branch : wt.agent}</span>
+          <span className="branch">{branch}</span>
+          {wt.primary && <span className="primary-badge">primary</span>}
           {index < 9 && <kbd>{`${MOD}${index + 1}`}</kbd>}
         </span>
-        <span className="card-title">{wt.title ?? branch}</span>
         <span className="card-status">
-          <span className={`dot ${status}`} />
           <span className="status-label">{STATUS_LABELS[status]}</span>
-          {wt.title && <AgentBadge agent={wt.agent} />}
+          <AgentBadge agent={wt.agent} />
           {check && (
             <span
               className={`card-check ${check.ok ? 'ok' : 'failed'}`}
@@ -125,6 +149,12 @@ export function WorktreeCard({
           )}
           {usage && <ContextRing usage={usage} />}
         </span>
+        {session && (
+          <span className="card-session" title={session.title}>
+            <span className="card-session-title">{session.title}</span>
+            <span>{timeAgo(session.updatedAt)}</span>
+          </span>
+        )}
         {!!mail && (
           <span className="card-mail">
             <Icon name="mail" size={12} />

@@ -3,8 +3,11 @@ import type { AppAction } from '../shared/keys'
 import type { AgentStatus } from '../shared/status'
 import type { Overlap } from '../shared/overlap'
 import type {
+  BranchPr,
   CheckResult,
   Automation,
+  Issue,
+  OpenPr,
   Commit,
   FileList,
   GrepHit,
@@ -78,6 +81,10 @@ const api = {
     ipcRenderer.invoke('files:grep', path, query),
   openFile: (path: string, file: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('files:open', path, file),
+  prsByBranch: (repo: string): Promise<{ prs?: Record<string, BranchPr>; error?: string }> =>
+    ipcRenderer.invoke('pr:byBranch', repo),
+  tasks: (repo: string): Promise<{ issues?: Issue[]; prs?: OpenPr[]; error?: string }> =>
+    ipcRenderer.invoke('tasks:list', repo),
   sessions: (): Promise<{ sessions: SessionSummary[]; scanned: number } | { error: string }> =>
     ipcRenderer.invoke('sessions:list'),
   docs: (path: string): Promise<{ files?: string[]; error?: string }> =>

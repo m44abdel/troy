@@ -217,3 +217,29 @@ export interface SessionSummary {
   /** When the log last changed, in ms. */
   updatedAt: number
 }
+
+/** The PR a branch has, for the sidebar's PR icon. */
+export interface BranchPr {
+  number: number
+  state: PrStatus['state']
+}
+
+/** An open issue, for the Tasks page. */
+export interface Issue {
+  number: number
+  title: string
+  url: string
+  updatedAt: string
+  labels: string[]
+  body: string
+}
+
+/** An open pull request, for the Tasks page. */
+export interface OpenPr {
+  number: number
+  title: string
+  url: string
+  updatedAt: string
+  author: string
+  isDraft: boolean
+}

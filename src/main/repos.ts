@@ -113,7 +113,7 @@ async function describeRepos(state: State): Promise<Repo[]> {
 
 const listRepos = async (): Promise<Repo[]> => describeRepos(await loadState())
 
-async function knownRepo(repo: unknown): Promise<string> {
+export async function knownRepo(repo: unknown): Promise<string> {
   if (typeof repo !== 'string' || !(await loadState()).repos.includes(repo))
     throw new Error(`Unknown repository: ${repo}`)
   return repo
