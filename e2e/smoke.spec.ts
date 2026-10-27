@@ -62,7 +62,8 @@ test('saved repo opens to a working terminal', async () => {
     await expect(page.locator('.repo-header')).toContainText(repo.split('/').pop()!)
     await expect(page.locator('.worktree.selected')).toContainText('main')
 
-    const shell = page.locator('.workspace:visible .pane-shell')
+    await chord(app, 'T', 'meta')
+    const shell = page.locator('.workspace:visible .pane-shell:visible')
     await shell.locator('.xterm').click()
     await page.keyboard.type('echo troy-$((40+2))')
     await page.keyboard.press('Enter')
@@ -122,7 +123,9 @@ test('Cmd switches worktrees; Ctrl goes to the shell', async () => {
   const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
-    const shell = page.locator('.workspace:visible .pane-shell')
+    await expect(page.locator('.workspace:visible')).toBeVisible()
+    await chord(app, 'T', 'meta')
+    const shell = page.locator('.workspace:visible .pane-shell:visible')
     const visibleRows = shell.locator('.xterm-rows')
 
     await shell.locator('.xterm').click()
@@ -185,7 +188,7 @@ test('worktree lifecycle', async () => {
     await app.evaluate(({ dialog }) => {
       dialog.showMessageBox = (async () => ({ response: 1, checkboxChecked: false })) as never
     })
-    await chord(app, 'W', 'meta')
+    await chord(app, 'Backspace', ['meta', 'shift'])
     await expect(page.locator('.worktree')).toHaveCount(1)
     await expect(page.locator('.sidebar .error')).toHaveCount(0)
     expect(existsSync(worktree)).toBe(false)
@@ -224,7 +227,7 @@ test('diff review through to commit', async () => {
     await page.keyboard.press('Enter')
     await expect(page.locator('.worktree.selected .dot')).toHaveClass(/running|waiting/)
 
-    await chord(app, 'D', 'meta')
+    await chord(app, 'G', ['meta', 'shift'])
     const diff = workspace.locator('.pane-diff')
     await expect(diff.locator('.diff-file h3')).toHaveText(['a.txt', 'new.txt'])
 
@@ -649,7 +652,7 @@ test('a failing .troy/check goes back to the agent', async () => {
     await page.keyboard.press('Enter')
     await expect(card.locator('.card-check.failed')).toHaveText('check', { timeout: 10_000 })
 
-    await chord(app, 'D', 'meta')
+    await chord(app, 'G', ['meta', 'shift'])
     const bar = workspace.locator('.check-bar')
     await expect(bar.locator('.check-label')).toHaveText('.troy/check failed')
     await bar.locator('summary').click()
@@ -855,7 +858,9 @@ test('shells start clean of the parent Claude Code session', async () => {
   })
   try {
     const page = await app.firstWindow()
-    const shell = page.locator('.workspace:visible .pane-shell')
+    await expect(page.locator('.workspace:visible')).toBeVisible()
+    await chord(app, 'T', 'meta')
+    const shell = page.locator('.workspace:visible .pane-shell:visible')
     await shell.locator('.xterm').click()
     await page.keyboard.type(
       'echo "child=[${CLAUDE_CODE_CHILD_SESSION}${CLAUDECODE}] flicker=[${CLAUDE_CODE_NO_FLICKER}]"'
@@ -877,7 +882,9 @@ test('emoji are two columns wide', async () => {
   const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
   try {
     const page = await app.firstWindow()
-    const shell = page.locator('.workspace:visible .pane-shell')
+    await expect(page.locator('.workspace:visible')).toBeVisible()
+    await chord(app, 'T', 'meta')
+    const shell = page.locator('.workspace:visible .pane-shell:visible')
     await shell.locator('.xterm').click()
     // ✅ then "move to column 3": with Unicode 11 widths the x lands right after the emoji.
     await page.keyboard.type("printf 'width:\\xe2\\x9c\\x85\\033[9Gx|\\n'")
@@ -911,11 +918,11 @@ test('pane sizes stick', async () => {
     await drag(page, 'Resize sidebar', 360)
     await expect.poll(() => width(page, '.sidebar')).toBe(360)
 
-    agentBefore = await width(page, '.workspace:visible .pane-agent')
+    agentBefore = await width(page, '.workspace:visible .terminal-area')
     const column = (await page.locator('.workspace:visible .column').boundingBox())!
     await drag(page, 'Resize agent and side panel', column.x + column.width / 2)
     await expect
-      .poll(() => width(page, '.workspace:visible .pane-agent'))
+      .poll(() => width(page, '.workspace:visible .terminal-area'))
       .toBeGreaterThan(agentBefore)
   } finally {
     await app.close()
@@ -926,7 +933,7 @@ test('pane sizes stick', async () => {
     const page = await app.firstWindow()
     await expect.poll(() => width(page, '.sidebar')).toBe(360)
     await expect
-      .poll(() => width(page, '.workspace:visible .pane-agent'))
+      .poll(() => width(page, '.workspace:visible .terminal-area'))
       .toBeGreaterThan(agentBefore)
     await page.getByRole('separator', { name: 'Resize sidebar' }).dblclick()
     await expect.poll(() => width(page, '.sidebar')).toBe(272)
@@ -1299,7 +1306,7 @@ test('board view', async () => {
     )
     await expect(page.locator('.workspace:visible')).toBeVisible()
 
-    await chord(app, 'B', 'meta')
+    await chord(app, 'B', ['meta', 'shift'])
     const lane = board.getByRole('region', { name: 'not started' })
     await expect(lane.locator('.card-select')).toBeVisible()
 
@@ -1310,8 +1317,8 @@ test('board view', async () => {
   }
 })
 
-test('folding the terminal drawer keeps the shell alive', async () => {
-  const repo = gitRepo('troy-drawer-')
+test('splits and tabs keep every shell alive', async () => {
+  const repo = gitRepo('troy-panes-')
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
 
@@ -1320,53 +1327,53 @@ test('folding the terminal drawer keeps the shell alive', async () => {
     const page = await app.firstWindow()
     const workspace = page.locator('.workspace:visible')
     const agent = workspace.locator('.pane-agent')
-    const bar = workspace.getByRole('button', { name: /^Terminal/ })
-    const drawer = workspace.locator('.drawer-body')
-    await expect(bar).toHaveAttribute('aria-expanded', 'false')
-    await expect(drawer).toHaveCount(0)
-    const agentBox = await agent.boundingBox()
+    const shells = workspace.locator('.pane-shell')
+    const tabs = workspace.getByRole('tab')
+    await agent.locator('.xterm').click()
 
+    // Cmd-D puts a shell right of the agent and gives it the cursor.
+    await chord(app, 'D', 'meta')
+    await expect(shells).toHaveCount(1)
+    await page.keyboard.type('echo right-$((40+2))')
+    await page.keyboard.press('Enter')
+    await expect(shells.nth(0).locator('.xterm-rows')).toContainText('right-42', {
+      timeout: 15_000
+    })
+
+    // Cmd-Shift-D splits that shell; the first keeps its output, so it never restarted.
+    await chord(app, 'D', ['meta', 'shift'])
+    await expect(shells).toHaveCount(2)
+    await page.keyboard.type('echo down-$((1+1))')
+    await page.keyboard.press('Enter')
+    await expect(shells.nth(1).locator('.xterm-rows')).toContainText('down-2', { timeout: 15_000 })
+    await expect(shells.nth(0).locator('.xterm-rows')).toContainText('right-42')
+    const [agentBox, rightBox, downBox] = await Promise.all(
+      [agent, shells.nth(0), shells.nth(1)].map(async (l) => (await l.boundingBox())!)
+    )
+    expect(rightBox.x).toBeGreaterThan(agentBox.x)
+    expect(downBox.y).toBeGreaterThan(rightBox.y)
+
+    // Cmd-W closes the pane that has the cursor.
+    await chord(app, 'W', 'meta')
+    await expect(shells).toHaveCount(1)
+    await expect(shells.nth(0).locator('.xterm-rows')).toContainText('right-42')
+
+    // Cmd-T opens a tab; the agent's tab keeps running behind it.
     await chord(app, 'T', 'meta')
-    await expect(bar).toHaveAttribute('aria-expanded', 'true')
-    await expect(drawer).toBeVisible()
-    await page.keyboard.type('echo drawer-$((40+2))')
-    await page.keyboard.press('Enter')
-    await expect(drawer.locator('.xterm-rows')).toContainText('drawer-42', { timeout: 15_000 })
-    // The drawer takes room from the side column, never from the agent.
-    expect(await agent.boundingBox()).toEqual(agentBox)
+    await expect(tabs).toHaveCount(2)
+    await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true')
+    await expect(shells.nth(0)).toBeHidden()
 
-    await bar.click()
-    await expect(drawer).toBeHidden()
-    await bar.click()
-    await expect(drawer.locator('.xterm-rows')).toContainText('drawer-42')
-
-    // A second tab is its own shell; the first keeps running behind it and dies when closed.
-    const panes = drawer.locator('.drawer-pane')
-    await workspace.getByRole('button', { name: 'New terminal' }).click()
-    await expect(panes).toHaveCount(2)
-    await expect(panes.nth(0)).toBeHidden()
-    await page.keyboard.type('echo second-$((1+1))')
-    await page.keyboard.press('Enter')
-    await expect(panes.nth(1).locator('.xterm-rows')).toContainText('second-2', { timeout: 15_000 })
-    await workspace.getByRole('button', { name: 'Close terminal 1' }).click()
-    await expect(panes).toHaveCount(1)
-    await expect(panes.nth(0).locator('.xterm-rows')).toContainText('second-2')
-
-    // Cmd-Shift-T adds a tab; Cmd-Shift-[ and ] step through them and wrap.
-    await chord(app, 'T', ['meta', 'shift'])
-    await expect(panes).toHaveCount(2)
-    await expect(panes.nth(1)).toBeVisible()
+    // Cmd-Shift-[ and ] step through the tabs and wrap.
     await chord(app, ']', ['meta', 'shift'])
-    await expect(panes.nth(0)).toBeVisible()
+    await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true')
     await chord(app, '[', ['meta', 'shift'])
-    await expect(panes.nth(1)).toBeVisible()
+    await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true')
 
-    // Cmd-Shift-W closes the active tab; on the last one it folds the drawer.
+    // Cmd-Shift-W closes the tab, and the agent's tab comes back with its shell intact.
     await chord(app, 'W', ['meta', 'shift'])
-    await expect(panes).toHaveCount(1)
-    await chord(app, 'W', ['meta', 'shift'])
-    await expect(bar).toHaveAttribute('aria-expanded', 'false')
-    await expect(panes).toHaveCount(1)
+    await expect(tabs).toHaveCount(1)
+    await expect(shells.nth(0).locator('.xterm-rows')).toContainText('right-42')
   } finally {
     await app.close()
   }

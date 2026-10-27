@@ -14,18 +14,21 @@ const key = (code: string, mods: Partial<KeyInput> = {}): KeyInput => ({
 describe('routeKey on macOS', () => {
   it('Cmd shortcuts', () => {
     expect(routeKey(key('KeyO', { meta: true }), 'darwin')).toBe('addRepo')
-    expect(routeKey(key('BracketLeft', { meta: true }), 'darwin')).toBe('prev')
-    expect(routeKey(key('BracketRight', { meta: true }), 'darwin')).toBe('next')
     expect(routeKey(key('Digit3', { meta: true }), 'darwin')).toBe('jump:3')
     expect(routeKey(key('KeyN', { meta: true }), 'darwin')).toBe('newWorktree')
-    expect(routeKey(key('KeyW', { meta: true }), 'darwin')).toBe('archive')
-    expect(routeKey(key('KeyJ', { meta: true }), 'darwin')).toBe('focusAgent')
-    expect(routeKey(key('KeyE', { meta: true }), 'darwin')).toBe('focusShell')
-    expect(routeKey(key('Backslash', { meta: true }), 'darwin')).toBe('toggleColumn')
-    expect(routeKey(key('KeyT', { meta: true }), 'darwin')).toBe('toggleTerminal')
-    expect(routeKey(key('KeyD', { meta: true }), 'darwin')).toBe('showDiff')
+    expect(routeKey(key('KeyJ', { meta: true }), 'darwin')).toBe('search')
+    expect(routeKey(key('KeyL', { meta: true }), 'darwin')).toBe('toggleColumn')
+    expect(routeKey(key('KeyB', { meta: true }), 'darwin')).toBe('toggleSidebar')
     expect(routeKey(key('Enter', { meta: true }), 'darwin')).toBe('sendToAgent')
     expect(routeKey(key('Comma', { meta: true }), 'darwin')).toBe('openSettings')
+  })
+
+  it('Cmd drives the panes of a tab like Orca', () => {
+    expect(routeKey(key('KeyD', { meta: true }), 'darwin')).toBe('splitRight')
+    expect(routeKey(key('KeyW', { meta: true }), 'darwin')).toBe('closePane')
+    expect(routeKey(key('BracketLeft', { meta: true }), 'darwin')).toBe('prevPane')
+    expect(routeKey(key('BracketRight', { meta: true }), 'darwin')).toBe('nextPane')
+    expect(routeKey(key('KeyT', { meta: true }), 'darwin')).toBe('newTab')
   })
 
   it.each([
@@ -48,15 +51,31 @@ describe('routeKey on macOS', () => {
     expect(routeKey(key('KeyQ', { meta: true }), 'darwin')).toBeNull()
   })
 
-  it('Cmd-Shift drives the terminal tabs like Chrome', () => {
+  it('Cmd-Shift drives the tabs like Chrome', () => {
     const shifted = (code: string): KeyInput => key(code, { meta: true, shift: true })
-    expect(routeKey(shifted('KeyT'), 'darwin')).toBe('newTerminal')
-    expect(routeKey(shifted('KeyW'), 'darwin')).toBe('closeTerminal')
-    expect(routeKey(shifted('BracketLeft'), 'darwin')).toBe('prevTerminal')
-    expect(routeKey(shifted('BracketRight'), 'darwin')).toBe('nextTerminal')
+    expect(routeKey(shifted('KeyW'), 'darwin')).toBe('closeTab')
+    expect(routeKey(shifted('BracketLeft'), 'darwin')).toBe('prevTab')
+    expect(routeKey(shifted('BracketRight'), 'darwin')).toBe('nextTab')
     // Unbound Cmd-Shift keys (and digits) stay with the OS and the page.
     expect(routeKey(shifted('KeyO'), 'darwin')).toBeNull()
     expect(routeKey(shifted('Digit1'), 'darwin')).toBeNull()
+  })
+
+  it('Cmd-Shift splits down, zooms a pane and opens the side panels', () => {
+    const shifted = (code: string): KeyInput => key(code, { meta: true, shift: true })
+    expect(routeKey(shifted('KeyD'), 'darwin')).toBe('splitDown')
+    expect(routeKey(shifted('Enter'), 'darwin')).toBe('zoomPane')
+    expect(routeKey(shifted('KeyE'), 'darwin')).toBe('showFiles')
+    expect(routeKey(shifted('KeyF'), 'darwin')).toBe('findInFiles')
+    expect(routeKey(shifted('KeyG'), 'darwin')).toBe('showSourceControl')
+    expect(routeKey(shifted('KeyB'), 'darwin')).toBe('toggleBoard')
+  })
+
+  it('Cmd-Shift moves between worktrees and archives one', () => {
+    const shifted = (code: string): KeyInput => key(code, { meta: true, shift: true })
+    expect(routeKey(shifted('ArrowUp'), 'darwin')).toBe('prev')
+    expect(routeKey(shifted('ArrowDown'), 'darwin')).toBe('next')
+    expect(routeKey(shifted('Backspace'), 'darwin')).toBe('archive')
   })
 
   it('no action is bound twice by default', () => {
@@ -81,8 +100,8 @@ describe('routeKey on Linux/Windows', () => {
   })
 
   it('adds Alt for the shifted layer', () => {
-    const input = key('KeyT', { control: true, shift: true, alt: true })
-    expect(routeKey(input, 'linux')).toBe('newTerminal')
+    const input = key('KeyD', { control: true, shift: true, alt: true })
+    expect(routeKey(input, 'linux')).toBe('splitDown')
   })
 
   it('passes plain Ctrl through to the terminal', () => {
@@ -101,7 +120,7 @@ describe('keybindings.json', () => {
     })
     expect(routeKey(key('KeyK', { meta: true }), 'darwin', bindings)).toBe('newWorktree')
     expect(routeKey(key('KeyN', { meta: true }), 'darwin', bindings)).toBeNull()
-    expect(routeKey(key('KeyD', { meta: true }), 'darwin', bindings)).toBe('showDiff')
+    expect(routeKey(key('KeyD', { meta: true }), 'darwin', bindings)).toBe('splitRight')
     expect(ignored).toEqual(['KeyX: "launchRockets"', 'KeyY: 3'])
   })
 

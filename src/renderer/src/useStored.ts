@@ -11,13 +11,14 @@ function load<T>(key: string, fallback: T, valid: (v: unknown) => v is T): T {
   }
 }
 
-/** State that survives restarts. */
+/** State that survives restarts. `fresh` starts from the fallback and overwrites what was stored. */
 export function useStored<T>(
   key: string,
   fallback: T,
-  valid: (v: unknown) => v is T
+  valid: (v: unknown) => v is T,
+  fresh = false
 ): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [value, setValue] = useState(() => load(key, fallback, valid))
+  const [value, setValue] = useState(() => (fresh ? fallback : load(key, fallback, valid)))
   useEffect(() => {
     try {
       localStorage.setItem(key, JSON.stringify(value))

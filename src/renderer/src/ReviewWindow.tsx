@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReviewEvent, ReviewMeta } from '../../shared/types'
 import { formatComments, type ReviewComment } from './comments'
 import { DiffView } from './DiffPane'
 import { parseFiles } from './diff'
 import { Icon } from './icons'
 import { Splitter } from './Splitter'
-import { Terminal } from './Terminal'
-import { agentId, drawerId, submitToTerminal } from './terminals'
-import { TerminalDrawer } from './TerminalDrawer'
-import { useDrawer } from './useDrawer'
+import { TerminalArea } from './TerminalArea'
+import { agentId, submitToTerminal } from './terminals'
 
 const AGENT = 'claude'
 const AGENT_SHARE = { initial: 45, min: 20, max: 80 }
@@ -53,7 +51,6 @@ export function ReviewWindow({
   const [busy, setBusy] = useState(false)
   const [agentShare, setAgentShare] = useState(AGENT_SHARE.initial)
   const root = useRef<HTMLDivElement>(null)
-  const { open: drawerOpen, setOpen: setDrawerOpen, height, setHeight } = useDrawer()
   const files = useMemo(() => (review ? parseFiles(review.diff) : null), [review])
 
   useEffect(() => {
@@ -64,15 +61,6 @@ export function ReviewWindow({
       document.title = `Review #${number} · ${r.meta?.title}`
     })
   }, [repo, number])
-
-  const toggleDrawer = useCallback(() => {
-    setDrawerOpen((was) => !was)
-  }, [setDrawerOpen])
-
-  useEffect(
-    () => window.api.onAction((action) => action === 'toggleTerminal' && toggleDrawer()),
-    [toggleDrawer]
-  )
 
   const submit = async (event: ReviewEvent): Promise<void> => {
     setBusy(true)
@@ -157,15 +145,6 @@ export function ReviewWindow({
               placeholder="Comment for the PR (Enter saves)"
             />
           </div>
-          <TerminalDrawer
-            id={drawerId(review.path)}
-            cwd={review.path}
-            open={drawerOpen}
-            visible
-            onToggle={toggleDrawer}
-            height={height}
-            onHeight={setHeight}
-          />
         </div>
         <Splitter
           label="Resize diff and agent"
@@ -180,17 +159,21 @@ export function ReviewWindow({
           }}
           onReset={() => setAgentShare(AGENT_SHARE.initial)}
         />
-        <div className="pane-agent">
-          <Terminal
-            id={agentId(review.path)}
-            cwd={review.path}
-            command={AGENT}
-            args={review.agentArgs}
-            resume={review.resume}
+        <TerminalArea
+          path={review.path}
+          visible
+          agent={{
+            command: AGENT,
+            args: review.agentArgs,
+            resume: review.resume,
             // A PR reviewed before picks up that conversation instead of starting over.
-            prompt={review.resume ? undefined : openingPrompt(meta)}
-          />
-        </div>
+            prompt: review.resume ? undefined : openingPrompt(meta)
+          }}
+          agentTitle={AGENT}
+          // Each window gets a fresh checkout, so its tabs start over too.
+          firstRun={{ setup: false }}
+          onCloseAgent={() => window.close()}
+        />
       </div>
     </div>
   )

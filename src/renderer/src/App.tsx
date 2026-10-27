@@ -21,12 +21,17 @@ import { Icon, Logo } from './icons'
 import { MOD } from './platform'
 import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
-import { agentId, focusTerminal, pasteToTerminal, shellId, submitToTerminal } from './terminals'
+import {
+  agentId,
+  focusTerminal,
+  focusWorktree,
+  pasteToTerminal,
+  submitToTerminal
+} from './terminals'
 import { applyOrder, moveTo } from './order'
 import { ReviewList } from './ReviewList'
 import { Splitter } from './Splitter'
 import { isNumber, isStringList, useStored } from './useStored'
-import { useDrawer } from './useDrawer'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 import { ClosedList, WorktreeCard } from './WorktreeCard'
@@ -49,9 +54,6 @@ const omit = <T,>(record: Record<string, T>, key: string): Record<string, T> => 
 
 const basename = (path: string): string => path.split(/[\\/]/).filter(Boolean).pop() ?? path
 
-// Focus after React has shown a pane that may have been hidden.
-const focusSoon = (id: string): void => void requestAnimationFrame(() => focusTerminal(id))
-
 function App(): React.JSX.Element {
   const [repos, setRepos] = useState<Repo[]>([])
   const [selected, setSelected] = useState<string | null>(null)
@@ -62,7 +64,6 @@ function App(): React.JSX.Element {
   // Agent pane width, in percent.
   const [agentShare, setAgentShare] = useStored('troy.agentShare', AGENT_SHARE.initial, isNumber)
   const [order, setOrder] = useStored('troy.worktreeOrder', [], isStringList)
-  const { open: drawerOpen, setOpen: setDrawerOpen, ...drawer } = useDrawer()
   // Repos with their closed list expanded.
   const [showClosed, setShowClosed] = useState<string[]>([])
   const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({})
@@ -72,7 +73,7 @@ function App(): React.JSX.Element {
   const [showColumn, setShowColumn] = useState(true)
   const [showBoard, setShowBoard] = useState(false)
   const [showAutomations, setShowAutomations] = useState(false)
-  const [tab, setTab] = useState<ColumnTab>('shell')
+  const [tab, setTab] = useState<ColumnTab>('diff')
   const [checks, setChecks] = useState<Record<string, CheckResult>>({})
   // An overlap line narrows that worktree's diff to its files until "Show all".
   const [diffFilters, setDiffFilters] = useState<Record<string, DiffFilter>>({})
@@ -245,7 +246,7 @@ function App(): React.JSX.Element {
   }, [refreshKnowledge])
 
   useEffect(() => {
-    if (current && !keepSidebarFocus.current) focusTerminal(agentId(current.path))
+    if (current && !keepSidebarFocus.current) focusWorktree(current.path)
     keepSidebarFocus.current = false
   }, [current?.path]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -315,7 +316,7 @@ function App(): React.JSX.Element {
 
   useVimKeys(settings.vim, (command: VimCommand) => {
     if (!current) return
-    if (command === 'open') return focusTerminal(agentId(current.path))
+    if (command === 'open') return focusWorktree(current.path)
     const i = worktrees.indexOf(current)
     const last = worktrees.length - 1
     const next = { down: Math.min(i + 1, last), up: Math.max(i - 1, 0), top: 0, bottom: last }[
@@ -346,13 +347,6 @@ function App(): React.JSX.Element {
     setTab(name)
   }
 
-  // Opening the drawer shows the column it sits in; the drawer then takes the cursor.
-  const toggleDrawer = useCallback((): void => {
-    if (drawerOpen) return setDrawerOpen(false)
-    setDrawerOpen(true)
-    setShowColumn(true)
-  }, [drawerOpen, setDrawerOpen])
-
   useEffect(
     () =>
       window.api.onAction((action: AppAction) => {
@@ -363,13 +357,7 @@ function App(): React.JSX.Element {
         if (action === 'openSettings') return setShowSettings(true)
         if (!current) return
         if (action === 'archive') return void archive()
-        if (action === 'focusAgent') return focusTerminal(agentId(current.path))
-        if (action === 'focusShell') {
-          showTab('shell')
-          return focusSoon(shellId(current.path))
-        }
-        if (action === 'showDiff') return showTab('diff')
-        if (action === 'toggleTerminal') return toggleDrawer()
+        if (action === 'showSourceControl') return showTab('diff')
         if (action === 'sendToAgent') return sendComments(current.path)
         const i = worktrees.indexOf(current)
         const n = worktrees.length
@@ -380,10 +368,11 @@ function App(): React.JSX.Element {
           const target = siblings[siblings.indexOf(current) + (action === 'moveUp' ? -1 : 1)]
           return target && move(current.path, target.path)
         }
+        if (!action.startsWith('jump:')) return
         const target = worktrees[Number(action.split(':')[1]) - 1]
         if (target) select(target.path)
       }),
-    [worktrees, current, currentRepo, addRepo, archive, sendComments, select, move, toggleDrawer]
+    [worktrees, current, currentRepo, addRepo, archive, sendComments, select, move]
   )
 
   // Notifies unless the worktree is open with Troy focused, and only for reported statuses.
@@ -637,10 +626,7 @@ function App(): React.JSX.Element {
                   onClearDiffFilter={() => setDiffFilters((f) => omit(f, wt.path))}
                   knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
                   onKnowledgeChanged={refreshKnowledge}
-                  drawerOpen={drawerOpen}
-                  onToggleDrawer={toggleDrawer}
-                  drawerHeight={drawer.height}
-                  onDrawerHeight={drawer.setHeight}
+                  onCloseSession={() => closeSession(wt.path)}
                 />
               ))}
           </>

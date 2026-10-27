@@ -9,8 +9,13 @@ export const focusTerminal = (id: string): void => terminals.get(id)?.focus()
 export const pasteToTerminal = (id: string, text: string): void => terminals.get(id)?.paste(text)
 
 export const agentId = (path: string): string => `${path}:agent`
-export const shellId = (path: string): string => `${path}:shell`
-export const drawerId = (path: string): string => `${path}:drawer`
+/** A new shell pane in a worktree's terminal area. */
+export const paneId = (path: string): string => `${path}:term:${crypto.randomUUID()}`
+
+// The focused pane of each worktree, so coming back to one puts the cursor where it was.
+export const focusedPanes = new Map<string, string>()
+export const focusWorktree = (path: string): void =>
+  focusTerminal(focusedPanes.get(path) ?? agentId(path))
 
 export function submitToTerminal(id: string, text: string): boolean {
   const term = terminals.get(id)

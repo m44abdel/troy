@@ -808,7 +808,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   padding: 0;
 }
 
-.pane-agent,
+.terminal-area,
 .column {
   min-width: 0;
   display: flex;
@@ -820,7 +820,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   box-shadow: var(--shadow);
 }
 
-.pane-agent {
+.terminal-area {
   flex: var(--agent-share, 55);
 }
 
@@ -946,10 +946,163 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   background: var(--surface);
 }
 
-.pane-agent .terminal {
+/* Middle tabs: the agent first, then shells. Each tab's panes sit absolutely positioned
+   in .tab-body, so splitting never moves a terminal in the DOM. */
+
+.tab-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 46px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  -webkit-app-region: drag;
+}
+
+.term-tab {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 240px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+}
+
+.term-tab:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.term-tab[aria-selected='true'] {
+  color: var(--text);
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.term-tab > button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.term-tab > .term-tab-close {
+  padding: 4px 8px 4px 0;
+  opacity: 0.6;
+}
+
+.term-tab > .term-tab-close:hover {
+  opacity: 1;
+}
+
+.tab-add {
+  -webkit-app-region: no-drag;
+}
+
+.tab-strip-fill {
+  flex: 1;
+}
+
+.tab-strip > :not(.tab-strip-fill, .term-tab) {
+  -webkit-app-region: no-drag;
+}
+
+.tab-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.pane-slot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-slot .terminal {
   flex: 1;
   min-height: 0;
   height: auto;
+}
+
+/* With two or more panes, the one taking keys gets a faint frame. */
+.pane-slot.focused::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.pane-tools {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 150ms var(--ease);
+}
+
+.pane-slot:hover .pane-tools,
+.pane-tools:focus-within {
+  opacity: 1;
+}
+
+.pane-divider {
+  position: absolute;
+  z-index: 2;
+}
+
+.pane-divider.row {
+  width: 8px;
+  transform: translateX(-50%);
+}
+
+.pane-divider.column {
+  height: 8px;
+  transform: translateY(-50%);
+}
+
+.pane-divider .splitter {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+/* The resting line between panes; the splitter's own line shows on hover. */
+.pane-divider::before {
+  content: '';
+  position: absolute;
+  background: var(--border);
+}
+
+.pane-divider.row::before {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+}
+
+.pane-divider.column::before {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
 }
 
 .terminal .xterm-viewport {
@@ -1910,114 +2063,13 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   font-size: 11px;
 }
 
-/* Terminal drawer */
-
 .review .column > .diff-pane {
   flex: 1;
   height: auto;
 }
 
-.drawer {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid var(--border);
-}
-
-.drawer-head {
-  display: flex;
-  align-items: center;
-  background: var(--panel);
-}
-
-.drawer-bar {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
-  border: none;
-  background: var(--panel);
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-}
-
-.drawer-bar:hover {
-  color: var(--text);
-}
-
-.drawer-bar .icon:last-child {
-  margin-left: auto;
-  transform: rotate(180deg);
-}
-
-.drawer-bar[aria-expanded='true'] .icon:last-child {
-  transform: none;
-}
-
-.drawer-body {
-  min-height: 0;
-}
-
-.drawer-pane {
-  height: 100%;
-}
-
-.drawer-tabs {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding-right: 8px;
-}
-
-.drawer-tab {
-  display: flex;
-  align-items: center;
-  border-radius: 4px;
-  color: var(--muted);
-}
-
-.drawer-tab[aria-selected='true'] {
-  background: var(--surface);
-  color: var(--text);
-}
-
-.drawer-tabs button {
-  display: flex;
-  align-items: center;
-  padding: 2px 6px;
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.drawer-tab button + button {
-  padding-left: 0;
-}
-
-.drawer-tabs button:hover {
-  color: var(--text);
-}
-
-.drawer-add {
-  color: var(--muted);
-}
-
-.drawer-body .terminal {
-  padding-top: 6px;
-}
-
-/* Sits on the drawer's top edge; the visible line appears on hover or focus. */
+/* Between panes stacked top to bottom. */
 .splitter.horizontal {
-  flex: 0 0 8px;
-  margin: -4px 0;
   cursor: row-resize;
 }
 
