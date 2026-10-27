@@ -30,7 +30,7 @@ export interface CreateRequest {
   branch: string
   base: string
   agent: string
-  /** Optional first message for the agent. */
+  /** First message for the agent. */
   prompt?: string
 }
 
@@ -62,7 +62,7 @@ export interface Knowledge {
 }
 
 export interface Settings {
-  /** Vim keys in the sidebar and diff; never in terminals. */
+  /** Vim keys in the sidebar and diff. */
   vim: boolean
 }
 
@@ -76,10 +76,8 @@ export interface CheckResult {
 
 /** A message one worktree's agent sent to another's. */
 export interface Mail {
-  /** Sender's worktree path. */
   from: string
   fromBranch: string | null
-  /** Receiver's worktree path. */
   to: string
   text: string
   sentAt: string
@@ -87,7 +85,6 @@ export interface Mail {
 
 /** An agent asking Troy to start another agent in a new worktree. */
 export interface SpawnRequest {
-  /** Requester's worktree path. */
   from: string
   repo: string
   branch: string
@@ -102,7 +99,7 @@ export interface ReviewComment {
   /** react-diff-view change key, where the comment renders. */
   changeKey: string
   line: number
-  /** True when the comment is on a removed line, so `line` is the old line number. */
+  /** The comment sits on a removed line; `line` is then the old line number. */
   removed: boolean
   text: string
 }

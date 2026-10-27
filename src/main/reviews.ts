@@ -69,7 +69,7 @@ export async function openReview(
   const path = reviewPath(dir, repo, number)
   if (!(await listWorktrees(repo)).some((wt) => wt.path === path)) {
     // pull/N/head exists on the base repo even when the PR comes from a fork.
-    // ponytail: two PRs of one repo opened at the same instant could race on FETCH_HEAD.
+    // Two PRs of one repo opened at the same instant could race on FETCH_HEAD.
     await git(repo, ['fetch', 'origin', `pull/${number}/head`], { timeout: FETCH_TIMEOUT_MS })
     await git(repo, ['worktree', 'add', '--detach', path, 'FETCH_HEAD'])
   }

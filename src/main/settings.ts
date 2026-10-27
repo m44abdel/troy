@@ -41,14 +41,13 @@ export async function loadBindings(): Promise<Bindings> {
   return bindings
 }
 
-/** Re-reads keybindings.json whenever it changes, so edits apply without a restart. */
 export function watchBindings(onChange: (bindings: Bindings) => void): void {
   watchFile(keybindingsPath(), { interval: BINDINGS_POLL_MS }, () => {
     loadBindings().then(onChange)
   })
 }
 
-// ponytail: plain PATH scan, no Windows PATHEXT; add .exe/.cmd lookup with Windows support.
+// Plain PATH scan. Windows support will need PATHEXT (.exe, .cmd) lookups.
 export async function installedAgents(): Promise<string[]> {
   const dirs = (process.env.PATH ?? '').split(delimiter).filter(Boolean)
   const found = await Promise.all(

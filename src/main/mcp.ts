@@ -1,7 +1,7 @@
 // Troy's MCP server: lets any agent search approved knowledge, propose new facts, and
 // message or spawn other agents.
-// ponytail: hand-rolled JSON-RPC for the three methods it needs; the official SDK
-// brings an HTTP stack (express, hono) Troy never uses.
+// JSON-RPC by hand: the official SDK drags in express and hono for what is a stdio server.
+// Worth switching if Troy needs more of the protocol than tools.
 import type { KnowledgeEntry } from '../shared/types'
 import { formatEntry, propose, readKnowledge, SOURCE_HELP } from './knowledge'
 import { requestSpawn, sendMail } from './mail'
@@ -157,7 +157,7 @@ export function createServer(
   async function callTool(name: unknown, args: Record<string, unknown>): Promise<object> {
     if (name === 'agents_list') {
       const lines = (await listWorktrees(cwd)).map(
-        (w) => `${w.branch ?? 'detached'} — ${w.path}${w.path === cwd ? ' (you)' : ''}`
+        (w) => `${w.branch ?? 'detached'}: ${w.path}${w.path === cwd ? ' (you)' : ''}`
       )
       return text(lines.join('\n'))
     }
@@ -195,14 +195,14 @@ export function createServer(
     if (method === 'tools/list') return { tools: TOOLS }
     if (method === 'tools/call') {
       const args = (params.arguments ?? {}) as Record<string, unknown>
-      // Tool failures go back to the agent as text it can act on, not as protocol errors.
+      // A failed tool is still a result: text the agent can read and act on.
       return callTool(params.name, args).catch((err) => text((err as Error).message, true))
     }
     throw Object.assign(new Error(`Method not found: ${method}`), { code: -32601 })
   }
 
   return async (msg) => {
-    if (msg.id === undefined || msg.id === null || typeof msg.method !== 'string') return null
+    if (msg.id == null || typeof msg.method !== 'string') return null
     try {
       return { jsonrpc: '2.0', id: msg.id, result: await result(msg.method, msg.params ?? {}) }
     } catch (err) {

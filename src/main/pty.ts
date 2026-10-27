@@ -30,9 +30,9 @@ function watchStatus(): void {
       .catch(() => {})
   }
   watch(statusDir(), (_event, id) => id && report(id))
-  // ponytail: macOS can deliver watch events late or drop them under load; rereading every
-  // pane's file now and then means a missed "waiting" can't leave a card stuck on working.
-  // Repeating a status is harmless: the tracker ignores no-change updates.
+  // macOS delivers watch events late, or drops them under load. Rereading every pane's file
+  // now and then keeps a missed "waiting" from leaving a card stuck on working, and the
+  // tracker ignores repeats.
   setInterval(() => listeners.forEach((_target, id) => report(id)), STATUS_SWEEP_MS)
 }
 

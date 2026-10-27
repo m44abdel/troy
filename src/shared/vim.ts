@@ -1,4 +1,4 @@
-// Opt-in vim keys for the panes that aren't terminals. Terminals never see these.
+// Opt-in vim keys for the panes that aren't terminals.
 
 export type VimZone = 'sidebar' | 'diff'
 export type VimCommand = 'down' | 'up' | 'top' | 'bottom' | 'open' | 'nextHunk' | 'prevHunk'

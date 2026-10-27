@@ -17,7 +17,7 @@ function between(
   deps: Record<string, string[]>
 ): Array<Omit<Overlap, 'other'>> {
   const same = mine.filter((f) => theirs.includes(f))
-  // A shared file says more than a dependency, so it stands alone.
+  // A shared file outranks any dependency.
   if (same.length) return [{ kind: 'same', files: same }]
   const uses = mine.filter((f) => deps[f]?.some((d) => theirs.includes(d)))
   const usedBy = mine.filter((f) => theirs.some((t) => deps[t]?.includes(f)))
@@ -36,7 +36,7 @@ export function overlaps(
   deps: Record<string, string[]> = {}
 ): Record<string, Overlap[]> {
   const entries = Object.entries(changes)
-  // ponytail: pairwise scan; fine for the handful of worktrees a person runs at once.
+  // Pairwise, which is fine for the handful of worktrees anyone runs at once.
   return Object.fromEntries(
     entries.flatMap(([path, files]) => {
       const found = entries.flatMap(([other, theirs]) =>

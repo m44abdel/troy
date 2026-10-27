@@ -1,11 +1,11 @@
 import { git, run } from './worktrees'
 
 const PUSH_TIMEOUT_MS = 60_000
-// ponytail: untracked files past this are left out of the diff; paginate if people hit it.
+// Untracked files past this many drop out of the diff (no pagination yet).
 const MAX_UNTRACKED_FILES = 200
 const DIFF_FLAGS = ['--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/']
 
-// Where the worktree left `base`, so later commits on the base don't count as its changes.
+// Where the worktree left `base`. Commits the base got later aren't this worktree's changes.
 const forkPoint = (path: string, base: string): Promise<string> =>
   git(path, ['merge-base', 'HEAD', base]).catch(() => 'HEAD')
 

@@ -75,7 +75,7 @@ function createWindow(hash?: string): BrowserWindow {
 
 const reviewWindows = new Map<string, BrowserWindow>()
 
-/** One window per PR; closing it, submitted or not, drops the PR's checkout. */
+/** One window per PR. */
 function openReviewWindow(repo: unknown, n: unknown): void {
   if (typeof repo !== 'string') throw new Error(`Unknown repository: ${repo}`)
   const number = prNumber(n)
@@ -113,7 +113,7 @@ app.whenReady().then(async () => {
   registerPty()
   registerRepos()
   registerAutomations()
-  // The window asks once it can receive, so messages waiting from before aren't lost.
+  // The window asks once it can receive; mail sent before then waits on disk.
   let stopMail: (() => void) | undefined
   ipcMain.handle('mail:watch', (event) => {
     stopMail?.()
@@ -126,8 +126,8 @@ app.whenReady().then(async () => {
     ]
     stopMail = () => stops.forEach((stop) => stop())
   })
-  // The dock badge counts agents waiting on you.
   ipcMain.handle('review:window', (_e, repo, n) => openReviewWindow(repo, n))
+  // The dock badge counts agents waiting on you.
   ipcMain.on('app:badge', (_e, count: unknown) => {
     if (Number.isInteger(count) && (count as number) >= 0) app.setBadgeCount(count as number)
   })

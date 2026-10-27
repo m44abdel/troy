@@ -30,7 +30,7 @@ export function parseAutomation(raw: unknown): Automation {
 export const dueAt = (automations: Automation[], now: Date): Automation[] =>
   automations.filter((a) => parseCron(a.schedule)(now))
 
-const pad = (n: number): string => String(n).padStart(2, '0')
+export const pad = (n: number): string => String(n).padStart(2, '0')
 
 /** Each run gets its own branch, named for the automation and the minute it started. */
 export function runBranch(name: string, now: Date): string {

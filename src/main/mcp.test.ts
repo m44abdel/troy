@@ -127,8 +127,8 @@ describe('agent messaging tools', () => {
     const handle = createServer(repo, mail)
 
     const list = textOf(await handle(call(1, 'agents_list', {})))
-    expect(list).toContain(`feat/b — ${repo}.b`)
-    expect(list).toContain(`main — ${repo} (you)`)
+    expect(list).toContain(`feat/b: ${repo}.b`)
+    expect(list).toContain(`main: ${repo} (you)`)
 
     const sent = await handle(call(2, 'agent_message', { to: 'feat/b', text: 'I am editing a.ts' }))
     expect(isError(sent)).toBe(false)

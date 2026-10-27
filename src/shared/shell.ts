@@ -1,4 +1,4 @@
-// ponytail: POSIX quoting; Windows shells need their own once Windows is supported.
+// POSIX only. Windows shells will want their own quoting.
 export const shellQuote = (s: string): string => `'${s.replaceAll("'", `'\\''`)}'`
 
 /** The CLI an agent command runs, e.g. "claude" for "/usr/local/bin/claude --resume". */

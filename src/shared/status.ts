@@ -4,7 +4,7 @@
 
 export type AgentStatus = 'idle' | 'running' | 'waiting' | 'done' | 'error'
 
-// ponytail: fixed silence threshold; per-agent tuning if a CLI pauses longer mid-task.
+// One silence threshold for every agent. Make it per-agent if some CLI pauses longer mid-task.
 export const IDLE_MS = 3000
 
 // A resize makes TUIs redraw the whole screen; output this soon after one is a redraw, not work.

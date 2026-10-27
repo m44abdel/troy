@@ -5,7 +5,7 @@ import { join } from 'path'
 import { commandName } from '../shared/shell'
 import type { ContextUsage } from '../shared/types'
 
-// ponytail: only the end of each log is read; the usage we need is always recent.
+// Only the tail of each log is read. The usage we want is always near the end.
 const TAIL_BYTES = 2 * 1024 * 1024
 const CLAUDE_WINDOW = 200_000
 const CLAUDE_1M_WINDOW = 1_000_000
@@ -82,8 +82,8 @@ export function codexUsage(jsonl: string): ContextUsage | null {
   return null
 }
 
-// The session_meta line embeds the whole system prompt, so it may not fit in the
-// head read; cwd comes before it.
+// session_meta embeds the whole system prompt and may not fit in the head read. cwd comes
+// before it.
 export function codexSessionCwd(head: string): string | null {
   const match = /"cwd":"((?:[^"\\]|\\.)*)"/.exec(head.split('\n')[0])
   return match ? JSON.parse(`"${match[1]}"`) : null
@@ -129,7 +129,7 @@ async function claudeContext(path: string): Promise<ContextUsage | null> {
   return latest ? claudeUsage(await readTail(latest)) : null
 }
 
-// ponytail: stats every rollout file on each poll; index by cwd if ~/.codex/sessions grows huge.
+// Stats every rollout file on each poll; a cwd index would help once ~/.codex/sessions is huge.
 async function codexContext(path: string): Promise<ContextUsage | null> {
   const files: string[] = []
   for await (const f of glob('**/rollout-*.jsonl', { cwd: join(codexHome(), 'sessions') }))
@@ -152,8 +152,8 @@ export async function readContext(path: string, agent: string): Promise<ContextU
  * What to add to the agent's command line to pick up where it left off in this worktree.
  * Claude's --continue takes the latest conversation in the current folder, which is this
  * worktree's. Empty when there is nothing to continue, since --continue would then fail.
+ * Codex gets nothing until someone checks its resume command here.
  */
-// ponytail: Claude only; add Codex once its resume command is verified here.
 export function resumeFlag(agent: string, path: string): string {
   if (commandName(agent) !== 'claude') return ''
   try {

@@ -1,5 +1,5 @@
-// ponytail: five-field cron (minute hour day-of-month month day-of-week) with *, lists,
-// ranges and steps; no names (MON, JAN) or @daily. Swap for cron-parser if those are wanted.
+// Five-field cron with *, lists, ranges and steps. No names (MON, JAN) and no @daily;
+// cron-parser has both if anyone asks.
 
 const FIELDS = [
   { min: 0, max: 59 },

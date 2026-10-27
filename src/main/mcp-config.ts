@@ -9,7 +9,7 @@ export interface McpLaunch {
   env: Record<string, string>
 }
 
-// Troy's own binary runs the server as plain Node, so nothing extra is installed.
+// Troy's own binary runs the server as plain Node; nothing extra to install.
 const launch = (): McpLaunch => ({
   command: process.execPath,
   args: [join(__dirname, 'mcp-server.js')],
@@ -23,8 +23,8 @@ export const configPath = (): string => join(app.getPath('userData'), 'mcp.json'
 
 const hooksPath = (): string => join(app.getPath('userData'), 'claude-hooks.json')
 
-// Each pane's shell has its own TROY_STATUS_FILE, which Troy watches. Writing to a file, not
-// the terminal, keeps hook output from landing in the middle of the agent's screen updates.
+// Each pane's shell has its own TROY_STATUS_FILE, which Troy watches. Hook output sent to the
+// terminal would land in the middle of the agent's screen updates.
 const report = (
   status: 'running' | 'waiting'
 ): { hooks: { type: string; command: string }[] }[] => [
@@ -66,7 +66,7 @@ export function mcpFlags(
   agent: string,
   config = configPath(),
   server = launch(),
-  graph?: { config: string; server: McpLaunch }
+  graph?: { config: string; server: McpLaunch } | null
 ): string {
   const cli = commandName(agent)
   if (cli === 'claude')

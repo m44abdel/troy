@@ -32,7 +32,7 @@ interface GraphJson {
   links?: Array<{ source: string; target: string; relation: string }>
 }
 
-// Kept in Troy's own folder, so building never touches the repo.
+// In Troy's own folder; a build leaves nothing behind in the repo.
 const graphDir = (repo: string): string =>
   join(
     app.getPath('userData'),
