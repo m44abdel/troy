@@ -6,6 +6,7 @@ import { join } from 'path'
 import { parseHookStatus } from '../shared/status'
 
 const ptys = new Map<string, pty.IPty>()
+const cwds = new Map<string, string>()
 // Who to tell when a pane's agent hooks write its status file.
 const listeners = new Map<string, WebContents>()
 let nextId = 0
@@ -46,6 +47,10 @@ function send(target: WebContents, channel: string, ...args: unknown[]): void {
   if (!target.isDestroyed()) target.send(channel, ...args)
 }
 
+/** Every live terminal's shell and the folder it started in, for the status bar. */
+export const livePtys = (): Array<{ pid: number; cwd: string }> =>
+  [...ptys].map(([id, p]) => ({ pid: p.pid, cwd: cwds.get(id) ?? '' }))
+
 export function registerPty(): void {
   watchStatus()
   ipcMain.handle('pty:spawn', (event, cwd: unknown, cols: unknown, rows: unknown, env: unknown) => {
@@ -73,11 +78,13 @@ export function registerPty(): void {
     event.sender.once('destroyed', () => proc.kill())
     proc.onExit(({ exitCode }) => {
       ptys.delete(id)
+      cwds.delete(id)
       listeners.delete(id)
       rmSync(join(statusDir(), id), { force: true })
       send(event.sender, `pty:exit:${id}`, exitCode)
     })
     ptys.set(id, proc)
+    cwds.set(id, cwd)
     return id
   })
 

@@ -9,6 +9,8 @@ import { registerAutomations } from './automations'
 import { registerFiles } from './files'
 import { registerGithub } from './github'
 import { registerSessions } from './sessions'
+import { registerStats } from './stats'
+import { registerUsage } from './usage'
 import { watchMail, watchSpawns } from './mail'
 import { mailDir, writeMcpConfig } from './mcp-config'
 import { withoutSessionMarkers } from './env'
@@ -118,6 +120,8 @@ app.whenReady().then(async () => {
   registerGithub()
   registerFiles()
   registerSessions()
+  registerStats()
+  registerUsage()
   registerAutomations()
   // The window asks once it can receive; mail sent before then waits on disk.
   let stopMail: (() => void) | undefined

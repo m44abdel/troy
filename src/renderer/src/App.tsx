@@ -41,6 +41,7 @@ import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 import { WorktreeCard } from './WorktreeCard'
 import { SearchPalette } from './SearchPalette'
 import { Sidebar } from './Sidebar'
+import { StatusBar } from './StatusBar'
 import { issueBranch, issuePrompt } from './tasks'
 import { TasksPage } from './TasksPage'
 import { Board } from './Board'
@@ -566,123 +567,126 @@ function App(): React.JSX.Element {
         } as React.CSSProperties
       }
     >
-      {!sidebarHidden && (
-        <Sidebar
-          repos={sorted}
-          closed={closed}
-          folded={folded}
-          onToggleFold={(repo) => setFolded((f) => toggle(f, repo))}
-          showClosed={showClosed}
-          onToggleClosed={(repo) => setShowClosed((r) => toggle(r, repo))}
-          onReopen={select}
-          needsYou={needsYou}
-          waiting={waiting.length}
-          onClearWaiting={clearWaiting}
-          error={error}
-          card={cardFor}
-          showBoard={showBoard}
-          showTasks={showTasks}
-          onSearch={() => setShowSearch(true)}
-          onTasks={() => {
-            setShowBoard(false)
-            setShowTasks((t) => !t)
-          }}
-          onAutomations={() => setShowAutomations(true)}
-          onBoard={() => {
-            setShowTasks(false)
-            setShowBoard((b) => !b)
-          }}
-          onAddRepo={addRepo}
-          onNewWorktree={(repo) => openDialog(repo)}
-          onSettings={() => setShowSettings(true)}
-          onHide={() => setSidebarHidden(true)}
-        />
-      )}
-      {!sidebarHidden && (
-        <Splitter
-          label="Resize sidebar"
-          value={sidebarWidth}
-          min={SIDEBAR.min}
-          max={SIDEBAR.max}
-          // The sidebar starts at the window's left edge, so the pointer's x is its width.
-          onMove={(x) => setSidebarWidth(clamp(x, SIDEBAR))}
-          onReset={() => setSidebarWidth(SIDEBAR.initial)}
-        />
-      )}
-
-      <main className="workspaces">
-        {showBoard && (
-          <Board items={worktrees} status={(wt) => statuses[wt.path] ?? 'idle'} card={cardFor} />
-        )}
-        {showTasks && (
-          <TasksPage
-            repos={repos.map((r) => r.path)}
-            onStart={startIssue}
-            onClose={() => setShowTasks(false)}
+      <div className="app-body">
+        {!sidebarHidden && (
+          <Sidebar
+            repos={sorted}
+            closed={closed}
+            folded={folded}
+            onToggleFold={(repo) => setFolded((f) => toggle(f, repo))}
+            showClosed={showClosed}
+            onToggleClosed={(repo) => setShowClosed((r) => toggle(r, repo))}
+            onReopen={select}
+            needsYou={needsYou}
+            waiting={waiting.length}
+            onClearWaiting={clearWaiting}
+            error={error}
+            card={cardFor}
+            showBoard={showBoard}
+            showTasks={showTasks}
+            onSearch={() => setShowSearch(true)}
+            onTasks={() => {
+              setShowBoard(false)
+              setShowTasks((t) => !t)
+            }}
+            onAutomations={() => setShowAutomations(true)}
+            onBoard={() => {
+              setShowTasks(false)
+              setShowBoard((b) => !b)
+            }}
+            onAddRepo={addRepo}
+            onNewWorktree={(repo) => openDialog(repo)}
+            onSettings={() => setShowSettings(true)}
+            onHide={() => setSidebarHidden(true)}
           />
         )}
-        {repos.length === 0 ? (
-          <div className="empty">
-            <p>Add a git repository to start.</p>
-            <button className="primary large" onClick={addRepo}>
-              <Icon name="folderPlus" />
-              Add repository <kbd>{MOD}O</kbd>
-            </button>
-            {installed && (
-              <p className="agents-found">
-                {installed.length ? (
-                  <>
-                    Agents on your PATH:{' '}
-                    {installed.map((a) => (
-                      <span key={a} className="chip">
-                        {a}
-                      </span>
-                    ))}
-                  </>
-                ) : (
-                  'No agent CLI found on your PATH. Install Claude Code, Codex, Gemini CLI, opencode or aider, or type any command when you create a worktree.'
-                )}
-              </p>
-            )}
-          </div>
-        ) : (
-          <>
-            {worktrees
-              .filter((wt) => visited.includes(wt.path))
-              .map((wt) => (
-                <Workspace
-                  key={wt.path}
-                  wt={wt}
-                  active={wt === current}
-                  showColumn={showColumn}
-                  tab={tab}
-                  onTab={setTab}
-                  onToggleColumn={() => setShowColumn((v) => !v)}
-                  firstRun={firstRuns[wt.path]}
-                  status={statuses[wt.path]}
-                  onStatus={onStatus}
-                  comments={comments[wt.path] ?? []}
-                  onComments={onComments}
-                  onSend={sendComments}
-                  check={checks[wt.path]}
-                  onRunCheck={runCheck}
-                  onSendCheck={sendCheck}
-                  agentShare={clamp(agentShare, AGENT_SHARE)}
-                  onAgentShare={(share) => setAgentShare(clamp(share, AGENT_SHARE))}
-                  onResetAgentShare={() => setAgentShare(AGENT_SHARE.initial)}
-                  diffFilter={diffFilters[wt.path]}
-                  onClearDiffFilter={() => setDiffFilters((f) => omit(f, wt.path))}
-                  knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
-                  onKnowledgeChanged={refreshKnowledge}
-                  onCloseSession={() => closeSession(wt.path)}
-                  filesSearch={filesSearch}
-                  repos={repos}
-                  onOpenWorktree={select}
-                />
-              ))}
-          </>
+        {!sidebarHidden && (
+          <Splitter
+            label="Resize sidebar"
+            value={sidebarWidth}
+            min={SIDEBAR.min}
+            max={SIDEBAR.max}
+            // The sidebar starts at the window's left edge, so the pointer's x is its width.
+            onMove={(x) => setSidebarWidth(clamp(x, SIDEBAR))}
+            onReset={() => setSidebarWidth(SIDEBAR.initial)}
+          />
         )}
-      </main>
+
+        <main className="workspaces">
+          {showBoard && (
+            <Board items={worktrees} status={(wt) => statuses[wt.path] ?? 'idle'} card={cardFor} />
+          )}
+          {showTasks && (
+            <TasksPage
+              repos={repos.map((r) => r.path)}
+              onStart={startIssue}
+              onClose={() => setShowTasks(false)}
+            />
+          )}
+          {repos.length === 0 ? (
+            <div className="empty">
+              <p>Add a git repository to start.</p>
+              <button className="primary large" onClick={addRepo}>
+                <Icon name="folderPlus" />
+                Add repository <kbd>{MOD}O</kbd>
+              </button>
+              {installed && (
+                <p className="agents-found">
+                  {installed.length ? (
+                    <>
+                      Agents on your PATH:{' '}
+                      {installed.map((a) => (
+                        <span key={a} className="chip">
+                          {a}
+                        </span>
+                      ))}
+                    </>
+                  ) : (
+                    'No agent CLI found on your PATH. Install Claude Code, Codex, Gemini CLI, opencode or aider, or type any command when you create a worktree.'
+                  )}
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              {worktrees
+                .filter((wt) => visited.includes(wt.path))
+                .map((wt) => (
+                  <Workspace
+                    key={wt.path}
+                    wt={wt}
+                    active={wt === current}
+                    showColumn={showColumn}
+                    tab={tab}
+                    onTab={setTab}
+                    onToggleColumn={() => setShowColumn((v) => !v)}
+                    firstRun={firstRuns[wt.path]}
+                    status={statuses[wt.path]}
+                    onStatus={onStatus}
+                    comments={comments[wt.path] ?? []}
+                    onComments={onComments}
+                    onSend={sendComments}
+                    check={checks[wt.path]}
+                    onRunCheck={runCheck}
+                    onSendCheck={sendCheck}
+                    agentShare={clamp(agentShare, AGENT_SHARE)}
+                    onAgentShare={(share) => setAgentShare(clamp(share, AGENT_SHARE))}
+                    onResetAgentShare={() => setAgentShare(AGENT_SHARE.initial)}
+                    diffFilter={diffFilters[wt.path]}
+                    onClearDiffFilter={() => setDiffFilters((f) => omit(f, wt.path))}
+                    knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
+                    onKnowledgeChanged={refreshKnowledge}
+                    onCloseSession={() => closeSession(wt.path)}
+                    filesSearch={filesSearch}
+                    repos={repos}
+                    onOpenWorktree={select}
+                  />
+                ))}
+            </>
+          )}
+        </main>
+      </div>
+      <StatusBar working={worktrees.some((wt) => statuses[wt.path] === 'running')} />
 
       {dialogRepo && (
         <NewWorktree

@@ -127,7 +127,87 @@ code {
 
 .app {
   display: flex;
+  flex-direction: column;
   height: 100%;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* Along the bottom of the window, like Orca's. */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  padding: 0 8px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.status-fill {
+  flex: 1;
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+}
+
+button.status-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.status-ports {
+  position: relative;
+}
+
+.ports-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+
+.ports-menu a {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--text);
+  font: 12px/1.3 var(--mono);
+  text-decoration: none;
+}
+
+.ports-menu a:hover {
+  background: var(--hover);
+}
+
+.ports-menu .muted {
+  padding: 0;
 }
 
 .sidebar {
