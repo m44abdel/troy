@@ -160,7 +160,7 @@ export function Workspace({
           {tabButton('shell', 'terminal', 'Shell', 'E')}
           {tabButton('diff', 'diff', comments.length ? `Diff · ${comments.length}` : 'Diff', 'D')}
           {tabButton('docs', 'book', 'Docs')}
-          {tabButton('knowledge', 'sparkles', pending ? `Knowledge · ${pending}` : 'Knowledge')}
+          {tabButton('knowledge', 'library', pending ? `Knowledge · ${pending}` : 'Knowledge')}
         </div>
         <div className="pane pane-shell" style={{ display: tab === 'shell' ? 'block' : 'none' }}>
           <Terminal

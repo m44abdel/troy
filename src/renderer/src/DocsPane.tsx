@@ -27,14 +27,14 @@ function Mermaid({ code }: { code: string }): React.JSX.Element {
           securityLevel: 'strict',
           themeVariables: {
             darkMode: true,
-            background: '#0d0d16',
+            background: '#0f0f0f',
             fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-            primaryColor: '#1f1a33',
-            primaryBorderColor: '#8b5cf6',
-            primaryTextColor: '#e6e6f0',
-            lineColor: '#a78bfa',
-            secondaryColor: '#2a1830',
-            tertiaryColor: '#14141f'
+            primaryColor: '#1e1e1e',
+            primaryBorderColor: '#6e6e6e',
+            primaryTextColor: '#e6e6e6',
+            lineColor: '#9d9d9d',
+            secondaryColor: '#262626',
+            tertiaryColor: '#151515'
           }
         })
         const { svg } = await mermaid.render(id, code)

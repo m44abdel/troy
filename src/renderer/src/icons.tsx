@@ -11,8 +11,7 @@ const PATHS = {
   terminal: 'm4 17 6-6-6-6M12 19h8',
   diff: 'M12 3v14M5 10h14M5 21h14',
   book: 'M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z',
-  sparkles:
-    'M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4',
+  library: 'm16 6 4 14M12 6v14M8 8v12M4 4v16',
   refresh:
     'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5',
   x: 'M18 6 6 18M6 6l12 12',
@@ -26,7 +25,11 @@ const PATHS = {
   check: 'M20 6 9 17l-5-5',
   keyboard:
     'M10 8h.01M12 12h.01M14 8h.01M16 12h.01M18 8h.01M6 8h.01M7 16h10M8 12h.01M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
-  file: 'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7zM14 2v4a2 2 0 0 0 2 2h4'
+  file: 'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7zM14 2v4a2 2 0 0 0 2 2h4',
+  alert:
+    'm21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01',
+  cornerDownRight: 'm15 10 5 5-5 5M4 4v7a4 4 0 0 0 4 4h12',
+  mail: 'm22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'
 } as const
 
 export type IconName = keyof typeof PATHS
@@ -54,14 +57,7 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }): Re
 export function Logo({ size = 28 }: { size?: number }): React.JSX.Element {
   return (
     <svg className="logo" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <defs>
-        <linearGradient id="troy-logo" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8b5cf6" />
-          <stop offset="0.55" stopColor="#ec4899" />
-          <stop offset="1" stopColor="#f59e0b" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="9" fill="url(#troy-logo)" />
+      <rect width="32" height="32" rx="9" fill="#303030" />
       <g fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round">
         <path d="M9 9h14M16 9v14M16 20.5c0-3.5 2.5-5.5 7-5.5" />
       </g>

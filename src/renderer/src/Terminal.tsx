@@ -7,28 +7,28 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { trackStatus, type StatusListener } from '../../shared/status'
 import { terminals } from './terminals'
 
-// Matches the --surface and status tokens in main.css.
+// The background matches --surface in main.css.
 const THEME = {
-  background: '#0d0d16',
-  foreground: '#e6e6f0',
-  cursor: '#f472b6',
-  cursorAccent: '#0d0d16',
-  selectionBackground: '#8b5cf640',
-  black: '#1c1c2b',
-  red: '#fb7185',
-  green: '#34d399',
-  yellow: '#fbbf24',
-  blue: '#60a5fa',
-  magenta: '#c084fc',
-  cyan: '#38bdf8',
-  white: '#d4d4e2',
-  brightBlack: '#5c5c78',
-  brightRed: '#fda4af',
-  brightGreen: '#6ee7b7',
-  brightYellow: '#fcd34d',
-  brightBlue: '#93c5fd',
-  brightMagenta: '#d8b4fe',
-  brightCyan: '#7dd3fc',
+  background: '#0f0f0f',
+  foreground: '#e6e6e6',
+  cursor: '#d6d6d6',
+  cursorAccent: '#0f0f0f',
+  selectionBackground: '#ffffff33',
+  black: '#1e1e1e',
+  red: '#e5645c',
+  green: '#4fb286',
+  yellow: '#e0a43a',
+  blue: '#6b9ae0',
+  magenta: '#c27bc9',
+  cyan: '#4fb5b8',
+  white: '#d4d4d4',
+  brightBlack: '#666666',
+  brightRed: '#f08a83',
+  brightGreen: '#78c9a3',
+  brightYellow: '#ecc06a',
+  brightBlue: '#92b6ea',
+  brightMagenta: '#d9a0dd',
+  brightCyan: '#7fcfd1',
   brightWhite: '#ffffff'
 }
 
@@ -64,7 +64,7 @@ export function Terminal({
   onStatus
 }: Props): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null)
-  // Read at launch, not a reason to remount: the repo list refreshes it while agents run.
+  // Read at launch only; the repo list refreshes it while agents run.
   const resumeRef = useRef(resume)
   useEffect(() => {
     resumeRef.current = resume

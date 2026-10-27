@@ -45,10 +45,7 @@ export function NewWorktree({ repoName, installed, onCancel, onCreate }: Props):
           <span className="dialog-icon">
             <Icon name="branch" size={18} />
           </span>
-          <div>
-            <h2>New worktree in {repoName}</h2>
-            <p className="muted">A fresh branch and checkout, with its own agent and shell.</p>
-          </div>
+          <h2>New worktree in {repoName}</h2>
         </div>
         <label>
           Branch

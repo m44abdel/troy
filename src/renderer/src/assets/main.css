@@ -1,27 +1,24 @@
 :root {
   /* Surfaces, darkest to lightest. */
-  --canvas: #0b0b12;
-  --surface: #0d0d16;
-  --panel: #13131f;
-  --raised: #1a1a29;
-  --hover: #20202f;
-  --border: #24243a;
-  --border-strong: #34344f;
+  --canvas: #0c0c0c;
+  --surface: #0f0f0f;
+  --panel: #151515;
+  --raised: #1b1b1b;
+  --hover: #222222;
+  --border: #2a2a2a;
+  --border-strong: #3a3a3a;
 
-  --text: #ececf4;
-  --muted: #9b9bb4;
-  --subtle: #6c6c88;
+  --text: #ececec;
+  --muted: #9d9d9d;
+  --subtle: #6e6e6e;
 
-  --accent: #a78bfa;
-  --accent-strong: #8b5cf6;
-  --pink: #f472b6;
-  --grad: linear-gradient(135deg, #8b5cf6 0%, #ec4899 55%, #f59e0b 100%);
-  --grad-soft: linear-gradient(135deg, #8b5cf633, #ec489926 55%, #f59e0b1a);
+  --accent: #d6d6d6;
+  --accent-strong: #8f8f8f;
 
-  --running: #38bdf8;
-  --waiting: #fbbf24;
-  --done: #34d399;
-  --danger: #fb7185;
+  --running: #5aa9e6;
+  --waiting: #e0a43a;
+  --done: #4fb286;
+  --danger: #e5645c;
 
   --mono: 'SF Mono', Menlo, Monaco, monospace;
   --radius: 12px;
@@ -102,7 +99,7 @@ code {
 }
 
 ::selection {
-  background: #8b5cf666;
+  background: rgb(255 255 255 / 20%);
 }
 
 ::-webkit-scrollbar {
@@ -126,7 +123,7 @@ code {
   background: transparent;
 }
 
-/* ───── Shell layout ───── */
+/* Shell layout */
 
 .app {
   display: flex;
@@ -143,7 +140,7 @@ code {
 }
 
 html[data-platform='mac'] .sidebar {
-  background: rgb(14 14 24 / 86%);
+  background: rgb(18 18 18 / 86%);
   border-right-color: rgb(255 255 255 / 6%);
 }
 
@@ -167,7 +164,6 @@ html[data-platform='mac'] .sidebar {
 
 .logo {
   flex: none;
-  filter: drop-shadow(0 4px 12px rgb(236 72 153 / 35%));
 }
 
 .icon-button {
@@ -244,7 +240,7 @@ html[data-platform='mac'] .sidebar {
 
 .count.waiting {
   color: var(--waiting);
-  border-color: rgb(251 191 36 / 40%);
+  border-color: color-mix(in srgb, var(--waiting) 40%, transparent);
 }
 
 .worktree.card.drop-target {
@@ -374,7 +370,7 @@ html[data-platform='mac'] .sidebar-footer {
   transform: rotate(45deg);
 }
 
-/* ───── Worktree cards ───── */
+/* Worktree cards */
 
 .worktree {
   position: relative;
@@ -402,7 +398,7 @@ html[data-platform='mac'] .sidebar-footer {
 }
 
 html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
-  background: rgb(13 13 22 / 72%);
+  background: rgb(15 15 15 / 72%);
 }
 
 /* Status stripe down the left edge. */
@@ -435,31 +431,16 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 .worktree.card:hover {
   border-color: var(--border-strong);
   background: var(--raised);
-  transform: translateY(-1px);
-}
-
-.worktree.card:active {
-  transform: translateY(0) scale(0.99);
 }
 
 .worktree.card.selected {
-  border-color: transparent;
-  background:
-    linear-gradient(var(--raised), var(--raised)) padding-box,
-    var(--grad) border-box;
-  box-shadow: 0 8px 24px -10px rgb(236 72 153 / 35%);
+  border-color: var(--accent-strong);
+  background: var(--raised);
 }
 
 .worktree.card.needs-you {
-  border-color: rgb(251 191 36 / 70%);
-  background: linear-gradient(135deg, rgb(251 191 36 / 14%), rgb(251 191 36 / 4%)), var(--surface);
-  animation: beckon 2.4s ease-in-out infinite;
-}
-
-@keyframes beckon {
-  50% {
-    box-shadow: 0 0 0 4px rgb(251 191 36 / 12%);
-  }
+  border-color: color-mix(in srgb, var(--waiting) 70%, transparent);
+  background: color-mix(in srgb, var(--waiting) 9%, var(--surface));
 }
 
 .card-head,
@@ -493,6 +474,12 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.card-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .card-check.ok {
@@ -536,6 +523,9 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .check-bar .check-label {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
 }
 
@@ -586,6 +576,9 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 }
 
 .card-mail {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11.5px;
   color: var(--accent);
 }
@@ -611,6 +604,11 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.card-overlap .icon {
+  margin-right: 5px;
+  vertical-align: -2px;
 }
 
 .card-overlap.uses,
@@ -653,9 +651,9 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   font: 600 10.5px/1 var(--mono);
   padding: 3px 7px;
   border-radius: 999px;
-  color: hsl(var(--hue) 90% 80%);
-  background: hsl(var(--hue) 70% 50% / 16%);
-  border: 1px solid hsl(var(--hue) 70% 60% / 28%);
+  color: hsl(var(--hue) 20% 78%);
+  background: hsl(var(--hue) 10% 50% / 12%);
+  border: 1px solid hsl(var(--hue) 10% 60% / 24%);
 }
 
 .dot {
@@ -673,7 +671,6 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .dot.running {
   background: var(--running);
-  box-shadow: 0 0 8px var(--running);
 }
 
 /* A ripple that keeps radiating while the agent works. */
@@ -699,7 +696,6 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .dot.waiting {
   background: var(--waiting);
-  box-shadow: 0 0 8px rgb(251 191 36 / 70%);
 }
 
 .dot.done {
@@ -707,8 +703,8 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 }
 
 .dot.error {
+  padding: 0;
   background: var(--danger);
-  box-shadow: 0 0 8px rgb(251 113 133 / 60%);
 }
 
 /* Above the card's stretched select layer, so hovering reaches it; clicks still select. */
@@ -738,7 +734,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 }
 
 .ctx-tip strong {
-  color: var(--text, #e6e6f0);
+  color: var(--text);
   font-size: 13px;
 }
 
@@ -776,15 +772,15 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   margin: 0 12px 10px;
   padding: 7px 10px;
   border-radius: var(--radius-sm);
-  background: rgb(251 191 36 / 10%);
-  border: 1px solid rgb(251 191 36 / 30%);
+  background: color-mix(in srgb, var(--waiting) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--waiting) 30%, transparent);
   color: var(--waiting);
   font-weight: 600;
 }
 
 .link.clear-waiting:hover {
   color: var(--waiting);
-  background: rgb(251 191 36 / 18%);
+  background: color-mix(in srgb, var(--waiting) 18%, transparent);
 }
 
 .error {
@@ -792,7 +788,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   padding: 0 12px;
 }
 
-/* ───── Workspace ───── */
+/* Workspace */
 
 .workspaces {
   flex: 1;
@@ -878,7 +874,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   min-height: 46px;
   padding: 8px 8px 8px 14px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--panel), var(--surface));
+  background: var(--panel);
   -webkit-app-region: drag;
 }
 
@@ -960,7 +956,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   background: transparent !important;
 }
 
-/* ───── Tabs ───── */
+/* Tabs */
 
 .tabs {
   display: flex;
@@ -969,7 +965,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   min-height: 46px;
   align-items: center;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--panel), var(--surface));
+  background: var(--panel);
   -webkit-app-region: drag;
 }
 
@@ -998,10 +994,6 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
-.tab.active .icon {
-  color: var(--pink);
-}
-
 .tab kbd {
   font-size: 9.5px;
   padding: 2px 4px;
@@ -1011,7 +1003,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   display: none;
 }
 
-/* ───── Buttons ───── */
+/* Buttons */
 
 .primary {
   -webkit-app-region: no-drag;
@@ -1022,37 +1014,23 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   padding: 8px 14px;
   border: none;
   border-radius: var(--radius-sm);
-  background: var(--grad);
-  background-size: 140% 140%;
-  background-position: 0% 50%;
-  color: #fff;
+  background: #e6e6e6;
+  color: #111;
   font-weight: 600;
-  box-shadow:
-    0 6px 20px -8px rgb(236 72 153 / 60%),
-    inset 0 1px 0 rgb(255 255 255 / 22%);
-  transition:
-    background-position 400ms var(--ease),
-    box-shadow 200ms var(--ease),
-    transform 150ms var(--ease),
-    opacity 150ms var(--ease);
 }
 
 .primary:hover:not(:disabled) {
-  background-position: 100% 50%;
-  box-shadow:
-    0 10px 28px -8px rgb(236 72 153 / 70%),
-    inset 0 1px 0 rgb(255 255 255 / 22%);
-  transform: translateY(-1px);
+  background: #fff;
 }
 
 .primary:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.98);
 }
 
 .primary kbd {
-  color: #fff;
-  background: rgb(0 0 0 / 18%);
-  border-color: rgb(255 255 255 / 25%);
+  color: #444;
+  background: rgb(0 0 0 / 6%);
+  border-color: rgb(0 0 0 / 18%);
 }
 
 .primary.large {
@@ -1110,8 +1088,8 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgb(255 255 255 / 35%);
-  border-top-color: #fff;
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 700ms linear infinite;
 }
@@ -1133,7 +1111,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   border: 1px solid var(--border-strong);
 }
 
-/* ───── Diff ───── */
+/* Diff */
 
 .pane-diff {
   flex-direction: column;
@@ -1168,20 +1146,17 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 7px 10px;
-  transition:
-    border-color 150ms var(--ease),
-    box-shadow 150ms var(--ease);
+  transition: border-color 150ms var(--ease);
 }
 
 .diff-toolbar input:focus {
   outline: none;
   border-color: var(--accent-strong);
-  box-shadow: 0 0 0 3px rgb(139 92 246 / 22%);
 }
 
 .comment-bar {
   justify-content: space-between;
-  background: var(--grad-soft);
+  background: var(--raised);
 }
 
 .comment-count {
@@ -1199,8 +1174,8 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   padding: 7px 10px;
   border-radius: var(--radius-sm);
   color: var(--done);
-  background: rgb(52 211 153 / 10%);
-  border: 1px solid rgb(52 211 153 / 25%);
+  background: color-mix(in srgb, var(--done) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--done) 25%, transparent);
   animation: rise 250ms var(--ease);
 }
 
@@ -1208,8 +1183,8 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   margin: 8px 10px 0;
   padding: 7px 10px;
   border-radius: var(--radius-sm);
-  background: rgb(251 113 133 / 10%);
-  border: 1px solid rgb(251 113 133 / 25%);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
 }
 
 @keyframes rise {
@@ -1233,7 +1208,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgb(52 211 153 / 12%);
+  background: color-mix(in srgb, var(--done) 12%, transparent);
 }
 
 .diff-files {
@@ -1243,13 +1218,13 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   --diff-background-color: transparent;
   --diff-text-color: var(--text);
   --diff-font-family: var(--mono);
-  --diff-selection-background-color: rgb(139 92 246 / 22%);
-  --diff-gutter-insert-background-color: rgb(52 211 153 / 16%);
-  --diff-gutter-delete-background-color: rgb(251 113 133 / 16%);
-  --diff-code-insert-background-color: rgb(52 211 153 / 9%);
-  --diff-code-delete-background-color: rgb(251 113 133 / 9%);
-  --diff-code-insert-edit-background-color: rgb(52 211 153 / 28%);
-  --diff-code-delete-edit-background-color: rgb(251 113 133 / 28%);
+  --diff-selection-background-color: rgb(255 255 255 / 14%);
+  --diff-gutter-insert-background-color: color-mix(in srgb, var(--done) 16%, transparent);
+  --diff-gutter-delete-background-color: color-mix(in srgb, var(--danger) 16%, transparent);
+  --diff-code-insert-background-color: color-mix(in srgb, var(--done) 9%, transparent);
+  --diff-code-delete-background-color: color-mix(in srgb, var(--danger) 9%, transparent);
+  --diff-code-insert-edit-background-color: color-mix(in srgb, var(--done) 28%, transparent);
+  --diff-code-delete-edit-background-color: color-mix(in srgb, var(--danger) 28%, transparent);
   --diff-omit-gutter-line-color: var(--border);
 }
 
@@ -1312,7 +1287,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .diff-files .diff-gutter:hover {
   color: var(--text);
-  background: rgb(139 92 246 / 20%);
+  background: rgb(255 255 255 / 10%);
 }
 
 .comment,
@@ -1328,7 +1303,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   gap: 8px;
   background: var(--raised);
   border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--pink);
+  border-left: 3px solid var(--accent-strong);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   white-space: pre-wrap;
@@ -1355,7 +1330,6 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   border: 1px solid var(--accent-strong);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
-  box-shadow: 0 0 0 3px rgb(139 92 246 / 20%);
   resize: vertical;
 }
 
@@ -1363,7 +1337,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   outline: none;
 }
 
-/* ───── Empty state ───── */
+/* Empty state */
 
 .empty {
   height: 100%;
@@ -1371,39 +1345,11 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 14px;
   padding: 32px;
   text-align: center;
   -webkit-app-region: drag;
-  background:
-    radial-gradient(600px 360px at 50% 30%, rgb(139 92 246 / 18%), transparent 70%),
-    radial-gradient(500px 300px at 70% 80%, rgb(236 72 153 / 10%), transparent 70%), var(--canvas);
-}
-
-.hero-logo {
-  margin-bottom: 8px;
-  animation: float 6s ease-in-out infinite;
-}
-
-.hero-logo .logo {
-  filter: drop-shadow(0 18px 40px rgb(236 72 153 / 45%));
-}
-
-@keyframes float {
-  50% {
-    transform: translateY(-6px);
-  }
-}
-
-.empty h1 {
-  margin: 0;
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  background: linear-gradient(90deg, #fff 0%, #e9d5ff 40%, #fbcfe8 70%, #fde68a 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
+  background: var(--canvas);
 }
 
 .empty p {
@@ -1411,64 +1357,12 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   color: var(--muted);
 }
 
-.empty .tagline {
-  font-size: 15px;
-  max-width: 440px;
-}
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 200px));
-  gap: 12px;
-  margin: 22px 0 26px;
-  padding: 0;
-  list-style: none;
-}
-
-.features li {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 16px;
-  text-align: left;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: rgb(19 19 31 / 70%);
-}
-
-.features .icon {
-  padding: 7px;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  color: var(--pink);
-  background: var(--grad-soft);
-  border: 1px solid rgb(236 72 153 / 25%);
-}
-
-.features strong {
-  font-size: 13px;
-}
-
-.features span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .empty .agents-found {
-  margin-top: 14px;
   max-width: 520px;
   font-size: 12px;
 }
 
-@media (max-width: 900px) {
-  .features {
-    grid-template-columns: minmax(0, 320px);
-  }
-}
-
-/* ───── Dialogs ───── */
+/* Dialogs */
 
 .dialog {
   width: 460px;
@@ -1486,8 +1380,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 }
 
 .dialog::backdrop {
-  background: rgb(5 5 10 / 55%);
-  backdrop-filter: blur(6px);
+  background: rgb(0 0 0 / 55%);
 }
 
 @keyframes pop {
@@ -1500,7 +1393,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 .dialog-head {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 18px;
 }
 
@@ -1511,9 +1404,9 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  color: #fff;
-  background: var(--grad);
-  box-shadow: 0 6px 18px -6px rgb(236 72 153 / 60%);
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
 }
 
 .dialog h2 {
@@ -1554,9 +1447,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 9px 11px;
-  transition:
-    border-color 150ms var(--ease),
-    box-shadow 150ms var(--ease);
+  transition: border-color 150ms var(--ease);
 }
 
 .dialog textarea {
@@ -1574,7 +1465,6 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 .dialog textarea:focus {
   outline: none;
   border-color: var(--accent-strong);
-  box-shadow: 0 0 0 3px rgb(139 92 246 / 22%);
 }
 
 .dialog .error {
@@ -1592,7 +1482,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   margin-top: 6px;
 }
 
-/* ───── Settings ───── */
+/* Settings */
 
 .settings section {
   margin-top: 20px;
@@ -1669,7 +1559,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 }
 
 .switch:checked {
-  background: var(--grad);
+  background: var(--accent-strong);
 }
 
 .switch:checked::after {
@@ -1701,8 +1591,8 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .agents .found {
   color: var(--done);
-  border-color: rgb(52 211 153 / 40%);
-  background: rgb(52 211 153 / 10%);
+  border-color: color-mix(in srgb, var(--done) 40%, transparent);
+  background: color-mix(in srgb, var(--done) 10%, transparent);
 }
 
 .agents .missing {
@@ -1710,7 +1600,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   text-decoration: line-through;
 }
 
-/* ───── Knowledge ───── */
+/* Knowledge */
 
 .knowledge-pane {
   padding: 16px;
@@ -1769,10 +1659,8 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 }
 
 .fact.proposal {
-  border-color: transparent;
-  background:
-    linear-gradient(var(--raised), var(--raised)) padding-box,
-    var(--grad) border-box;
+  border-color: var(--border-strong);
+  background: var(--raised);
   animation: rise 250ms var(--ease);
 }
 
@@ -1792,11 +1680,11 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   font-size: 10.5px;
   font-weight: 600;
   color: var(--waiting);
-  background: rgb(251 191 36 / 14%);
-  border: 1px solid rgb(251 191 36 / 35%);
+  background: color-mix(in srgb, var(--waiting) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--waiting) 35%, transparent);
 }
 
-/* ───── Docs ───── */
+/* Docs */
 
 .docs-pane {
   height: 100%;
@@ -1844,12 +1732,12 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
 
 .markdown a {
   color: var(--accent);
-  text-decoration-color: rgb(167 139 250 / 40%);
+  text-decoration-color: rgb(255 255 255 / 35%);
   text-underline-offset: 3px;
 }
 
 .markdown a:hover {
-  color: var(--pink);
+  color: #fff;
 }
 
 .markdown code {
@@ -1885,7 +1773,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   padding: 4px 14px;
   border-left: 3px solid var(--accent-strong);
   color: var(--muted);
-  background: rgb(139 92 246 / 6%);
+  background: rgb(255 255 255 / 3%);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
@@ -1908,7 +1796,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   height: auto;
 }
 
-/* ───── Motion preferences ───── */
+/* Motion preferences */
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1926,7 +1814,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   margin-bottom: 8px;
 }
 
-/* ───── Review window ───── */
+/* Review window */
 
 .review {
   display: flex;
@@ -1964,7 +1852,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   gap: 8px;
   padding: 10px;
   border-bottom: 1px solid var(--border);
-  background: var(--grad-soft);
+  background: var(--panel);
 }
 
 .review-submit textarea {
@@ -2022,7 +1910,7 @@ html[data-platform='mac'] .worktree.card:not(.selected, .needs-you) {
   font-size: 11px;
 }
 
-/* ───── Terminal drawer ───── */
+/* Terminal drawer */
 
 .review .column > .diff-pane {
   flex: 1;

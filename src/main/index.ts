@@ -34,7 +34,7 @@ function createWindow(hash?: string): BrowserWindow {
           backgroundColor: '#00000000',
           trafficLightPosition: { x: 16, y: 18 }
         }
-      : { backgroundColor: '#0b0b12' }),
+      : { backgroundColor: '#0c0c0c' }),
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
