@@ -34,7 +34,7 @@ const modelAttachment = (modelId: string): object => ({
 })
 
 describe('claudeUsage', () => {
-  it('sums input and cache tokens of the last main-thread assistant turn', () => {
+  it('last main-thread turn, input plus cache', () => {
     const log = jsonl(
       modelAttachment('claude-opus-5-5'),
       assistant(1, 1000, 10),
@@ -44,20 +44,26 @@ describe('claudeUsage', () => {
     expect(claudeUsage(log)).toEqual({ used: 50_302, window: 200_000, model: 'claude-opus-5-5' })
   })
 
-  it('uses the 1M window when the model attachment says so or usage proves it', () => {
+  it('[1m] model means a 1M window', () => {
     expect(
       claudeUsage(jsonl(modelAttachment('claude-opus-5-5[1m]'), assistant(1, 10, 0)))?.window
     ).toBe(1_000_000)
+  })
+
+  it('infers 1M when usage is past 200k', () => {
     expect(claudeUsage(jsonl(assistant(0, 240_000, 0)))?.window).toBe(1_000_000)
   })
 
-  it('skips synthetic turns, tolerates a cut-off first line and returns null without usage', () => {
+  it('skips <synthetic> turns and a cut-off first line', () => {
     const synthetic = {
       ...assistant(0, 0, 0),
       message: { model: '<synthetic>', usage: { input_tokens: 0 } }
     }
     const log = '{"type":"assistant","cut' + '\n' + jsonl(assistant(1, 100, 0), synthetic)
     expect(claudeUsage(log)?.used).toBe(101)
+  })
+
+  it('null without usage', () => {
     expect(claudeUsage(jsonl({ type: 'user' }))).toBeNull()
   })
 })
@@ -75,16 +81,19 @@ const tokenCount = (total: number, window: number | null): object => ({
 })
 
 describe('codexUsage', () => {
-  it('takes the latest token_count with a known window', () => {
+  it('latest token_count wins', () => {
     const log = jsonl(tokenCount(10_000, 272_000), tokenCount(54_000, 272_000), {
       type: 'event_msg',
       payload: { type: 'token_count', info: null }
     })
     expect(codexUsage(log)).toEqual({ used: 54_000, window: 272_000, model: null })
+  })
+
+  it('needs a context window', () => {
     expect(codexUsage(jsonl(tokenCount(5, null)))).toBeNull()
   })
 
-  it('reads the session cwd even when the first line is truncated', () => {
+  it('cwd from a truncated first line', () => {
     const head =
       '{"type":"session_meta","payload":{"id":"x","cwd":"/a/b \\"q\\"","base_instructions":{"text":"You are'
     expect(codexSessionCwd(head)).toBe('/a/b "q"')
@@ -103,7 +112,7 @@ describe('readContext', () => {
     delete process.env.CODEX_HOME
   })
 
-  it('finds the newest Claude session for the worktree path', async () => {
+  it('picks the newest Claude session', async () => {
     const dir = claudeProjectDir('/code/app.feat-x')
     expect(dir).toBe(join(home, 'claude', 'projects', '-code-app-feat-x'))
     mkdirSync(dir, { recursive: true })
@@ -114,7 +123,7 @@ describe('readContext', () => {
     expect((await readContext('/code/app.feat-x', 'claude --resume'))?.used).toBe(42_000)
   })
 
-  it('matches Codex sessions by cwd and knows nothing about other agents', async () => {
+  it('matches Codex sessions by cwd', async () => {
     const day = join(home, 'codex', 'sessions', '2026', '10', '06')
     mkdirSync(day, { recursive: true })
     const meta = (cwd: string): object => ({ type: 'session_meta', payload: { cwd } })
@@ -134,7 +143,7 @@ describe('readContext', () => {
 })
 
 describe('resumeFlag', () => {
-  it('continues Claude in a worktree that has a conversation, and nothing else', () => {
+  it('--continue only when there is a conversation', () => {
     const home = realpathSync(mkdtempSync(join(tmpdir(), 'troy-claude-')))
     const old = process.env.CLAUDE_CONFIG_DIR
     process.env.CLAUDE_CONFIG_DIR = home

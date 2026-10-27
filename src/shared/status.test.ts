@@ -21,7 +21,7 @@ describe('trackStatus', () => {
     vi.useRealTimers()
   })
 
-  it('is running while output flows and waiting after a quiet spell', () => {
+  it('goes waiting after a second of quiet', () => {
     tracker.output()
     vi.advanceTimersByTime(900)
     tracker.output()
@@ -53,7 +53,7 @@ describe('trackStatus', () => {
     expect(seen).toEqual(['running', 'waiting', 'running'])
   })
 
-  it('keeps a working agent working through a long resize drag', () => {
+  it('long resize drag', () => {
     tracker.output()
     for (let i = 0; i < 10; i++) {
       vi.advanceTimersByTime(200)
@@ -63,7 +63,7 @@ describe('trackStatus', () => {
     expect(seen).toEqual(['running'])
   })
 
-  it('maps exit codes to done or error and stops the idle timer', () => {
+  it('exit 0 is done, 127 is an error', () => {
     tracker.output()
     tracker.exit(0)
     vi.advanceTimersByTime(5000)
@@ -73,7 +73,8 @@ describe('trackStatus', () => {
     tracker.exit(127)
     expect(seen).toEqual(['running', 'done', 'running', 'error'])
   })
-  it('trusts hook reports over the silence timer once one arrives', () => {
+
+  it('stops guessing once a hook has reported', () => {
     tracker.hook('running')
     tracker.output()
     vi.advanceTimersByTime(5000)
@@ -86,7 +87,7 @@ describe('trackStatus', () => {
     expect(seen).toEqual(['running', 'waiting'])
   })
 
-  it('marks hook, bell and exit changes as certain but a quiet spell as a guess', () => {
+  it('should flag a quiet spell as a guess', () => {
     tracker.output()
     vi.advanceTimersByTime(1000)
     tracker.bell()
@@ -101,7 +102,7 @@ describe('trackStatus', () => {
 })
 
 describe('parseHookStatus', () => {
-  it('accepts only the statuses a hook may report', () => {
+  it('waiting and running only', () => {
     expect(parseHookStatus('waiting')).toBe('waiting')
     expect(parseHookStatus('running')).toBe('running')
     expect(parseHookStatus('done')).toBeNull()

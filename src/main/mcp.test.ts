@@ -35,7 +35,7 @@ const call = (id: number, name: string, args: object): object => ({
 })
 
 describe('MCP server', () => {
-  it('handshakes, lists both tools and ignores notifications', async () => {
+  it('handshake and tool list', async () => {
     const handle = createServer(tempRepo())
     const init = await handle({
       id: 1,
@@ -63,7 +63,7 @@ describe('MCP server', () => {
     })
   })
 
-  it('queues proposals under the client name and reports bad sources to the agent', async () => {
+  it('knowledge_propose', async () => {
     const repo = tempRepo()
     const handle = createServer(repo)
     await handle({ id: 1, method: 'initialize', params: { clientInfo: { name: 'codex' } } })
@@ -79,7 +79,7 @@ describe('MCP server', () => {
     expect(proposals.map((p) => [p.fact, p.author])).toEqual([['Two is line 2.', 'codex']])
   })
 
-  it('searches approved facts only and marks stale ones', async () => {
+  it('knowledge_search marks stale hits', async () => {
     const repo = tempRepo()
     mkdirSync(join(repo, '.troy'))
     const fact = {
@@ -100,7 +100,7 @@ describe('MCP server', () => {
 })
 
 describe('search', () => {
-  it('needs every word, in the fact or its source', () => {
+  it('every word has to match the fact or source', () => {
     const e = {
       fact: 'Retries stop at 3',
       source: 'src/api.ts:4',
@@ -120,7 +120,7 @@ describe('agent messaging tools', () => {
   const isError = (reply: object | null): boolean =>
     !!(reply as { result: { isError?: boolean } }).result.isError
 
-  it('lists the other worktrees and leaves a message for one of them', async () => {
+  it('messages a worktree it found with agents_list', async () => {
     const repo = tempRepo()
     execFileSync('git', ['-C', repo, 'worktree', 'add', '-q', '-b', 'feat/b', `${repo}.b`])
     const mail = realpathSync(mkdtempSync(join(tmpdir(), 'troy-mailbox-')))
@@ -141,7 +141,7 @@ describe('agent messaging tools', () => {
     })
   })
 
-  it('asks Troy to spawn an agent from a linked worktree, naming the main checkout', async () => {
+  it('a spawn from a linked worktree names the main checkout', async () => {
     const repo = tempRepo()
     execFileSync('git', ['-C', repo, 'worktree', 'add', '-q', '-b', 'feat/b', `${repo}.b`])
     const mail = realpathSync(mkdtempSync(join(tmpdir(), 'troy-mailbox-')))
@@ -159,7 +159,7 @@ describe('agent messaging tools', () => {
     })
   })
 
-  it('refuses a spawn onto a branch that has a worktree, without a prompt, or without Troy', async () => {
+  it('bad spawns', async () => {
     const repo = tempRepo()
     const handle = createServer(repo, realpathSync(mkdtempSync(join(tmpdir(), 'troy-mailbox-'))))
     const spawn = (args: object): Promise<object | null> => handle(call(1, 'agent_spawn', args))
@@ -170,7 +170,7 @@ describe('agent messaging tools', () => {
     ).toBe(true)
   })
 
-  it('refuses messages to itself, to unknown agents, or without Troy', async () => {
+  it('should refuse to message itself or an unknown agent', async () => {
     const repo = tempRepo()
     const handle = createServer(repo, realpathSync(mkdtempSync(join(tmpdir(), 'troy-mailbox-'))))
     expect(isError(await handle(call(1, 'agent_message', { to: 'main', text: 'hi' })))).toBe(true)
@@ -188,19 +188,25 @@ describe('mcpFlags', () => {
     env: { ELECTRON_RUN_AS_NODE: '1' }
   }
 
-  it('points Claude at the config file and gives Codex inline TOML overrides', () => {
+  it('Claude gets --mcp-config', () => {
     expect(mcpFlags('claude --resume', "/it's/mcp.json", server)).toBe(
       ` --mcp-config '/it'\\''s/mcp.json'`
     )
+  })
+
+  it('Codex gets inline -c overrides', () => {
     expect(mcpFlags('/bin/codex', '', server)).toBe(
       ` -c 'mcp_servers.troy.command="/Apps/Troy"'` +
         ` -c 'mcp_servers.troy.args=["/x/mcp-server.js"]'` +
         ` -c 'mcp_servers.troy.env={ELECTRON_RUN_AS_NODE="1"}'`
     )
+  })
+
+  it('other agents get nothing', () => {
     expect(mcpFlags('aider', '', server)).toBe('')
   })
 
-  it('adds the code graph server next to Troy when the repo has one', () => {
+  it('adds the graph server if the repo has one', () => {
     const graph = {
       config: '/g/mcp.json',
       server: { command: '/py', args: ['-m', 'graphify.serve', '/g/graph.json'], env: {} }
@@ -221,7 +227,7 @@ describe('hookSettings', () => {
     (hookSettings().hooks as Record<string, { hooks: { command: string }[] }[]>)[event][0].hooks[0]
       .command
 
-  it('writes the status to the file named by TROY_STATUS_FILE', () => {
+  it('Stop and UserPromptSubmit write the status file', () => {
     const file = join(mkdtempSync(join(tmpdir(), 'troy-hook-')), 'status')
     const env = { ...process.env, TROY_STATUS_FILE: file }
     execFileSync('sh', ['-c', commandFor('Stop')], { env })
@@ -230,7 +236,7 @@ describe('hookSettings', () => {
     expect(readFileSync(file, 'utf8')).toBe('running\n')
   })
 
-  it('succeeds silently outside Troy', () => {
+  it('silent no-op outside Troy', () => {
     const env = { ...process.env }
     delete env.TROY_STATUS_FILE
     expect(execFileSync('sh', ['-c', commandFor('Notification')], { env }).toString()).toBe('')
@@ -238,7 +244,7 @@ describe('hookSettings', () => {
 })
 
 describe('hookFlags', () => {
-  it('loads the hook settings into Claude only', () => {
+  it('Claude only', () => {
     expect(hookFlags('claude', "/it's/hooks.json")).toBe(` --settings '/it'\\''s/hooks.json'`)
     expect(hookFlags('codex', '/x')).toBe('')
   })

@@ -5,7 +5,7 @@ import { join } from 'path'
 import { fileDependencies, graphifyPython } from './graph'
 
 describe('fileDependencies', () => {
-  it('maps each file to the other files its code imports or calls', () => {
+  it('file deps from imports and calls', () => {
     const node = (id: string, file?: string): { id: string; source_file?: string } => ({
       id,
       source_file: file
@@ -41,7 +41,7 @@ describe('fileDependencies', () => {
     expect(fileDependencies(graph)).toEqual({ 'src/ui.ts': ['src/api.ts'] })
   })
 
-  it('tolerates a graph without links', () => {
+  it('no links', () => {
     expect(fileDependencies({ nodes: [] })).toEqual({})
   })
 })
@@ -49,7 +49,7 @@ describe('fileDependencies', () => {
 describe('graphifyPython', () => {
   const dir = (): string => realpathSync(mkdtempSync(join(tmpdir(), 'troy-gfy-')))
 
-  it('uses the python beside the real script, as uv and pipx lay them out', async () => {
+  it('uv/pipx layout', async () => {
     const venv = join(dir(), 'bin')
     mkdirSync(venv)
     writeFileSync(join(venv, 'graphify'), "#!/bin/sh\n'''exec' python\n")
@@ -60,11 +60,14 @@ describe('graphifyPython', () => {
     expect(await graphifyPython(link)).toBe(join(venv, 'python'))
   })
 
-  it('falls back to a python named in the shebang', async () => {
+  it('falls back to the shebang', async () => {
     const script = join(dir(), 'graphify')
     writeFileSync(script, '#!/opt/py/bin/python3.12\nimport x\n')
     expect(await graphifyPython(script)).toBe('/opt/py/bin/python3.12')
+  })
 
+  it('gives up on an env shebang', async () => {
+    const script = join(dir(), 'graphify')
     writeFileSync(script, '#!/usr/bin/env python3\n')
     expect(await graphifyPython(script)).toBe(null)
   })

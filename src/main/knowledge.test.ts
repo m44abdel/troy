@@ -46,16 +46,19 @@ function tempRepo(): { repo: string; commit: (file: string, text: string, date: 
 }
 
 describe('parseKnowledge / formatEntry', () => {
-  it('round-trips entries and ignores everything else in the file', () => {
+  it('round trip, CRLF included', () => {
     const md = `# Project knowledge\n\nIntro text.\n\n${formatEntry(entry)}\n${formatEntry({ ...entry, fact: 'Second.' })}`
     expect(parseKnowledge(md)).toEqual([entry, { ...entry, fact: 'Second.' }])
     expect(parseKnowledge(md.replaceAll('\n', '\r\n'))).toHaveLength(2)
+  })
+
+  it('a list item with no source line is not an entry', () => {
     expect(parseKnowledge('- a list item without a source line\n')).toEqual([])
   })
 })
 
 describe('checkSource', () => {
-  it('accepts lines that exist, real commits and session ids', async () => {
+  it('valid sources', async () => {
     const { repo } = tempRepo()
     const head = execFileSync('git', ['-C', repo, 'rev-parse', '--short', 'HEAD']).toString().trim()
     await expect(checkSource(repo, 'src/api.ts:4')).resolves.toBeUndefined()
@@ -78,7 +81,7 @@ describe('checkSource', () => {
 })
 
 describe('review queue', () => {
-  it('queues a proposal from any worktree and approves it into the primary checkout', async () => {
+  it('approving a worktree proposal writes to the primary checkout', async () => {
     const { repo } = tempRepo()
     const { path: worktree } = await createWorktree(repo, 'feat-k', '')
 
@@ -103,13 +106,17 @@ describe('review queue', () => {
     expect(existsSync(join(worktree, '.troy', 'knowledge.md'))).toBe(false)
   })
 
-  it('rejects a proposal without touching knowledge.md and refuses unsafe ids', async () => {
+  it('reject leaves nothing behind', async () => {
     const { repo } = tempRepo()
     const proposal = await propose(repo, { fact: 'x', source: 'session:s1', author: '' })
     expect(proposal.author).toBe('unknown')
 
     await reject(repo, proposal.id)
     expect(await readKnowledge(repo)).toEqual({ entries: [], proposals: [] })
+  })
+
+  it('unsafe proposal ids', async () => {
+    const { repo } = tempRepo()
     await expect(approve(repo, '../../config')).rejects.toThrow('Invalid proposal id')
   })
 
@@ -123,7 +130,7 @@ describe('review queue', () => {
 })
 
 describe('staleness', () => {
-  it('flags a fact once its cited file has a commit after the fact was recorded', async () => {
+  it('goes stale when the cited file changes later', async () => {
     const { repo, commit } = tempRepo()
     mkdirSync(join(repo, '.troy'))
     writeFileSync(

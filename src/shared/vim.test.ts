@@ -7,8 +7,11 @@ const feed = (zone: VimZone, keys: string[]): unknown[] => {
 }
 
 describe('createVim', () => {
-  it('maps single keys and two-key sequences per zone', () => {
+  it('single keys', () => {
     expect(feed('sidebar', ['j', 'k', 'G', 'Enter'])).toEqual(['down', 'up', 'bottom', 'open'])
+  })
+
+  it('gg and ]c wait for their second key', () => {
     expect(feed('sidebar', ['g', 'g'])).toEqual(['pending', 'top'])
     expect(feed('diff', [']', 'c', '[', 'c'])).toEqual([
       'pending',
@@ -18,12 +21,12 @@ describe('createVim', () => {
     ])
   })
 
-  it('drops a dead prefix but still honours the key that broke it', () => {
+  it('g followed by j still moves down', () => {
     expect(feed('sidebar', ['g', 'j'])).toEqual(['pending', 'down'])
     expect(feed('sidebar', ['g', 'x', 'j'])).toEqual(['pending', null, 'down'])
   })
 
-  it('ignores keys a zone does not bind', () => {
+  it('unbound keys give null', () => {
     expect(feed('sidebar', [']', 'c'])).toEqual([null, null])
     expect(feed('diff', ['Enter', 'q'])).toEqual([null, null])
   })
