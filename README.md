@@ -1,14 +1,14 @@
 # Troy
 
-Run coding agents (Claude Code, Codex, Gemini, …) side by side, each in its own git worktree, in a desktop app that never steals your terminal shortcuts.
+Run coding agents (Claude Code, Codex, Gemini or whatever else is on your PATH) side by side, each in its own git worktree, in a desktop app that leaves your terminal shortcuts alone.
 
-![Troy: create a worktree, let the agent work, review its diff, send comments back and commit](docs/demo.gif)
+![Creating a worktree, reviewing the agent's diff and committing it](docs/demo.gif)
 
-> Early development. Today: add repos, create and archive worktrees, run an agent plus as many shells as you like in each, see every agent on a board by status, review the diff and ship it, see how full each agent's context window is, share reviewed facts between agents, let agents start other agents, and run prompts on a schedule.
+> Early development, macOS only.
 
 ## How Troy compares
 
-Run many agents without babysitting them, colliding them, or taking their word for it. This table is based on [Conductor](https://www.conductor.build/docs/) and [Superset](https://docs.superset.sh)'s own docs as of October 2026, and it includes the rows where Troy loses. Corrections welcome.
+Going by [Conductor](https://www.conductor.build/docs/) and [Superset](https://docs.superset.sh)'s own docs as of October 2026. Troy loses a few rows; corrections welcome.
 
 |                                                                    | Troy                                                    | Conductor                            | Superset                               |
 | ------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
@@ -17,10 +17,10 @@ Run many agents without babysitting them, colliding them, or taking their word f
 | Agents                                                             | Any CLI on your PATH                                    | Claude Code, Codex, Cursor, OpenCode | Any CLI                                |
 | Platforms                                                          | macOS                                                   | macOS                                | macOS, Linux (experimental)            |
 | Agent status                                                       | Claude Code hooks; other agents are guessed from output | Notifications                        | Agent hooks                            |
-| **Warns when parallel worktrees touch the same or dependent code** | ✓ overlap radar                                         | —                                    | —                                      |
-| **Runs your checks itself before you push or open a PR**           | ✓ `.troy/check`                                         | Gates merge on CI                    | Shows CI status                        |
-| **Shared code graph that every agent queries over MCP**            | ✓ via graphify                                          | —                                    | —                                      |
-| **Shared project knowledge that a person reviews**                 | ✓                                                       | —                                    | —                                      |
+| Warns when parallel worktrees touch the same or dependent code     | ✓ overlap radar                                         | —                                    | —                                      |
+| Runs your checks itself before you push or open a PR               | ✓ `.troy/check`                                         | Gates merge on CI                    | Shows CI status                        |
+| Shared code graph that every agent queries over MCP                | ✓ via graphify                                          | —                                    | —                                      |
+| Shared project knowledge that a person reviews                     | ✓                                                       | —                                    | —                                      |
 | Diff comments sent back to the agent                               | ✓                                                       | ✓                                    | ✓                                      |
 | Push and open a PR                                                 | ✓                                                       | ✓ plus merge                         | ✓ plus merge                           |
 | Setup script, `.env` copy, per-worktree ports                      | ✓                                                       | ✓                                    | Ports detected, not assigned           |
@@ -42,7 +42,7 @@ Other ways in:
 - **Homebrew:** `brew install m44abdel/tap/troy`
 - **DMG:** download it from [Releases](https://github.com/m44abdel/troy/releases). On first open, macOS blocks it; go to **System Settings → Privacy & Security** and click **Open Anyway**.
 
-Troy doesn't bundle any agent: it runs whichever CLIs (claude, codex, gemini, …) are on your PATH.
+Troy doesn't bundle an agent. It runs whatever CLIs you already have on your PATH.
 
 ## Worktrees
 
@@ -52,45 +52,49 @@ Troy doesn't bundle any agent: it runs whichever CLIs (claude, codex, gemini, �
 - gives each worktree its own `PORT_BASE` (3100, 3200, …) so dev servers don't collide
 - runs `.troy/setup.sh` in the shell pane if the worktree has one (e.g. `npm i`)
 
-The agent pane waits for Enter before starting, so setup can finish first. Each worktree is a card in the sidebar, titled with the first line of its initial prompt, with the agent's state underneath: working (output flowing), waiting (quiet or rang the bell), finished, or exited with an error. A session that starts waiting while you're looking at another one turns amber until you open it or click **Clear all waiting**. Click a repo's name to fold its worktrees away; a folded repo's header still counts agents waiting on you. Hover a card and click **×** to close it: the agent and shell stop and the card leaves the sidebar, but the worktree and its changes stay. The repo's **N closed** list reopens it. Drag a card onto another to reorder a repo's worktrees, or move the selected one with **⌘↑** / **⌘↓**; ⌘1–9 follow your order. Drag the dividers between the sidebar, the agent and the side panel to resize them (arrow keys work when one has focus; double-click resets). Sizes, order, folded repos and closed worktrees are remembered across restarts.
+The agent pane waits for Enter before starting, so setup can finish first.
 
-Claude Code reports its own state through hooks Troy loads with `--settings`, merged with your settings and never written into the repo, so a long tool run reads as working and a permission prompt reads as waiting as soon as Claude asks. Other agents fall back to the output guess. After you restart Troy, a worktree whose Claude Code conversation is on disk shows **Press Enter to resume claude**, and Enter continues that conversation (`claude --continue`, which picks the worktree's latest one). When an agent starts waiting, finishes or fails while you're elsewhere, Troy sends a notification and counts waiting agents on the dock icon. A guessed wait never notifies.
+Each worktree gets a card in the sidebar, titled with the first line of its prompt and showing what the agent is doing: working (output flowing), waiting (quiet, or it rang the bell), finished, or exited with an error. If an agent starts waiting while you're in another session, its card turns amber until you open it or hit **Clear all waiting**.
 
-<img src="docs/agent-status.png" alt="Sidebar: the cart agent's hook reported it stopped, so its card is amber and waiting while you watch the API agent, which is still working" width="720">
+Click a repo's name to fold it; the header still counts agents waiting on you. **×** on a card closes it (agent and shell stop, the worktree and its changes stay) and the repo's **N closed** list brings it back. Reorder cards by dragging, or with **⌘↑** / **⌘↓**, and ⌘1–9 follow that order. The dividers between sidebar, agent and side panel drag to resize. All of this survives a restart.
 
-When two agents are working at the same time on the same files, both cards say so (**⚠ 2 files shared with feat-b**; hover for the list), and if you're not looking at Troy you get a notification. That's when clashes happen, so a worktree whose agent isn't running doesn't count: its edits are history. While two or more agents are live, Troy checks every 10 seconds, so you hear about it while they're still editing, not at merge time. Changes count from where each worktree left its base: commits, uncommitted edits and new files. Click a line to open that worktree's diff showing only those files. **Show all** brings the rest back.
+Claude Code reports its own state through hooks that Troy passes with `--settings` (merged with yours; nothing is written to the repo). A long tool run shows as working and a permission prompt shows as waiting the moment Claude asks. Other agents get the output-based guess. After a restart, a worktree with a Claude Code conversation on disk shows **Press Enter to resume claude**, which runs `claude --continue`. Troy notifies you when an agent starts waiting, finishes or fails while you're elsewhere, and the dock icon counts waiting agents; guessed waits don't notify.
 
-<img src="docs/overlap-diff.png" alt="Clicking an overlap line opens the diff narrowed to the shared file, under a 'Showing only' bar with a Show all button" width="540">
+<img src="docs/agent-status.png" alt="Sidebar with one agent waiting and one working" width="720">
 
-Agents say the tests pass; Troy checks. Put any command in `.troy/check` (e.g. `npm test && npm run lint`) and Troy runs it whenever Claude Code reports it has stopped, and again before **Push** or **Open PR**. The card shows **✓ check** or **✗ check**, the diff tab shows the output, and **Send failure to agent** pastes it back to the agent. A result is reused until the worktree changes, so re-checking an unchanged tree is instant. Shipping with a failing check asks first.
+When two agents are working at the same time on the same files, both cards say so (**2 files shared with feat-b**, hover for the list), and if you're not looking at Troy you get a notification. A worktree whose agent isn't running doesn't count, since its edits can't clash with anything anymore. While two or more agents are live Troy checks every 10 seconds, which is soon enough to stop one of them before the merge gets ugly. Changes count from where each worktree left its base: commits, uncommitted edits and new files. Click a line to open that worktree's diff showing only those files. **Show all** brings the rest back.
 
-<img src="docs/receipts.png" alt="The agent says tests pass; the card shows ✗ check and the diff tab shows .troy/check's output, 1 failed, with Run again and Send failure to agent" width="720">
+<img src="docs/overlap-diff.png" alt="The diff narrowed to the file two worktrees share" width="540">
 
-With [graphify](https://github.com/safishamsi/graphify) on your PATH (`uv tool install 'graphifyy[mcp]'`), Troy builds a code graph of each repo with `graphify extract --code-only`. The build is local, uses no LLM, takes a few seconds and is stored in Troy's own folder, never in the repo. It's rebuilt at launch and whenever a worktree is created. Every agent in every worktree gets the same graph as a `graph` MCP server, so they ask it how code connects instead of each re-reading the repo. The overlap radar uses it too: besides same-file overlaps, a card says **↳ 1 file uses changes in api-work** when its changes import or call files another worktree changed.
+Agents say the tests pass; Troy checks. Put any command in `.troy/check` (e.g. `npm test && npm run lint`) and Troy runs it whenever Claude Code reports it has stopped, and again before **Push** or **Open PR**. The card gets a green or red **check** badge, the diff tab shows the output, and **Send failure to agent** pastes it back to the agent. A result is reused until the worktree changes, so re-checking an unchanged tree is instant. Shipping with a failing check asks first.
+
+<img src="docs/receipts.png" alt="A failed .troy/check on the card and its output in the diff tab" width="720">
+
+With [graphify](https://github.com/safishamsi/graphify) on your PATH (`uv tool install 'graphifyy[mcp]'`), Troy builds a code graph of each repo with `graphify extract --code-only`. It runs locally without an LLM, takes a few seconds, and lives in Troy's own folder outside the repo. Troy rebuilds it at launch and whenever you create a worktree. Every agent gets the graph as a `graph` MCP server and can ask it how the code connects before grepping through the repo on its own. The overlap radar uses it too: besides same-file overlaps, a card says **1 file uses changes in api-work** when its changes import or call files another worktree changed.
 
 ### Board
 
 **⌘B** lays every open worktree out in lanes by its agent's state: waiting, working, not started, finished and exited with an error. Waiting comes first, because those agents need you. Cards move between lanes by themselves as the agents' states change, and clicking one opens that worktree. The agents keep running behind the board.
 
-<img src="docs/board.png" alt="The board: one agent waiting, two working, one not started, one finished and one that exited with an error, each in its own lane" width="720">
+<img src="docs/board.png" alt="The board, one lane per agent state" width="720">
 
 ### Terminals
 
 Besides the shell in the side panel, each worktree has a terminal drawer under the side column (**⌘T**). It holds as many shells as you want, in tabs: **⌘⇧T** opens another one, **⌘⇧[** and **⌘⇧]** step through them (wrapping at either end, like browser tabs), and **⌘⇧W** closes the one you're in. Closing the last tab folds the drawer instead. Hidden tabs keep running, so a dev server in one keeps serving while you work in another, and every tab gets the worktree's `PORT_BASE`.
 
-<img src="docs/terminal-tabs.png" alt="The terminal drawer with three tabs; the third shows git log for the worktree" width="480">
+<img src="docs/terminal-tabs.png" alt="Terminal drawer with three tabs" width="480">
 
 ## Automations
 
 **Automations** at the bottom of the sidebar runs a prompt on a schedule, for example checking yesterday's production logs every weekday morning. Each one has a name, a repository, an agent and a five-field cron schedule in local time (`0 9 * * 1-5` is 9:00 on weekdays). When one is due, Troy creates a fresh worktree on the branch `auto/<name>-<date>-<time>` and starts the agent with the prompt, without waiting for Enter. Automations are stored in Troy's app data folder as `automations.json`.
 
-Automations run only while Troy is open. A run that falls while it's closed or your Mac is asleep is skipped, not caught up later.
+They only run while Troy is open. If Troy is closed or the Mac is asleep when one is due, that run is skipped for good.
 
-<img src="docs/automations.png" alt="The Automations dialog listing two scheduled prompts, with a form to add another" width="420">
+<img src="docs/automations.png" alt="Automations dialog with two scheduled prompts" width="420">
 
 ## Context window
 
-For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is as a small ring on each worktree in the sidebar. It turns amber from 80%, and hovering shows tokens used, window size and model. Other CLIs show as unknown rather than a guess.
+For Claude Code and Codex, Troy reads the agent's own session logs (`~/.claude/projects`, `~/.codex/sessions`; read-only, no API keys) and shows how full the context window is as a small ring on each worktree in the sidebar. It turns amber at 80%; hover it for tokens used, window size and model. Other CLIs show as unknown.
 
 ## Shared knowledge
 
@@ -99,13 +103,13 @@ Agents share what they learn through `.troy/knowledge.md`, a plain file in your 
 - Claude Code and Codex start with Troy's MCP server, `troy`. Two of its tools are for knowledge. `knowledge_search` searches the approved facts. `knowledge_propose` adds a fact to a review queue, after checking that the cited file, line or commit really exists.
 - The **Knowledge** tab shows the queue (its count appears on the tab) and the approved facts. Approving a fact appends it to `.troy/knowledge.md`.
 - A fact is flagged **stale** once the file it cites has a commit after the fact's date.
-- Each new worktree gets a short managed block in `CLAUDE.md` (Claude) or `AGENTS.md` (other agents, and whichever of the two already exists) pointing agents at the knowledge. Commit it once and later worktrees inherit it. Archiving removes the block again when it's the only change, so it never blocks `git worktree remove`.
+- Each new worktree gets a short managed block in `CLAUDE.md` (Claude) or `AGENTS.md` (other agents, and whichever of the two already exists) pointing agents at the knowledge. Commit it once and later worktrees inherit it. If the block is the only change when you archive, Troy removes it so `git worktree remove` goes through.
 
-Proposals wait in the repository's git directory (`.git/troy/proposals`), so they are shared by all worktrees and never committed.
+Proposals wait in `.git/troy/proposals`, where every worktree can see them and git won't commit them.
 
 ### Agents talking to each other
 
-Agents in the same repo can message each other through the troy MCP server: `agents_list` shows the other worktrees and `agent_message` sends one a note, for example "I'm changing `api.ts`, hold off". Troy types it into that agent's session marked `[Troy]` with how to reply. If that agent isn't running, its card shows **✉ 1 message waiting** and the message arrives when it starts.
+Agents in the same repo can message each other through the troy MCP server: `agents_list` shows the other worktrees and `agent_message` sends one a note, for example "I'm changing `api.ts`, hold off". Troy types it into that agent's session marked `[Troy]` with how to reply. If that agent isn't running, its card shows **1 queued message** and the message arrives when it starts.
 
 An agent can also hand off work: `agent_spawn` takes a new branch name, a prompt and optionally an agent command (it defaults to the same agent as the caller). Troy creates the worktree and starts the agent on the prompt right away, in the background, so you stay where you are. The new agent shows up in `agents_list`, so the agent that started it can check on it and message it. If the worktree can't be created, for example because the branch already exists, Troy tells the requesting agent why.
 
@@ -148,7 +152,7 @@ App shortcuts use **⌘** on macOS (**Ctrl+Shift** on Linux/Windows). The termin
 
 Shortcuts live in `keybindings.json` in Troy's app data folder (**Settings → Open keybindings.json**). It maps key codes to actions, for example `"KeyK": "newWorktree"`; prefix a code with `Shift+` for the shifted layer (`"Shift+KeyT": "newTerminal"`), and set a key to `null` to give it back to the terminal. Edits apply as soon as you save.
 
-**Vim navigation** is off by default; turn it on in Settings. Then `j`/`k`, `gg`/`G` and `Enter` move through the sidebar, and `j`/`k`, `gg`/`G` and `]c`/`[c` scroll the diff and jump between hunks. These keys never apply while a terminal or text field has focus.
+**Vim navigation** is off by default; turn it on in Settings. Then `j`/`k`, `gg`/`G` and `Enter` move through the sidebar, and in the diff `j`/`k` and `gg`/`G` scroll while `]c`/`[c` jump between hunks. They're ignored while a terminal or text field has focus.
 
 ## Releasing
 
