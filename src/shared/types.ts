@@ -202,3 +202,18 @@ export interface GrepHit {
   line: number
   text: string
 }
+
+/** One agent conversation found in Claude Code's or Codex's own logs. */
+export interface SessionSummary {
+  id: string
+  agent: 'claude' | 'codex'
+  /** The folder it ran in. */
+  cwd: string
+  title: string
+  /** Its last message, yours or the agent's. */
+  preview: { who: 'you' | 'agent'; text: string } | null
+  messages: number
+  subagents: number
+  /** When the log last changed, in ms. */
+  updatedAt: number
+}
