@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseChecks, parseMergeOptions, parsePr } from './github'
+import { latestPrByBranch, parseChecks, parseIssues, parseMergeOptions, parsePr } from './github'
 
 describe('parseChecks', () => {
   it('reads GitHub Actions runs by status and conclusion', () => {
@@ -105,5 +105,45 @@ describe('parseMergeOptions', () => {
         viewerDefaultMergeMethod: 'MERGE'
       })
     ).toEqual({ allowed: ['squash'], preferred: 'squash' })
+  })
+})
+
+describe('latestPrByBranch', () => {
+  it('gives each branch its open PR, or else its newest one', () => {
+    const list = [
+      { number: 9, state: 'MERGED', headRefName: 'feat/a' },
+      { number: 8, state: 'OPEN', headRefName: 'feat/a' },
+      { number: 5, state: 'CLOSED', headRefName: 'feat/b' },
+      { number: 4, state: 'MERGED', headRefName: 'feat/b' }
+    ]
+    expect(latestPrByBranch(list)).toEqual({
+      'feat/a': { number: 8, state: 'OPEN' },
+      'feat/b': { number: 5, state: 'CLOSED' }
+    })
+  })
+})
+
+describe('parseIssues', () => {
+  it('keeps label names and an empty body when there is none', () => {
+    const issues = parseIssues([
+      {
+        number: 12,
+        title: 'Totals are off by a cent',
+        url: 'https://github.com/o/r/issues/12',
+        updatedAt: '2026-10-27T10:00:00Z',
+        labels: [{ name: 'bug' }],
+        body: null
+      }
+    ])
+    expect(issues).toEqual([
+      {
+        number: 12,
+        title: 'Totals are off by a cent',
+        url: 'https://github.com/o/r/issues/12',
+        updatedAt: '2026-10-27T10:00:00Z',
+        labels: ['bug'],
+        body: ''
+      }
+    ])
   })
 })

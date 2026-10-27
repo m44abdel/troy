@@ -3,12 +3,15 @@ import type { AppAction } from '../../shared/keys'
 import { liveOverlaps, type Overlap } from '../../shared/overlap'
 import { isAlive, type AgentStatus } from '../../shared/status'
 import type {
+  BranchPr,
   CheckResult,
   ContextUsage,
+  Issue,
   Mail,
   SpawnRequest,
   Knowledge,
   Repo,
+  SessionSummary,
   Settings as SettingsData,
   WorktreeView
 } from '../../shared/types'
@@ -17,7 +20,7 @@ import { formatCheckFailure, formatComments, formatMail, type ReviewComment } fr
 import type { DiffFilter } from './DiffPane'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { clamp } from './clamp'
-import { Icon, Logo } from './icons'
+import { Icon } from './icons'
 import { MOD } from './platform'
 import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
@@ -29,12 +32,17 @@ import {
   submitToTerminal
 } from './terminals'
 import { applyOrder, moveTo } from './order'
-import { ReviewList } from './ReviewList'
 import { Splitter } from './Splitter'
 import { isNumber, isStringList, useStored } from './useStored'
+
+const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
-import { ClosedList, WorktreeCard } from './WorktreeCard'
+import { WorktreeCard } from './WorktreeCard'
+import { SearchPalette } from './SearchPalette'
+import { Sidebar } from './Sidebar'
+import { issueBranch, issuePrompt } from './tasks'
+import { TasksPage } from './TasksPage'
 import { Board } from './Board'
 import { Automations } from './Automations'
 
@@ -42,6 +50,8 @@ import { Automations } from './Automations'
 const CONTEXT_POLL_MS = 5000
 
 const OVERLAP_POLL_MS = 10_000
+const PR_ICON_POLL_MS = 2 * 60_000
+const SESSION_POLL_MS = 30_000
 
 const SIDEBAR = { initial: 272, min: 200, max: 480 }
 const AGENT_SHARE = { initial: 55, min: 20, max: 80 }
@@ -73,6 +83,13 @@ function App(): React.JSX.Element {
   const [showColumn, setShowColumn] = useState(true)
   const [showBoard, setShowBoard] = useState(false)
   const [showAutomations, setShowAutomations] = useState(false)
+  const [showTasks, setShowTasks] = useState(false)
+  const [showSearch, setShowSearch] = useState(false)
+  const [sidebarHidden, setSidebarHidden] = useStored('troy.sidebarHidden', false, isBoolean)
+  // Keyed by repo, then branch.
+  const [branchPrs, setBranchPrs] = useState<Record<string, Record<string, BranchPr>>>({})
+  // The newest conversation that ran in each worktree, keyed by its path.
+  const [lastSessions, setLastSessions] = useState<Record<string, SessionSummary>>({})
   const [tab, setTab] = useState<ColumnTab>('git')
   const [filesSearch, setFilesSearch] = useState(0)
   const [checks, setChecks] = useState<Record<string, CheckResult>>({})
@@ -84,6 +101,7 @@ function App(): React.JSX.Element {
   // Keyed by repo: its worktrees share one knowledge file.
   const [knowledge, setKnowledge] = useState<Record<string, Knowledge | { error: string }>>({})
   const [dialogRepo, setDialogRepo] = useState<string | null>(null)
+  const [dialogInitial, setDialogInitial] = useState<{ branch: string; prompt: string }>()
   const [error, setError] = useState<string | null>(null)
   const [settings, setSettings] = useState<SettingsData>({ vim: false })
   const [showSettings, setShowSettings] = useState(false)
@@ -246,6 +264,53 @@ function App(): React.JSX.Element {
     return () => clearInterval(timer)
   }, [refreshKnowledge])
 
+  const repoKey = repos.map((r) => r.path).join('\n')
+  useEffect(() => {
+    const poll = (): void =>
+      repoKey
+        .split('\n')
+        .filter(Boolean)
+        .forEach((repo) =>
+          window.api.prsByBranch(repo).then(({ prs }) => {
+            if (prs) setBranchPrs((all) => ({ ...all, [repo]: prs }))
+          })
+        )
+    poll()
+    const timer = setInterval(poll, PR_ICON_POLL_MS)
+    window.addEventListener('focus', poll)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', poll)
+    }
+  }, [repoKey])
+
+  useEffect(() => {
+    const poll = (): void =>
+      void window.api.sessions().then((found) => {
+        if ('error' in found) return
+        // Newest first, so the first one per folder is its latest.
+        const latest: Record<string, SessionSummary> = {}
+        for (const s of found.sessions) latest[s.cwd] ??= s
+        setLastSessions(latest)
+      })
+    poll()
+    const timer = setInterval(poll, SESSION_POLL_MS)
+    window.addEventListener('focus', poll)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', poll)
+    }
+  }, [])
+
+  const openDialog = (repo: string, initial?: { branch: string; prompt: string }): void => {
+    setDialogRepo(repo)
+    setDialogInitial(initial)
+  }
+  const startIssue = (repo: string, issue: Issue): void => {
+    setShowTasks(false)
+    openDialog(repo, { branch: issueBranch(issue), prompt: issuePrompt(issue) })
+  }
+
   useEffect(() => {
     if (current && !keepSidebarFocus.current) focusWorktree(current.path)
     keepSidebarFocus.current = false
@@ -352,9 +417,14 @@ function App(): React.JSX.Element {
     () =>
       window.api.onAction((action: AppAction) => {
         if (action === 'addRepo') return void addRepo()
-        if (action === 'newWorktree') return currentRepo && setDialogRepo(currentRepo.path)
+        if (action === 'newWorktree') return currentRepo && openDialog(currentRepo.path)
+        if (action === 'search') return setShowSearch(true)
+        if (action === 'toggleSidebar') return setSidebarHidden((h) => !h)
         if (action === 'toggleColumn') return setShowColumn((s) => !s)
-        if (action === 'toggleBoard') return setShowBoard((s) => !s)
+        if (action === 'toggleBoard') {
+          setShowTasks(false)
+          return setShowBoard((s) => !s)
+        }
         if (action === 'openSettings') return setShowSettings(true)
         if (!current) return
         if (action === 'archive') return void archive()
@@ -378,7 +448,17 @@ function App(): React.JSX.Element {
         const target = worktrees[Number(action.split(':')[1]) - 1]
         if (target) select(target.path)
       }),
-    [worktrees, current, currentRepo, addRepo, archive, sendComments, select, move]
+    [
+      worktrees,
+      current,
+      currentRepo,
+      addRepo,
+      archive,
+      sendComments,
+      select,
+      move,
+      setSidebarHidden
+    ]
   )
 
   // Notifies unless the worktree is open with Troy focused, and only for reported statuses.
@@ -441,6 +521,9 @@ function App(): React.JSX.Element {
     []
   )
 
+  const repoOf = (path: string): string | undefined =>
+    repos.find((r) => r.worktrees.some((w) => w.path === path))?.path
+
   const cardFor = (wt: WorktreeView): React.JSX.Element => (
     <WorktreeCard
       key={wt.path}
@@ -457,6 +540,8 @@ function App(): React.JSX.Element {
       usage={contexts[wt.path]}
       check={checks[wt.path]}
       mail={queuedMail[wt.path]}
+      pr={wt.branch ? branchPrs[repoOf(wt.path) ?? '']?.[wt.branch] : undefined}
+      session={lastSessions[wt.path]}
       onSelect={() => {
         select(wt.path)
         setShowBoard(false)
@@ -473,7 +558,7 @@ function App(): React.JSX.Element {
 
   return (
     <div
-      className="app"
+      className={sidebarHidden ? 'app sidebar-hidden' : 'app'}
       style={
         {
           '--sidebar-width': `${clamp(sidebarWidth, SIDEBAR)}px`,
@@ -481,103 +566,60 @@ function App(): React.JSX.Element {
         } as React.CSSProperties
       }
     >
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <span className="brand">
-            <Logo size={22} />
-            Troy
-          </span>
-          <button
-            className="icon-button"
-            onClick={() => setShowBoard((s) => !s)}
-            title={`Board (${MOD}B)`}
-            aria-label="Board"
-            aria-pressed={showBoard}
-          >
-            <Icon name="panel" />
-          </button>
-          <button
-            className="icon-button"
-            onClick={addRepo}
-            title={`Add repository (${MOD}O)`}
-            aria-label="Add repository"
-          >
-            <Icon name="folderPlus" />
-          </button>
-        </div>
-        <nav className="repo-list">
-          {sorted.map((repo) => (
-            <section key={repo.path} className="repo">
-              <div className="repo-header" title={repo.path}>
-                <button
-                  className="repo-toggle"
-                  onClick={() => setFolded((f) => toggle(f, repo.path))}
-                  aria-expanded={!folded.includes(repo.path)}
-                >
-                  <Icon name="chevron" size={13} />
-                  <Icon name="folder" size={13} />
-                  <span className="repo-name">{basename(repo.path)}</span>
-                </button>
-                {/* Folded, the header still says when an agent inside needs you. */}
-                {folded.includes(repo.path) && repo.worktrees.some((wt) => needsYou(wt.path)) && (
-                  <span className="count waiting">
-                    {repo.worktrees.filter((wt) => needsYou(wt.path)).length} waiting
-                  </span>
-                )}
-                <span className="count">{repo.worktrees.length}</span>
-                <button
-                  className="icon-button"
-                  onClick={() => setDialogRepo(repo.path)}
-                  title={`New worktree (${MOD}N)`}
-                  aria-label={`New worktree in ${basename(repo.path)}`}
-                >
-                  <Icon name="plus" size={14} />
-                </button>
-              </div>
-              {repo.error && <p className="error">{repo.error}</p>}
-              {!folded.includes(repo.path) &&
-                repo.worktrees.filter((wt) => !closed.includes(wt.path)).map((wt) => cardFor(wt))}
-              <ClosedList
-                worktrees={repo.worktrees.filter((wt) => closed.includes(wt.path))}
-                open={showClosed.includes(repo.path) && !folded.includes(repo.path)}
-                onToggle={() => setShowClosed((r) => toggle(r, repo.path))}
-                onReopen={select}
-              />
-            </section>
-          ))}
-          <ReviewList />
-        </nav>
-        {waiting.length > 0 && (
-          <button className="link clear-waiting" onClick={clearWaiting}>
-            Clear all waiting
-          </button>
-        )}
-        {error && <p className="error">{error}</p>}
-        <footer className="sidebar-footer">
-          <button className="footer-button" onClick={() => setShowAutomations(true)}>
-            <Icon name="refresh" size={15} />
-            Automations
-          </button>
-          <button className="footer-button" onClick={() => setShowSettings(true)}>
-            <Icon name="settings" size={15} />
-            Settings
-            <kbd>{MOD},</kbd>
-          </button>
-        </footer>
-      </aside>
-      <Splitter
-        label="Resize sidebar"
-        value={sidebarWidth}
-        min={SIDEBAR.min}
-        max={SIDEBAR.max}
-        // The sidebar starts at the window's left edge, so the pointer's x is its width.
-        onMove={(x) => setSidebarWidth(clamp(x, SIDEBAR))}
-        onReset={() => setSidebarWidth(SIDEBAR.initial)}
-      />
+      {!sidebarHidden && (
+        <Sidebar
+          repos={sorted}
+          closed={closed}
+          folded={folded}
+          onToggleFold={(repo) => setFolded((f) => toggle(f, repo))}
+          showClosed={showClosed}
+          onToggleClosed={(repo) => setShowClosed((r) => toggle(r, repo))}
+          onReopen={select}
+          needsYou={needsYou}
+          waiting={waiting.length}
+          onClearWaiting={clearWaiting}
+          error={error}
+          card={cardFor}
+          showBoard={showBoard}
+          showTasks={showTasks}
+          onSearch={() => setShowSearch(true)}
+          onTasks={() => {
+            setShowBoard(false)
+            setShowTasks((t) => !t)
+          }}
+          onAutomations={() => setShowAutomations(true)}
+          onBoard={() => {
+            setShowTasks(false)
+            setShowBoard((b) => !b)
+          }}
+          onAddRepo={addRepo}
+          onNewWorktree={(repo) => openDialog(repo)}
+          onSettings={() => setShowSettings(true)}
+          onHide={() => setSidebarHidden(true)}
+        />
+      )}
+      {!sidebarHidden && (
+        <Splitter
+          label="Resize sidebar"
+          value={sidebarWidth}
+          min={SIDEBAR.min}
+          max={SIDEBAR.max}
+          // The sidebar starts at the window's left edge, so the pointer's x is its width.
+          onMove={(x) => setSidebarWidth(clamp(x, SIDEBAR))}
+          onReset={() => setSidebarWidth(SIDEBAR.initial)}
+        />
+      )}
 
       <main className="workspaces">
         {showBoard && (
           <Board items={worktrees} status={(wt) => statuses[wt.path] ?? 'idle'} card={cardFor} />
+        )}
+        {showTasks && (
+          <TasksPage
+            repos={repos.map((r) => r.path)}
+            onStart={startIssue}
+            onClose={() => setShowTasks(false)}
+          />
         )}
         {repos.length === 0 ? (
           <div className="empty">
@@ -648,6 +690,18 @@ function App(): React.JSX.Element {
           installed={installed ?? []}
           onCancel={() => setDialogRepo(null)}
           onCreate={createWorktree}
+          initial={dialogInitial}
+        />
+      )}
+      {showSearch && (
+        <SearchPalette
+          repos={sorted}
+          onPick={(path) => {
+            setShowBoard(false)
+            setShowTasks(false)
+            select(path)
+          }}
+          onClose={() => setShowSearch(false)}
         />
       )}
       {showAutomations && (
