@@ -76,7 +76,7 @@ test('no repos yet', async () => {
   const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: tempDir('troy-profile-') })
   try {
     const page = await app.firstWindow()
-    await expect(page.getByRole('heading', { name: 'Welcome to Troy' })).toBeVisible()
+    await expect(page.getByText('Add a git repository to start.')).toBeVisible()
   } finally {
     await app.close()
   }
@@ -588,12 +588,12 @@ test('same-file overlap between live sessions', async () => {
     await expect(page.locator('.card-overlap')).toHaveCount(0)
 
     await startAgents(page, [b])
-    await expect(card('feat-a').locator('.card-overlap')).toHaveText('⚠ 1 file shared with feat-b')
+    await expect(card('feat-a').locator('.card-overlap')).toHaveText('1 file shared with feat-b')
     await expect(card('feat-a').locator('.card-overlap')).toHaveAttribute(
       'title',
       'api.ts\n\nClick to see these changes'
     )
-    await expect(card('feat-b').locator('.card-overlap')).toHaveText('⚠ 1 file shared with feat-a')
+    await expect(card('feat-b').locator('.card-overlap')).toHaveText('1 file shared with feat-a')
     await expect(page.locator(`.worktree[title="${repo}"] .card-overlap`)).toHaveCount(0)
 
     // Clicking the line opens that worktree's diff narrowed to the shared files.
@@ -647,11 +647,11 @@ test('a failing .troy/check goes back to the agent', async () => {
     const workspace = page.locator('.workspace:visible')
     await workspace.locator('.pane-agent .xterm').click()
     await page.keyboard.press('Enter')
-    await expect(card.locator('.card-check')).toHaveText('✗ check', { timeout: 10_000 })
+    await expect(card.locator('.card-check.failed')).toHaveText('check', { timeout: 10_000 })
 
     await chord(app, 'D', 'meta')
     const bar = workspace.locator('.check-bar')
-    await expect(bar.locator('.check-label')).toHaveText('✗ .troy/check failed')
+    await expect(bar.locator('.check-label')).toHaveText('.troy/check failed')
     await bar.locator('summary').click()
     await expect(bar.locator('pre')).toHaveText('a.txt is not fixed')
     await bar.getByRole('button', { name: 'Send failure to agent' }).click()
@@ -661,8 +661,8 @@ test('a failing .troy/check goes back to the agent', async () => {
 
     writeFileSync(join(repo, 'a.txt'), 'fixed\n')
     await bar.getByRole('button', { name: 'Run again' }).click()
-    await expect(bar.locator('.check-label')).toHaveText('✓ .troy/check passed')
-    await expect(card.locator('.card-check')).toHaveText('✓ check')
+    await expect(bar.locator('.check-label')).toHaveText('.troy/check passed')
+    await expect(card.locator('.card-check.ok')).toHaveText('check')
   } finally {
     await app.close()
   }
@@ -713,9 +713,9 @@ test('code graph overlap', async () => {
     await expect(page.locator('.worktree')).toHaveCount(3)
     await startAgents(page, worktrees)
     await expect(card('ui-work').locator('.card-overlap')).toHaveText(
-      '↳ 1 file uses changes in api-work'
+      '1 file uses changes in api-work'
     )
-    await expect(card('api-work').locator('.card-overlap')).toHaveText('↳ 1 file used by ui-work')
+    await expect(card('api-work').locator('.card-overlap')).toHaveText('1 file used by ui-work')
   } finally {
     await app.close()
   }
@@ -1038,7 +1038,7 @@ test('agent_message delivers now or when the other starts', async () => {
     // c's agent isn't running: the message waits on its card, then arrives when it starts.
     callMcp(repo, mail, 'agent_message', { to: 'c', text: 'hold off on api.ts' })
     const c = page.locator(`.worktree[title="${repo}.c"]`)
-    await expect(c.locator('.card-mail')).toHaveText('✉ 1 message waiting for this agent')
+    await expect(c.locator('.card-mail')).toHaveText('1 queued message')
     await chord(app, '3', 'meta')
     await expect(page.locator('.worktree.selected')).toHaveAttribute('title', `${repo}.c`)
     await agent.locator('.xterm').click()

@@ -11,7 +11,7 @@ export function ContextRing({ usage }: { usage: ContextUsage }): React.JSX.Eleme
   const percent = contextPercent(usage)
   const isFull = percent >= CONTEXT_WARN_PERCENT
   const tokens = `${formatTokens(usage.used)} of ${formatTokens(usage.window)} tokens`
-  // The card clips overflow and lifts on hover, so the popup renders at the page level.
+  // The card clips overflow, so the popup is placed against the page.
   const [anchor, setAnchor] = useState<DOMRect | null>(null)
   return (
     <span

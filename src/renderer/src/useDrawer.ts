@@ -1,3 +1,4 @@
+import { clamp } from './clamp'
 import { isNumber, useStored } from './useStored'
 
 export const DRAWER_HEIGHT = { initial: 220, min: 80, max: 800 }
@@ -13,7 +14,6 @@ export function useDrawer(): {
 } {
   const [open, setOpen] = useStored('troy.drawerOpen', false, isBoolean)
   const [height, setStoredHeight] = useStored('troy.drawerHeight', DRAWER_HEIGHT.initial, isNumber)
-  const setHeight = (h: number): void =>
-    setStoredHeight(Math.min(DRAWER_HEIGHT.max, Math.max(DRAWER_HEIGHT.min, h)))
+  const setHeight = (h: number): void => setStoredHeight(clamp(h, DRAWER_HEIGHT))
   return { open, setOpen, height, setHeight }
 }

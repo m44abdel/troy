@@ -283,7 +283,8 @@ export function DiffPane({
         <details className={`check-bar ${check.ok ? 'ok' : 'failed'}`}>
           <summary>
             <span className="check-label">
-              {check.ok ? '✓ .troy/check passed' : '✗ .troy/check failed'}
+              <Icon name={check.ok ? 'check' : 'x'} size={13} />
+              {check.ok ? '.troy/check passed' : '.troy/check failed'}
             </span>
             <button className="secondary" disabled={busy} onClick={recheck}>
               Run again

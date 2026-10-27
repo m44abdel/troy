@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import type { OverlapKind } from '../../shared/overlap'
+import { commandName } from '../../shared/shell'
 import type { AgentStatus } from '../../shared/status'
 import type { CheckResult, ContextUsage, WorktreeView } from '../../shared/types'
 import { ContextRing } from './ContextRing'
-import { Icon } from './icons'
+import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { STATUS_LABELS } from './statusLabels'
 
-/** A stable hue per agent name, so each CLI gets its own avatar colour. */
+/** A stable hue per agent name. */
 const agentHue = (agent: string): number =>
   [...agent].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
 
 export function AgentBadge({ agent }: { agent: string }): React.JSX.Element {
-  const name = agent.split(/\s+/)[0].split('/').pop() ?? agent
+  const name = commandName(agent)
   return (
     <span className="agent-badge" style={{ '--hue': agentHue(name) } as React.CSSProperties}>
       {name}
@@ -22,13 +23,19 @@ export function AgentBadge({ agent }: { agent: string }): React.JSX.Element {
 
 const files = (n: number): string => `${n} file${n === 1 ? '' : 's'}`
 
-// Count and relation first, name last: a narrow sidebar cuts the end off.
 const DRAG_TYPE = 'application/x-troy-worktree'
 
+// Count and relation first, name last: a narrow sidebar cuts the end off.
 const OVERLAP_TEXT: Record<OverlapKind, (n: number, name: string) => string> = {
-  same: (n, name) => `⚠ ${files(n)} shared with ${name}`,
-  uses: (n, name) => `↳ ${files(n)} ${n === 1 ? 'uses' : 'use'} changes in ${name}`,
-  usedBy: (n, name) => `↳ ${files(n)} used by ${name}`
+  same: (n, name) => `${files(n)} shared with ${name}`,
+  uses: (n, name) => `${files(n)} ${n === 1 ? 'uses' : 'use'} changes in ${name}`,
+  usedBy: (n, name) => `${files(n)} used by ${name}`
+}
+
+const OVERLAP_ICON: Record<OverlapKind, IconName> = {
+  same: 'alert',
+  uses: 'cornerDownRight',
+  usedBy: 'cornerDownRight'
 }
 
 interface Props {
@@ -112,14 +119,16 @@ export function WorktreeCard({
               className={`card-check ${check.ok ? 'ok' : 'failed'}`}
               title={check.ok ? '.troy/check passed' : '.troy/check failed'}
             >
-              {check.ok ? '✓' : '✗'} check
+              <Icon name={check.ok ? 'check' : 'x'} size={12} />
+              check
             </span>
           )}
           {usage && <ContextRing usage={usage} />}
         </span>
         {!!mail && (
           <span className="card-mail">
-            ✉ {mail} message{mail === 1 ? '' : 's'} waiting for this agent
+            <Icon name="mail" size={12} />
+            {mail} queued message{mail === 1 ? '' : 's'}
           </span>
         )}
       </button>
@@ -142,6 +151,7 @@ export function WorktreeCard({
             title={`${o.files.join('\n')}\n\nClick to see these changes`}
             onClick={() => onOverlap(o.files, label)}
           >
+            <Icon name={OVERLAP_ICON[o.kind]} size={12} />
             {label}
           </button>
         )

@@ -94,9 +94,7 @@ export function KnowledgePane({ path, knowledge, onChanged, onHarvest }: Props):
         <h3>Approved</h3>
         {knowledge.entries.length === 0 && (
           <p className="muted empty-note">
-            Nothing yet. Agents propose facts with the <code>knowledge_propose</code> tool of the
-            troy MCP server; approved ones go to <code>.troy/knowledge.md</code> in the main
-            checkout, ready to commit.
+            No approved facts yet. Approved ones go to <code>.troy/knowledge.md</code>.
           </p>
         )}
         {knowledge.entries.map((e, i) => (

@@ -16,6 +16,7 @@ import type { VimCommand } from '../../shared/vim'
 import { formatCheckFailure, formatComments, formatMail, type ReviewComment } from './comments'
 import type { DiffFilter } from './DiffPane'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
+import { clamp } from './clamp'
 import { Icon, Logo } from './icons'
 import { MOD } from './platform'
 import { Settings } from './Settings'
@@ -32,17 +33,13 @@ import { ClosedList, WorktreeCard } from './WorktreeCard'
 import { Board } from './Board'
 import { Automations } from './Automations'
 
-// ponytail: polls session logs; switch to fs.watch in main if this shows up in profiles.
+// Polls the session logs. Move to fs.watch in main if it shows up in a profile.
 const CONTEXT_POLL_MS = 5000
 
-// How often to look for clashes while two or more agents are working at once.
 const OVERLAP_POLL_MS = 10_000
 
 const SIDEBAR = { initial: 272, min: 200, max: 480 }
 const AGENT_SHARE = { initial: 55, min: 20, max: 80 }
-
-const clamp = (value: number, { min, max }: { min: number; max: number }): number =>
-  Math.min(max, Math.max(min, value))
 
 const omit = <T,>(record: Record<string, T>, key: string): Record<string, T> => {
   const next = { ...record }
@@ -59,19 +56,17 @@ function App(): React.JSX.Element {
   const [repos, setRepos] = useState<Repo[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [visited, setVisited] = useState<string[]>([])
-  // Closed worktrees leave the sidebar (and their terminals stop) until you reopen them.
   const [closed, setClosed] = useStored('troy.closedSessions', [], isStringList)
   const [folded, setFolded] = useStored('troy.foldedRepos', [], isStringList)
   const [sidebarWidth, setSidebarWidth] = useStored('troy.sidebarWidth', SIDEBAR.initial, isNumber)
-  // The agent pane's share of the workspace, in percent; the side column gets the rest.
+  // Agent pane width, in percent.
   const [agentShare, setAgentShare] = useStored('troy.agentShare', AGENT_SHARE.initial, isNumber)
-  // Worktree paths in the order you arranged them; new worktrees go after.
   const [order, setOrder] = useStored('troy.worktreeOrder', [], isStringList)
   const { open: drawerOpen, setOpen: setDrawerOpen, ...drawer } = useDrawer()
-  // Repos whose closed worktrees are listed for reopening.
+  // Repos with their closed list expanded.
   const [showClosed, setShowClosed] = useState<string[]>([])
   const [statuses, setStatuses] = useState<Record<string, AgentStatus>>({})
-  // Worktrees whose current wait you have already seen; a new status clears the mark.
+  // Waits you've already seen; a new status clears the mark.
   const [seen, setSeen] = useState<Record<string, boolean>>({})
   const [firstRuns, setFirstRuns] = useState<Record<string, FirstRun>>({})
   const [showColumn, setShowColumn] = useState(true)
@@ -84,7 +79,7 @@ function App(): React.JSX.Element {
   const [overlaps, setOverlaps] = useState<Record<string, Overlap[]>>({})
   const [contexts, setContexts] = useState<Record<string, ContextUsage | null>>({})
   const [comments, setComments] = useState<Record<string, ReviewComment[]>>({})
-  // Keyed by repo: knowledge and its review queue are shared by all of a repo's worktrees.
+  // Keyed by repo: its worktrees share one knowledge file.
   const [knowledge, setKnowledge] = useState<Record<string, Knowledge | { error: string }>>({})
   const [dialogRepo, setDialogRepo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -92,7 +87,7 @@ function App(): React.JSX.Element {
   const [showSettings, setShowSettings] = useState(false)
   const [installed, setInstalled] = useState<string[] | null>(null)
   const currentPath = useRef<string | undefined>(undefined)
-  // Set while vim keys move the selection, so focus stays in the sidebar.
+  // Vim navigation sets this to keep focus in the sidebar.
   const keepSidebarFocus = useRef(false)
 
   const sorted = useMemo(
@@ -206,8 +201,8 @@ function App(): React.JSX.Element {
     return result
   }, [])
 
-  // Recomputed when worktrees come or go, whenever an agent's status changes, and every few
-  // seconds while two or more agents work at once (they clash while editing, not after).
+  // Recomputed when worktrees come or go, on each status change, and on a timer while two or
+  // more agents work.
   const refreshOverlaps = useCallback(() => void window.api.overlaps().then(setOverlaps), [])
   useEffect(refreshOverlaps, [repos, refreshOverlaps])
   const concurrent = worktrees.filter((wt) => isAlive(statuses[wt.path])).length >= 2
@@ -216,7 +211,6 @@ function App(): React.JSX.Element {
     const timer = setInterval(refreshOverlaps, OVERLAP_POLL_MS)
     return () => clearInterval(timer)
   }, [concurrent, refreshOverlaps])
-  // Only sessions live at the same time can trip over each other.
   const clashes = useMemo(
     () => liveOverlaps(overlaps, (path) => isAlive(statuses[path])),
     [overlaps, statuses]
@@ -243,7 +237,7 @@ function App(): React.JSX.Element {
     const [repo, path] = knowledgeTarget.split('\0')
     window.api.knowledge(path).then((k) => setKnowledge((all) => ({ ...all, [repo]: k })))
   }, [knowledgeTarget])
-  // Agents add proposals from outside the app, so keep checking the queue.
+  // Agents add proposals from outside the app.
   useEffect(() => {
     refreshKnowledge()
     const timer = setInterval(refreshKnowledge, CONTEXT_POLL_MS)
@@ -392,8 +386,7 @@ function App(): React.JSX.Element {
     [worktrees, current, currentRepo, addRepo, archive, sendComments, select, move, toggleDrawer]
   )
 
-  // A status change on the open worktree while Troy has focus happens in front of you.
-  // Anything else you hear about, but only when the status is reported, not guessed.
+  // Notifies unless the worktree is open with Troy focused, and only for reported statuses.
   const onStatus = useCallback(
     (path: string, status: AgentStatus, certain: boolean) => {
       setStatuses((s) => ({ ...s, [path]: status }))
@@ -593,28 +586,7 @@ function App(): React.JSX.Element {
         )}
         {repos.length === 0 ? (
           <div className="empty">
-            <div className="hero-logo">
-              <Logo size={72} />
-            </div>
-            <h1>Welcome to Troy</h1>
-            <p className="tagline">Run coding agents side by side, each in its own git worktree.</p>
-            <ul className="features">
-              <li>
-                <Icon name="branch" size={18} />
-                <strong>One worktree per task</strong>
-                <span>Branch, ports and setup handled for you.</span>
-              </li>
-              <li>
-                <Icon name="diff" size={18} />
-                <strong>Review and ship</strong>
-                <span>Comment on the diff, commit, push, open a PR.</span>
-              </li>
-              <li>
-                <Icon name="sparkles" size={18} />
-                <strong>Shared knowledge</strong>
-                <span>Facts your agents learn, reviewed by you.</span>
-              </li>
-            </ul>
+            <p>Add a git repository to start.</p>
             <button className="primary large" onClick={addRepo}>
               <Icon name="folderPlus" />
               Add repository <kbd>{MOD}O</kbd>
