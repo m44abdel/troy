@@ -10,8 +10,8 @@ const TAIL_BYTES = 2 * 1024 * 1024
 const CLAUDE_WINDOW = 200_000
 const CLAUDE_1M_WINDOW = 1_000_000
 
-const claudeHome = (): string => process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
-const codexHome = (): string => process.env.CODEX_HOME || join(homedir(), '.codex')
+export const claudeHome = (): string => process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
+export const codexHome = (): string => process.env.CODEX_HOME || join(homedir(), '.codex')
 
 /** Claude Code names a project's log folder after its path, every other character a dash. */
 export const claudeProjectDir = (path: string): string =>

@@ -634,6 +634,8 @@ function App(): React.JSX.Element {
                   onKnowledgeChanged={refreshKnowledge}
                   onCloseSession={() => closeSession(wt.path)}
                   filesSearch={filesSearch}
+                  repos={repos}
+                  onOpenWorktree={select}
                 />
               ))}
           </>

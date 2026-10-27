@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import type { AgentStatus } from '../../shared/status'
 import { HARVEST_PROMPT } from '../../shared/harvest'
 import { isAlive } from '../../shared/status'
-import type { CheckResult, Knowledge, WorktreeView } from '../../shared/types'
+import type { CheckResult, Knowledge, Repo, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
 import { commandName } from '../../shared/shell'
 import type { DiffFilter } from './DiffPane'
@@ -13,6 +13,7 @@ import { KnowledgePane } from './KnowledgePane'
 import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { PrPane } from './PrPane'
+import { SessionsPane } from './SessionsPane'
 import { usePr } from './usePr'
 import { Splitter } from './Splitter'
 import { TerminalArea } from './TerminalArea'
@@ -20,7 +21,7 @@ import { agentId, submitToTerminal } from './terminals'
 import { STATUS_LABELS } from './statusLabels'
 import { AgentBadge } from './WorktreeCard'
 
-export type ColumnTab = 'files' | 'git' | 'pr' | 'docs' | 'knowledge'
+export type ColumnTab = 'files' | 'sessions' | 'git' | 'pr' | 'docs' | 'knowledge'
 
 /** What a worktree created this session still needs on its first launch. */
 export interface FirstRun {
@@ -59,6 +60,8 @@ interface Props {
   onCloseSession: () => void
   /** Bumped by Cmd-Shift-F. */
   filesSearch: number
+  repos: Repo[]
+  onOpenWorktree: (path: string) => void
 }
 
 export function Workspace({
@@ -85,7 +88,9 @@ export function Workspace({
   knowledge,
   onKnowledgeChanged,
   onCloseSession,
-  filesSearch
+  filesSearch,
+  repos,
+  onOpenWorktree
 }: Props): React.JSX.Element {
   const pending = knowledge && 'proposals' in knowledge ? knowledge.proposals.length : 0
   // Icons only, like Orca's right sidebar; the name and any count are in the label.
@@ -173,6 +178,7 @@ export function Workspace({
       <div className="column" style={{ display: showColumn ? 'flex' : 'none' }}>
         <div className="tabs">
           {tabButton('files', 'files', 'Files', { key: '⇧E' })}
+          {tabButton('sessions', 'grid', 'Agent sessions')}
           {tabButton('git', 'branch', 'Source control', { count: comments.length, key: '⇧G' })}
           {tabButton('pr', 'listChecks', 'Pull request')}
           {tabButton('docs', 'book', 'Docs')}
@@ -184,6 +190,14 @@ export function Workspace({
             visible={sidePanel && tab === 'files'}
             refreshKey={status ?? 'idle'}
             searchNonce={filesSearch}
+          />
+        </div>
+        <div className="pane" style={{ display: tab === 'sessions' ? 'block' : 'none' }}>
+          <SessionsPane
+            path={wt.path}
+            repos={repos}
+            visible={sidePanel && tab === 'sessions'}
+            onOpenWorktree={onOpenWorktree}
           />
         </div>
         <div className="pane" style={{ display: tab === 'docs' ? 'block' : 'none' }}>

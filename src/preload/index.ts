@@ -10,6 +10,7 @@ import type {
   GrepHit,
   MergeMethod,
   Preview,
+  SessionSummary,
   MergeOptions,
   PrStatus,
   Mail,
@@ -77,6 +78,8 @@ const api = {
     ipcRenderer.invoke('files:grep', path, query),
   openFile: (path: string, file: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('files:open', path, file),
+  sessions: (): Promise<{ sessions: SessionSummary[]; scanned: number } | { error: string }> =>
+    ipcRenderer.invoke('sessions:list'),
   docs: (path: string): Promise<{ files?: string[]; error?: string }> =>
     ipcRenderer.invoke('docs:list', path),
   readDoc: (path: string, file: string): Promise<{ text?: string; error?: string }> =>

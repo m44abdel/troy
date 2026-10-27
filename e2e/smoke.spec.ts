@@ -48,8 +48,15 @@ function zdotdirWith(bin: string): string {
 const noGitHub = tempDir('troy-nogh-')
 writeFileSync(join(noGitHub, 'gh'), '#!/bin/sh\nexit 1\n', { mode: 0o755 })
 
-// This ZDOTDIR keeps the developer's own zsh config (prompts, auto-attach) out of the test.
-const shellEnv = { ...process.env, SHELL: '/bin/zsh', ZDOTDIR: zdotdirWith(noGitHub) }
+// This ZDOTDIR keeps the developer's own zsh config (prompts, auto-attach) out of the test, and
+// the empty agent homes keep their session logs out of the Sessions tab.
+const shellEnv = {
+  ...process.env,
+  SHELL: '/bin/zsh',
+  ZDOTDIR: zdotdirWith(noGitHub),
+  CLAUDE_CONFIG_DIR: tempDir('troy-no-claude-'),
+  CODEX_HOME: tempDir('troy-no-codex-')
+}
 
 test('saved repo opens to a working terminal', async () => {
   const repo = gitRepo('troy-repo-')
@@ -328,6 +335,51 @@ test('files tab lists the worktree and opens previews', async () => {
     await page.keyboard.type('hello')
     await files.locator('.hit-row').click()
     await expect(workspace.locator('.pane-preview:visible .markdown h1')).toHaveText('Hello')
+  } finally {
+    await app.close()
+  }
+})
+
+test('sessions tab lists past conversations and resumes one', async () => {
+  const repo = gitRepo('troy-sessions-')
+  const claudeHome = tempDir('troy-claude-')
+  const project = join(claudeHome, 'projects', repo.replace(/[^a-zA-Z0-9]/g, '-'))
+  mkdirSync(project, { recursive: true })
+  const line = (type: string, text: string): string =>
+    JSON.stringify({ type, cwd: repo, message: { role: type, content: text } })
+  writeFileSync(
+    join(project, 'abc-123.jsonl'),
+    [line('user', 'Round the totals'), line('assistant', 'Rounded to the cent.')].join('\n')
+  )
+  const bin = tempDir('troy-bin-')
+  writeFileSync(join(bin, 'claude'), '#!/bin/sh\necho "claude-args:[$*]"\n', { mode: 0o755 })
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({
+    ...shellEnv,
+    PATH: `${bin}:${process.env.PATH}`,
+    CLAUDE_CONFIG_DIR: claudeHome,
+    TROY_USER_DATA: userData
+  })
+  try {
+    const page = await app.firstWindow()
+    const workspace = page.locator('.workspace:visible')
+    await workspace.getByRole('button', { name: 'Agent sessions' }).click()
+    const row = workspace.locator('.session-row')
+    await expect(row.locator('.session-title')).toHaveText('Round the totals')
+    await expect(row.locator('.session-preview')).toHaveText('Agent: Rounded to the cent.')
+    await expect(row.locator('.session-meta')).toContainText('2 msgs')
+
+    await row.click()
+    await expect(workspace.getByRole('tab', { name: /^Round the totals/ })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    await expect(workspace.locator('.pane-shell:visible .xterm-rows')).toContainText(
+      'claude-args:[--resume abc-123]',
+      { timeout: 15_000 }
+    )
   } finally {
     await app.close()
   }
