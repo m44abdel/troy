@@ -4,7 +4,7 @@ cask "troy" do
   arch arm: "arm64", intel: "x64"
 
   version "1.0.0"
-  # ponytail: no checksum while releases are rebuilt often; pin per-arch sha256 once they settle.
+  # No checksum while releases keep getting rebuilt. Pin a sha256 per arch once they settle.
   sha256 :no_check
 
   url "https://github.com/m44abdel/troy/releases/download/v#{version}/Troy-#{version}-mac-#{arch}.zip"

@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { mkdir, readdir, readFile, rm, writeFile } from 'fs/promises'
 import { dirname, isAbsolute, join, normalize } from 'path'
+import { pad } from '../shared/automation'
 import type { Knowledge, KnowledgeEntry, Proposal } from '../shared/types'
 import { git, listWorktrees } from './worktrees'
 
@@ -39,7 +40,6 @@ const oneLine = (s: string): string => s.replace(/\s+/g, ' ').trim()
 
 function today(): string {
   const d = new Date()
-  const pad = (n: number): string => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
@@ -49,7 +49,7 @@ function citedFile(source: string): string | null {
   return FILE_SOURCE.exec(source)?.[1] ?? null
 }
 
-/** Rejects sources that don't exist, so a fact can't cite a file or line the agent imagined. */
+/** Rejects sources that don't exist: no citing a file or line the agent imagined. */
 export async function checkSource(cwd: string, source: string): Promise<void> {
   if (/[`\r\n]/.test(source)) throw new Error(`Source must be ${SOURCE_HELP}.`)
   if (SESSION_SOURCE.test(source)) return
@@ -79,7 +79,7 @@ export async function repoPaths(cwd: string): Promise<{ primary: string; queue: 
   return { primary, queue: join(common, 'troy', 'proposals') }
 }
 
-// Queue files sit outside the worktree and anything can write them, so check every field.
+// Anything can write to the queue. Check every field.
 function parseProposal(raw: unknown): Proposal | null {
   const p = raw as Record<string, unknown>
   const fields = ['id', 'fact', 'source', 'date', 'author'] as const
@@ -178,8 +178,8 @@ export async function lastChanged(repo: string, since: string): Promise<Map<stri
   return latest
 }
 
-// ponytail: day granularity, so a change later on the entry's own day isn't flagged;
-// store a timestamp in the entry if that matters.
+// Compares dates only, which misses a change made later on the entry's own day. A timestamp
+// in the entry would catch it.
 export function isStale(entry: KnowledgeEntry, changed: Map<string, string>): boolean {
   const file = citedFile(entry.source)
   const date = file ? changed.get(normalize(file)) : undefined

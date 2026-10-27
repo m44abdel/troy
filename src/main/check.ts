@@ -16,7 +16,7 @@ const TAIL_LINES = 40
 const results = new Map<string, { fingerprint: string; result: CheckResult }>()
 const inflight = new Map<string, Promise<CheckResult | null>>()
 
-// ponytail: edits inside untracked files don't change this; hash their contents if that bites.
+// Edits inside untracked files don't change this; hashing their contents would catch them.
 async function fingerprint(path: string): Promise<string> {
   const parts = await Promise.all([
     git(path, ['rev-parse', 'HEAD']).catch(() => ''),

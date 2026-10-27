@@ -1,5 +1,5 @@
-// Scheduled prompts. Each due run asks for a worktree the same way agent_spawn does,
-// so the window creates and starts it like any other spawned agent.
+// Scheduled prompts. A due run files the same request agent_spawn does, and the window
+// starts it like any other spawned agent.
 import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
@@ -8,8 +8,8 @@ import type { Automation } from '../shared/types'
 import { requestSpawn } from './mail'
 import { mailDir } from './mcp-config'
 
-// ponytail: runs only while Troy is open, and a minute missed (asleep, closed) is skipped,
-// not caught up. launchd or a remote host would be the upgrade.
+// Only runs while Troy is open. A minute missed while the Mac sleeps or Troy is closed is
+// gone for good; launchd or a remote host could catch those up.
 const TICK_MS = 30_000
 
 const automationsPath = (): string => join(app.getPath('userData'), 'automations.json')

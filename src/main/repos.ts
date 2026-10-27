@@ -36,7 +36,6 @@ const MAX_TITLE_LENGTH = 120
 interface WorktreeMeta {
   agent: string
   port: number
-  /** Ref the worktree's diff is measured against. */
   base?: string
   title?: string
 }
@@ -48,7 +47,7 @@ interface State {
 
 const statePath = (): string => join(app.getPath('userData'), 'state.json')
 
-/** Where PR review checkouts live. They belong to review windows, not the sidebar. */
+/** Where PR review checkouts live. The sidebar leaves them out. */
 export const reviewsDir = (): string => join(app.getPath('userData'), 'reviews')
 const isReview = (wt: Worktree): boolean => wt.path.startsWith(reviewsDir() + sep)
 
@@ -80,7 +79,7 @@ async function describeRepos(state: State): Promise<Repo[]> {
   return Promise.all(
     state.repos.map(async (path) => {
       try {
-        // ponytail: a graph built after this listing reaches agents on the next one.
+        // A graph that finishes after this listing only reaches agents on the next one.
         const graph = graphServer(path)
         const shown = (await listWorktrees(path)).filter((wt) => !isReview(wt))
         const worktrees = shown.map((wt) => {
@@ -89,8 +88,8 @@ async function describeRepos(state: State): Promise<Repo[]> {
           const title = typeof meta?.title === 'string' ? meta.title : undefined
           return {
             ...wt,
-            agent, // --mcp-config swallows every argument after it, so it goes last.
-            agentArgs: hookFlags(agent) + mcpFlags(agent, undefined, undefined, graph ?? undefined),
+            agent,
+            agentArgs: hookFlags(agent) + mcpFlags(agent, undefined, undefined, graph),
             resume: resumeFlag(agent, wt.path),
             port: meta?.port,
             title
@@ -160,7 +159,7 @@ async function create(
     const repo = await knownRepo(repoArg)
     const req = parseCreateRequest(reqArg)
     const { path, base, warnings } = await createWorktree(repo, req.branch, req.base)
-    // The base was just fetched, so this is a good moment to refresh the graph.
+    // The base was just fetched: a good moment to refresh the graph.
     void buildGraph(repo)
     await writeInstructions(path, req.agent).catch((err) =>
       console.warn(`Could not add the knowledge block to ${path}`, err)
@@ -293,7 +292,6 @@ function registerReviews(): void {
       const review = await openReview(reviewsDir(), await knownRepo(repo), prNumber(n))
       return {
         ...review,
-        // --mcp-config swallows every argument after it, so it goes last.
         agentArgs: hookFlags(DEFAULT_AGENT) + mcpFlags(DEFAULT_AGENT),
         resume: resumeFlag(DEFAULT_AGENT, review.path)
       }
@@ -317,7 +315,6 @@ function registerReviews(): void {
   )
 }
 
-/** Drops a review's checkout once its window is gone. */
 export async function discardReview(repo: string, n: number): Promise<void> {
   await closeReview(reviewsDir(), await knownRepo(repo), n)
 }

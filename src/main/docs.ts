@@ -2,7 +2,7 @@ import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { git } from './worktrees'
 
-// ponytail: whole files, no size cap; add one if someone keeps a huge markdown log in the repo.
+// No size cap. Add one if a repo ever keeps a giant markdown log.
 
 /** Markdown files in the worktree, tracked or new, minus anything ignored. */
 export async function listDocs(worktree: string): Promise<string[]> {

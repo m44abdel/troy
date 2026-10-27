@@ -83,7 +83,6 @@ export function nextPortBase(used: number[]): number {
 }
 
 interface StartPoint {
-  /** What the new branch starts from. */
   start: string
   /** Set when the branch already exists on origin: the worktree continues it and tracks it. */
   track: boolean
@@ -117,7 +116,7 @@ async function fastForward(repo: string, branch: string): Promise<string | null>
       await git(repo, ['fetch', '.', `${remote}:refs/heads/${branch}`])
     return null
   } catch {
-    return `Your local ${branch} could not be fast-forwarded to origin/${branch} (local commits or uncommitted changes), so it was left as is. The worktree still starts from origin/${branch}.`
+    return `Could not fast-forward your local ${branch} (it has local commits or uncommitted changes); the worktree starts from origin/${branch}.`
   }
 }
 

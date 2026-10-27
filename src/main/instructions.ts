@@ -42,8 +42,8 @@ export async function writeInstructions(worktree: string, agent: string): Promis
 }
 
 /**
- * Undoes writeInstructions where the block is the file's only uncommitted change,
- * so it alone never stops `git worktree remove`.
+ * Undoes writeInstructions where the block is the file's only uncommitted change. Troy's
+ * own edit shouldn't be what stops `git worktree remove`.
  */
 export async function stripInstructions(worktree: string): Promise<void> {
   for (const name of FILES) {

@@ -29,7 +29,7 @@ export function parseMail(raw: string): Mail | null {
   }
 }
 
-/** Writes atomically, so the watcher never reads half a file. */
+/** Atomic write; the watcher never sees half a file. */
 async function drop(dir: string, item: object): Promise<void> {
   await mkdir(dir, { recursive: true })
   const name = `${Date.now()}-${randomUUID()}`
@@ -48,7 +48,7 @@ export async function sendMail(dir: string, mail: Omit<Mail, 'sentAt'>): Promise
   await drop(dir, mail)
 }
 
-// Spawns sit in a subfolder: the mail watcher only takes .json files, so it never sees them.
+// A subfolder, which the mail watcher skips because it only takes .json files.
 export const spawnDir = (mailDir: string): string => join(mailDir, 'spawn')
 
 export function parseSpawn(raw: string): SpawnRequest | null {
@@ -103,8 +103,8 @@ function watchFolder<T>(
     if (item) onItem(item)
     else if (raw !== null) console.warn(`Dropped an unreadable file: ${path}`)
   }
-  // One at a time, in the order found, so files arrive in the order they were sent.
-  // Files already waiting are queued first: watch events only fire after this returns.
+  // One at a time, in name order, which is the order they were sent. Files already waiting
+  // go first: watch events only fire after this returns.
   let queue = Promise.resolve()
   const enqueue = (file: string): void => {
     queue = queue.then(() => take(file))
@@ -112,8 +112,7 @@ function watchFolder<T>(
   const sweep = (): void => readdirSync(dir).sort().forEach(enqueue)
   const watcher = watch(dir, (_event, file) => file && enqueue(file))
   sweep()
-  // ponytail: macOS can deliver watch events late or drop them under load; a slow rescan
-  // makes sure no message is lost. Taken files are skipped, so nothing arrives twice.
+  // Backstop for dropped watch events.
   const backstop = setInterval(sweep, SWEEP_MS)
   return () => {
     watcher.close()
