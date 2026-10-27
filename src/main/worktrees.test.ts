@@ -14,7 +14,7 @@ import {
 } from './worktrees'
 
 describe('parseWorktrees', () => {
-  it('reads branches, marks the first entry primary and skips bare/prunable ones', () => {
+  it('porcelain output', () => {
     const porcelain = [
       'worktree /r\nHEAD abc\nbranch refs/heads/main',
       'worktree /r.feat-x\nHEAD def\nbranch refs/heads/feat/x',
@@ -31,7 +31,7 @@ describe('parseWorktrees', () => {
 })
 
 describe('worktree helpers', () => {
-  it('places worktrees beside the repo with slashes flattened', () => {
+  it('feat/login becomes app.feat-login', () => {
     expect(worktreePath('/code/app', 'feat/login')).toBe('/code/app.feat-login')
   })
 
@@ -59,7 +59,7 @@ function tempRepo(): string {
 }
 
 describe('createWorktree / removeWorktree', () => {
-  it('creates a sibling worktree, copies untracked .env files and archives it', async () => {
+  it('create and archive', async () => {
     const repo = tempRepo()
 
     const { path, base } = await createWorktree(repo, 'feat/x', '')
@@ -89,13 +89,20 @@ describe('createWorktree / removeWorktree', () => {
     expect(existsSync(join(path, '.env'))).toBe(false)
   })
 
-  it('refuses the primary worktree, bad branch names and dirty worktrees', async () => {
+  it("won't remove the primary worktree", async () => {
     const repo = tempRepo()
     const [primary] = await listWorktrees(repo)
     await expect(removeWorktree(repo, primary, false)).rejects.toThrow('primary')
+  })
+
+  it('bad branch names', async () => {
+    const repo = tempRepo()
     await expect(createWorktree(repo, '--force', '')).rejects.toThrow('Invalid branch')
     await expect(createWorktree(repo, 'bad name', '')).rejects.toThrow()
+  })
 
+  it('keeps a dirty worktree', async () => {
+    const repo = tempRepo()
     const { path } = await createWorktree(repo, 'dirty', '')
     writeFileSync(join(path, 'wip.txt'), 'unsaved')
     await expect(removeWorktree(repo, await findWorktree(repo, path), false)).rejects.toThrow()
@@ -125,7 +132,7 @@ function cloneBehindRemote(): { repo: string; remote: string; sha: (ref: string)
 }
 
 describe('createWorktree from a remote', () => {
-  it('starts from the latest remote base and fast-forwards the local base branch', async () => {
+  it('branches from the fetched remote base', async () => {
     const { repo, remote, sha } = cloneBehindRemote()
     const latest = execFileSync('git', ['-C', remote, 'rev-parse', 'dev']).toString().trim()
 
@@ -147,7 +154,7 @@ describe('createWorktree from a remote', () => {
     expect(execFileSync('git', ['-C', repo, 'rev-parse', 'HEAD']).toString().trim()).toBe(latest)
   })
 
-  it('picks up a branch that already exists on the remote and tracks it', async () => {
+  it('tracks a branch that already exists on the remote', async () => {
     const { repo, sha } = cloneBehindRemote()
 
     const { path } = await createWorktree(repo, 'feat/shared', 'dev')
@@ -162,7 +169,7 @@ describe('createWorktree from a remote', () => {
     ).toBe('origin/feat/shared')
   })
 
-  it('warns, and starts from what it has, when the remote cannot be reached', async () => {
+  it('offline remote', async () => {
     const { repo, sha } = cloneBehindRemote()
     execFileSync('git', ['-C', repo, 'remote', 'set-url', 'origin', join(repo, 'gone.git')])
     const stale = sha('origin/dev')

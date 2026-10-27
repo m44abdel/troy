@@ -12,7 +12,7 @@ const key = (code: string, mods: Partial<KeyInput> = {}): KeyInput => ({
 })
 
 describe('routeKey on macOS', () => {
-  it('maps Cmd shortcuts to app actions', () => {
+  it('Cmd shortcuts', () => {
     expect(routeKey(key('KeyO', { meta: true }), 'darwin')).toBe('addRepo')
     expect(routeKey(key('BracketLeft', { meta: true }), 'darwin')).toBe('prev')
     expect(routeKey(key('BracketRight', { meta: true }), 'darwin')).toBe('next')
@@ -42,13 +42,13 @@ describe('routeKey on macOS', () => {
     expect(routeKey(input, 'darwin')).toBeNull()
   })
 
-  it('leaves unbound Cmd keys (copy, paste, quit) to the OS menu', () => {
+  it('leaves copy, paste and quit to the menu', () => {
     expect(routeKey(key('KeyC', { meta: true }), 'darwin')).toBeNull()
     expect(routeKey(key('KeyV', { meta: true }), 'darwin')).toBeNull()
     expect(routeKey(key('KeyQ', { meta: true }), 'darwin')).toBeNull()
   })
 
-  it('maps Cmd-Shift chords to the terminal tabs, like Chrome tabs', () => {
+  it('Cmd-Shift drives the terminal tabs like Chrome', () => {
     const shifted = (code: string): KeyInput => key(code, { meta: true, shift: true })
     expect(routeKey(shifted('KeyT'), 'darwin')).toBe('newTerminal')
     expect(routeKey(shifted('KeyW'), 'darwin')).toBe('closeTerminal')
@@ -59,14 +59,17 @@ describe('routeKey on macOS', () => {
     expect(routeKey(shifted('Digit1'), 'darwin')).toBeNull()
   })
 
-  it('gives every default shortcut its own chord', () => {
+  it('no action is bound twice by default', () => {
     const actions = Object.values(DEFAULT_BINDINGS).filter(Boolean)
     expect(new Set(actions).size).toBe(actions.length)
   })
 
-  it('ignores Cmd combined with Ctrl or Alt, and keyUp events', () => {
+  it('ignores Cmd with Ctrl or Alt held', () => {
     expect(routeKey(key('KeyO', { meta: true, alt: true }), 'darwin')).toBeNull()
     expect(routeKey(key('KeyO', { meta: true, control: true }), 'darwin')).toBeNull()
+  })
+
+  it('keyUp', () => {
     expect(routeKey({ ...key('KeyO', { meta: true }), type: 'keyUp' }, 'darwin')).toBeNull()
   })
 })
@@ -89,7 +92,7 @@ describe('routeKey on Linux/Windows', () => {
 })
 
 describe('keybindings.json', () => {
-  it('remaps, frees keys with null and skips what it does not know', () => {
+  it('user overrides', () => {
     const { bindings, ignored } = parseBindings({
       KeyK: 'newWorktree',
       KeyN: null,
@@ -102,7 +105,7 @@ describe('keybindings.json', () => {
     expect(ignored).toEqual(['KeyX: "launchRockets"', 'KeyY: 3'])
   })
 
-  it('falls back to the defaults for a file that is not an object', () => {
+  it('a non-object file gets the defaults', () => {
     expect(parseBindings([1, 2])).toEqual({
       bindings: DEFAULT_BINDINGS,
       ignored: ['the file must hold a JSON object']

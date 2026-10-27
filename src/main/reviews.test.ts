@@ -32,7 +32,7 @@ describe('githubSlug', () => {
 })
 
 describe('reviewPayload', () => {
-  it('puts removed lines on the left side and the rest on the right', () => {
+  it('removed lines go on the LEFT side', () => {
     const payload = reviewPayload('abc', 'APPROVE', 'LGTM', [
       { file: 'a.ts', changeKey: 'I3', line: 3, removed: false, text: 'nice' },
       { file: 'b.ts', changeKey: 'D7', line: 7, removed: true, text: 'why?' }
@@ -73,7 +73,7 @@ function prRepo(): { root: string; repo: string; head: string; log: string } {
   git('push', '-q', 'origin', 'HEAD:refs/pull/7/head')
   git('reset', '-q', '--hard', 'HEAD~1')
 
-  // A fake gh that logs its arguments and the review JSON it is given.
+  // Fake gh: logs its args and any review JSON.
   const log = join(root, 'gh.log')
   const bin = join(root, 'bin')
   mkdirSync(bin)
@@ -94,7 +94,7 @@ esac
 }
 
 describe('a review checkout', () => {
-  it('checks out the PR head, posts the review on that commit, then removes itself', async () => {
+  it('open then submit', async () => {
     const { root, repo, head, log } = prRepo()
     const dir = join(root, 'reviews')
 
@@ -111,7 +111,7 @@ describe('a review checkout', () => {
     expect(existsSync(path)).toBe(false)
   })
 
-  it('reopens an existing checkout, and closing twice is harmless', async () => {
+  it('opening and closing twice', async () => {
     const { root, repo } = prRepo()
     const dir = join(root, 'reviews')
 

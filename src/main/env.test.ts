@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { withoutSessionMarkers } from './env'
 
 describe('withoutSessionMarkers', () => {
-  it('drops the markers of a Claude Code session Troy was launched from, keeping settings', () => {
+  it('session markers go, settings stay', () => {
     const env = {
       PATH: '/bin',
       CLAUDECODE: '1',

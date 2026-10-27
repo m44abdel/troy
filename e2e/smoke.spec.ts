@@ -51,7 +51,7 @@ writeFileSync(join(noGitHub, 'gh'), '#!/bin/sh\nexit 1\n', { mode: 0o755 })
 // This ZDOTDIR keeps the developer's own zsh config (prompts, auto-attach) out of the test.
 const shellEnv = { ...process.env, SHELL: '/bin/zsh', ZDOTDIR: zdotdirWith(noGitHub) }
 
-test('opens a saved repo in a working terminal', async () => {
+test('saved repo opens to a working terminal', async () => {
   const repo = gitRepo('troy-repo-')
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
@@ -72,7 +72,7 @@ test('opens a saved repo in a working terminal', async () => {
   }
 })
 
-test('shows the welcome screen with no repos', async () => {
+test('no repos yet', async () => {
   const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: tempDir('troy-profile-') })
   try {
     const page = await app.firstWindow()
@@ -114,7 +114,7 @@ async function startAgents(page: Page, paths: string[]): Promise<void> {
 const catAgents = (paths: string[]): object =>
   Object.fromEntries(paths.map((path, i) => [path, { agent: 'cat', port: 3100 + 100 * i }]))
 
-test('Cmd shortcuts switch worktrees while Ctrl chords reach the shell', async () => {
+test('Cmd switches worktrees; Ctrl goes to the shell', async () => {
   const repos = [gitRepo('troy-a-'), gitRepo('troy-b-')]
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos }))
@@ -141,7 +141,7 @@ test('Cmd shortcuts switch worktrees while Ctrl chords reach the shell', async (
   }
 })
 
-test('creates a bootstrapped worktree, runs its agent and archives it', async () => {
+test('worktree lifecycle', async () => {
   const repo = gitRepo('troy-wt-')
   const git = (...args: string[]): Buffer =>
     execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
@@ -195,7 +195,7 @@ test('creates a bootstrapped worktree, runs its agent and archives it', async ()
   }
 })
 
-test('reviews the diff, sends comments to the agent and commits', async () => {
+test('diff review through to commit', async () => {
   const repo = gitRepo('troy-diff-')
   const git = (...args: string[]): string =>
     execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
@@ -249,7 +249,7 @@ test('reviews the diff, sends comments to the agent and commits', async () => {
   }
 })
 
-test('shows context usage from the Claude Code session log', async () => {
+test('context meter reads the Claude Code log', async () => {
   const repo = gitRepo('troy-ctx-')
   const claudeHome = tempDir('troy-claude-')
   const logDir = join(claudeHome, 'projects', repo.replace(/[^a-zA-Z0-9]/g, '-'))
@@ -326,7 +326,7 @@ async function mcpSession(userData: string, cwd: string, messages: object[]): Pr
   return replies.sort((a, b) => JSON.parse(a).id - JSON.parse(b).id)
 }
 
-test('an agent proposes a fact over MCP and the user approves it', async () => {
+test('approving a fact an agent proposed over MCP', async () => {
   const repo = gitRepo('troy-know-')
   writeFileSync(join(repo, 'ports.txt'), 'PORT_BASE=3100\n')
   execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '.'])
@@ -389,7 +389,7 @@ test('an agent proposes a fact over MCP and the user approves it', async () => {
   }
 })
 
-test('vim keys move through the sidebar only when enabled, and keybindings.json remaps', async () => {
+test('vim mode and keybindings.json', async () => {
   const repos = [gitRepo('troy-v1-'), gitRepo('troy-v2-')]
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos }))
@@ -440,7 +440,7 @@ test('vim keys move through the sidebar only when enabled, and keybindings.json 
   }
 })
 
-test('renders the docs tab with Mermaid diagrams and follows relative links', async () => {
+test('docs tab', async () => {
   const repo = gitRepo('troy-docs-')
   mkdirSync(join(repo, 'docs'))
   writeFileSync(
@@ -486,7 +486,7 @@ test('renders the docs tab with Mermaid diagrams and follows relative links', as
   }
 })
 
-test('a session that starts waiting while you are elsewhere is highlighted until cleared', async () => {
+test('highlights a session that started waiting while you were away', async () => {
   const repos = [gitRepo('troy-c1-'), gitRepo('troy-c2-')]
   const userData = tempDir('troy-profile-')
   const meta = { agent: 'cat', port: 3100 }
@@ -518,7 +518,7 @@ test('a session that starts waiting while you are elsewhere is highlighted until
   }
 })
 
-test('a hook report beats the output guess and badges the dock', async () => {
+test('hook status wins over the output guess', async () => {
   const repos = [gitRepo('troy-h1-'), gitRepo('troy-h2-')]
   const userData = tempDir('troy-profile-')
   const script = join(tempDir('troy-agent-'), 'agent.sh')
@@ -556,7 +556,7 @@ test('a hook report beats the output guess and badges the dock', async () => {
   }
 })
 
-test('flags two live sessions editing the same files, and only while both are live', async () => {
+test('same-file overlap between live sessions', async () => {
   const repo = gitRepo('troy-overlap-')
   const git = (...args: string[]): Buffer =>
     execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
@@ -618,7 +618,7 @@ test('flags two live sessions editing the same files, and only while both are li
   }
 })
 
-test('runs .troy/check when the agent stops and sends a failure back to it', async () => {
+test('a failing .troy/check goes back to the agent', async () => {
   const repo = gitRepo('troy-check-')
   const git = (...args: string[]): Buffer =>
     execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
@@ -668,7 +668,7 @@ test('runs .troy/check when the agent stops and sends a failure back to it', asy
   }
 })
 
-test('links worktrees through the code graph when one uses code another changed', async () => {
+test('code graph overlap', async () => {
   const repo = gitRepo('troy-graph-')
   const git = (...args: string[]): Buffer =>
     execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
@@ -721,7 +721,7 @@ test('links worktrees through the code graph when one uses code another changed'
   }
 })
 
-test('closing a worktree hides it until reopened, and folds and closes survive a restart', async () => {
+test('closed and folded worktrees survive a restart', async () => {
   const repo = gitRepo('troy-fold-')
   execFileSync('git', [
     '-C',
@@ -799,7 +799,7 @@ test('closing a worktree hides it until reopened, and folds and closes survive a
   }
 })
 
-test('reorders worktrees by drag and by Cmd-arrow, and keeps the order', async () => {
+test('reorder by drag or Cmd-arrow', async () => {
   const repo = gitRepo('troy-order-')
   const git = (...args: string[]): Buffer =>
     execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
@@ -841,7 +841,7 @@ test('reorders worktrees by drag and by Cmd-arrow, and keeps the order', async (
   }
 })
 
-test('agents and shells do not inherit the Claude Code session Troy was opened from', async () => {
+test('shells start clean of the parent Claude Code session', async () => {
   const repo = gitRepo('troy-env-')
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
@@ -869,7 +869,7 @@ test('agents and shells do not inherit the Claude Code session Troy was opened f
   }
 })
 
-test('measures emoji as two columns, as agent TUIs do', async () => {
+test('emoji are two columns wide', async () => {
   const repo = gitRepo('troy-width-')
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
@@ -888,7 +888,7 @@ test('measures emoji as two columns, as agent TUIs do', async () => {
   }
 })
 
-test('resizes the sidebar and the agent pane by dragging, and remembers the sizes', async () => {
+test('pane sizes stick', async () => {
   const repo = gitRepo('troy-resize-')
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
@@ -935,7 +935,7 @@ test('resizes the sidebar and the agent pane by dragging, and remembers the size
   }
 })
 
-test('an agent with an earlier conversation in its worktree resumes it', async () => {
+test('should resume an earlier conversation in the worktree', async () => {
   const repo = gitRepo('troy-resume-')
   const fresh = gitRepo('troy-fresh-')
   const claudeHome = tempDir('troy-claude-')
@@ -996,7 +996,7 @@ function callMcp(cwd: string, mailDir: string, tool: string, args: object): stri
   }).toString()
 }
 
-test('an agent messages another, now if it runs and otherwise once it starts', async () => {
+test('agent_message delivers now or when the other starts', async () => {
   const repo = gitRepo('troy-mail-')
   const git = (...args: string[]): Buffer =>
     execFileSync('git', ['-C', repo, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
@@ -1050,7 +1050,7 @@ test('an agent messages another, now if it runs and otherwise once it starts', a
   }
 })
 
-test('an agent spawns another in a new worktree, which starts on its own', async () => {
+test('agent_spawn', async () => {
   const repo = gitRepo('troy-spawn-')
   execFileSync('git', [
     '-C',
@@ -1097,7 +1097,7 @@ test('an agent spawns another in a new worktree, which starts on its own', async
   }
 })
 
-test('a due automation starts its agent in a fresh worktree, and the dialog saves new ones', async () => {
+test('automations', async () => {
   const repo = gitRepo('troy-auto-')
   execFileSync('git', [
     '-C',
@@ -1151,7 +1151,7 @@ test('a due automation starts its agent in a fresh worktree, and the dialog save
   }
 })
 
-test('proposes knowledge from a finished session through a forked, read-only agent', async () => {
+test('harvests facts from a finished session', async () => {
   const repo = gitRepo('troy-harvest-')
   execFileSync('git', [
     '-C',
@@ -1203,7 +1203,7 @@ test('proposes knowledge from a finished session through a forked, read-only age
   }
 })
 
-test('reviews a requested PR in its own window and submits the review to GitHub', async () => {
+test('PR review window posts to GitHub', async () => {
   // A clone whose origin names github.com/acme/widgets but fetches from a local bare repo.
   const root = tempDir('troy-pr-')
   const remote = join(root, 'remote.git')
@@ -1284,7 +1284,7 @@ esac
   }
 })
 
-test('the board lays worktrees out by agent status and opens the one you pick', async () => {
+test('board view', async () => {
   const repo = gitRepo('troy-board-')
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
@@ -1310,7 +1310,7 @@ test('the board lays worktrees out by agent status and opens the one you pick', 
   }
 })
 
-test('a terminal drawer under the side column keeps its shell while folded', async () => {
+test('folding the terminal drawer keeps the shell alive', async () => {
   const repo = gitRepo('troy-drawer-')
   const userData = tempDir('troy-profile-')
   writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))

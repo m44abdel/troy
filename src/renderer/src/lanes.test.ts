@@ -3,7 +3,7 @@ import type { AgentStatus } from '../../shared/status'
 import { groupByStatus } from './lanes'
 
 describe('groupByStatus', () => {
-  it('puts each item in its status lane and keeps the given order within a lane', () => {
+  it('keeps input order inside each lane', () => {
     const status: Record<string, AgentStatus> = {
       a: 'running',
       b: 'waiting',

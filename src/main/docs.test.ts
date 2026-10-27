@@ -6,7 +6,7 @@ import { join } from 'path'
 import { listDocs, readDoc } from './docs'
 
 describe('listDocs / readDoc', () => {
-  it('lists tracked and new markdown, skips ignored files and refuses anything else', async () => {
+  it('markdown only, minus ignored files', async () => {
     const repo = realpathSync(mkdtempSync(join(tmpdir(), 'troy-docs-')))
     execFileSync('git', ['init', '-q', '-b', 'main', repo])
     mkdirSync(join(repo, 'docs'))

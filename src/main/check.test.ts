@@ -25,14 +25,16 @@ function repo(script?: string): { dir: string; runs: () => number } {
 }
 
 describe('runCheck', () => {
-  it('returns null when the repo has no check', async () => {
+  it('no .troy/check, no result', async () => {
     expect(await runCheck(repo().dir)).toBeNull()
   })
 
-  it('passes on exit 0 and fails with the output tail otherwise', async () => {
+  it('exit 0 passes', async () => {
     const passing = await runCheck(repo('echo all good').dir)
     expect(passing).toMatchObject({ ok: true, output: 'all good' })
+  })
 
+  it('a failure carries the end of the output', async () => {
     const failing = await runCheck(repo('echo "2 tests failed" >&2; exit 1').dir)
     expect(failing).toMatchObject({ ok: false, output: '2 tests failed' })
   })
@@ -48,7 +50,7 @@ describe('runCheck', () => {
     expect(runs()).toBe(2)
   })
 
-  it('shares one run between concurrent callers', async () => {
+  it('concurrent callers share one run', async () => {
     const { dir, runs } = repo('sleep 0.2')
     const [a, b] = await Promise.all([runCheck(dir), runCheck(dir)])
     expect(a).toBe(b)

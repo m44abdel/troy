@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { liveOverlaps, overlaps } from './overlap'
 
 describe('overlaps', () => {
-  it('pairs every worktree with the others that changed the same files', () => {
+  it('same files', () => {
     const result = overlaps({
       a: ['src/api.ts', 'README.md'],
       b: ['src/api.ts', 'README.md', 'src/db.ts'],
@@ -20,11 +20,11 @@ describe('overlaps', () => {
     })
   })
 
-  it('finds nothing when no files are shared', () => {
+  it('nothing shared, nothing reported', () => {
     expect(overlaps({ a: ['x'], b: ['y'], c: [] })).toEqual({})
   })
 
-  it('links a worktree using code another changed, from both sides', () => {
+  it('uses and usedBy through the dependency map', () => {
     const deps = { 'src/ui.ts': ['src/api.ts'], 'src/api.ts': ['src/db.ts'] }
     const result = overlaps({ api: ['src/api.ts'], ui: ['src/ui.ts'], docs: ['x.md'] }, deps)
 
@@ -34,7 +34,7 @@ describe('overlaps', () => {
     })
   })
 
-  it('reports only the same-file overlap when a pair has both', () => {
+  it('same-file wins when a pair has both', () => {
     const deps = { 'src/ui.ts': ['src/api.ts'] }
     const result = overlaps({ a: ['src/api.ts'], b: ['src/api.ts', 'src/ui.ts'] }, deps)
 
@@ -44,7 +44,7 @@ describe('overlaps', () => {
 })
 
 describe('liveOverlaps', () => {
-  it('keeps only overlaps between two sessions that are both live', () => {
+  it('drops a pair once either side stops', () => {
     const all = {
       a: [
         { other: 'b', kind: 'same' as const, files: ['x.ts'] },

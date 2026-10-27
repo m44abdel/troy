@@ -29,25 +29,28 @@ function tempRepo(files: Record<string, string> = {}): {
 }
 
 describe('upsertBlock', () => {
-  it('appends once and refreshes in place', () => {
+  it('appends the block once', () => {
     const once = upsertBlock('# Rules\n\nBe nice.\n')
     expect(once).toMatch(/^# Rules\n\nBe nice.\n\n<!-- troy:knowledge -->/)
     expect(upsertBlock(once)).toBe(once)
+  })
 
+  it('refreshes an outdated block in place', () => {
+    const once = upsertBlock('# Rules\n\nBe nice.\n')
     const outdated = once.replace('Read it before exploring.', 'old text') + '\nAfter.\n'
     expect(upsertBlock(outdated)).toBe(once + '\nAfter.\n')
   })
 })
 
 describe('writeInstructions / stripInstructions', () => {
-  it("creates the agent's own file and updates whichever files already exist", async () => {
+  it('writes CLAUDE.md, updates the existing AGENTS.md', async () => {
     const { repo } = tempRepo({ 'AGENTS.md': '# Agents\n' })
     await writeInstructions(repo, '/usr/local/bin/claude --resume')
     expect(readFileSync(join(repo, 'CLAUDE.md'), 'utf8')).toContain('.troy/knowledge.md')
     expect(readFileSync(join(repo, 'AGENTS.md'), 'utf8')).toMatch(/^# Agents\n\n<!-- troy/)
   })
 
-  it('undoes only its own uncommitted edits, leaving the worktree clean', async () => {
+  it('strip leaves a clean worktree', async () => {
     const { repo, git } = tempRepo({ 'AGENTS.md': '# Agents\n' })
     await writeInstructions(repo, 'claude')
     expect(git('status', '--porcelain')).not.toBe('')
@@ -57,7 +60,7 @@ describe('writeInstructions / stripInstructions', () => {
     expect(existsSync(join(repo, 'CLAUDE.md'))).toBe(false)
   })
 
-  it('keeps a committed block and any edits of the agent or user', async () => {
+  it('should leave a committed block alone', async () => {
     const { repo, git } = tempRepo({ 'AGENTS.md': upsertBlock('# Agents\n') })
     await writeInstructions(repo, 'codex')
     expect(git('status', '--porcelain')).toBe('')

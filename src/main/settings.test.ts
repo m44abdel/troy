@@ -10,7 +10,7 @@ describe('installedAgents', () => {
     process.env.PATH = originalPath
   })
 
-  it('lists known agents that are executable somewhere on PATH, in known order', async () => {
+  it('executable agents on PATH', async () => {
     const [a, b] = [
       mkdtempSync(join(tmpdir(), 'troy-bin-')),
       mkdtempSync(join(tmpdir(), 'troy-bin-'))

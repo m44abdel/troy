@@ -61,7 +61,7 @@ beforeEach(() => {
 })
 
 describe('install.sh', () => {
-  it('--dry-run prints the steps and changes nothing', () => {
+  it('--dry-run', () => {
     const out = sh('install.sh', ['--dry-run'], { TROY_VERSION: '1.0.0' })
     expect(out).toContain('would run: curl')
     expect(out).toContain('would run: xattr -cr')
@@ -69,11 +69,14 @@ describe('install.sh', () => {
     expect(existsSync(manifest())).toBe(false)
   })
 
-  it('installs, records the app in the manifest and does nothing on a re-run', () => {
+  it('installs and writes the manifest', () => {
     sh('install.sh', [], { TROY_VERSION: '1.0.0' })
     expect(installedVersion()).toBe('1.0.0')
     expect(readFileSync(manifest(), 'utf8')).toBe(`${installedApp()}\n`)
+  })
 
+  it('a re-run of the same version is a no-op', () => {
+    sh('install.sh', [], { TROY_VERSION: '1.0.0' })
     const before = statSync(installedApp()).mtimeMs
     expect(sh('install.sh', [], { TROY_VERSION: '1.0.0' })).toContain('already installed')
     expect(statSync(installedApp()).mtimeMs).toBe(before)
@@ -85,7 +88,7 @@ describe('install.sh', () => {
     expect(installedVersion()).toBe('1.1.0')
   })
 
-  it('refuses a version string that could escape the download URL', () => {
+  it('TROY_VERSION with ../ in it', () => {
     expect(() => sh('install.sh', [], { TROY_VERSION: '1.0.0/../../x' })).toThrow(
       'could not work out the latest version'
     )
@@ -93,7 +96,7 @@ describe('install.sh', () => {
 })
 
 describe('uninstall.sh', () => {
-  it('removes exactly what the manifest lists, and is a no-op afterwards', () => {
+  it('removes what the manifest lists', () => {
     sh('install.sh', [], { TROY_VERSION: '1.0.0' })
 
     expect(sh('uninstall.sh', ['--dry-run'])).toContain(`would run: rm -rf ${installedApp()}`)
@@ -105,7 +108,7 @@ describe('uninstall.sh', () => {
     expect(sh('uninstall.sh')).toContain('Nothing to uninstall')
   })
 
-  it('never deletes manifest entries that are not a Troy.app bundle', () => {
+  it('leaves a non-Troy.app manifest entry alone', () => {
     const victim = join(sandbox, 'precious')
     mkdirSync(victim)
     mkdirSync(join(sandbox, 'state', 'troy'), { recursive: true })

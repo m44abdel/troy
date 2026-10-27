@@ -7,14 +7,14 @@ import { parseMail, sendMail, watchMail, type Mail } from './mail'
 const dir = (): string => realpathSync(mkdtempSync(join(tmpdir(), 'troy-mail-')))
 
 describe('mail', () => {
-  it('delivers sent and already-waiting messages once, then removes them', async () => {
+  it('delivers each message once', async () => {
     const box = dir()
     await sendMail(box, { from: '/a', fromBranch: 'a', to: '/b', text: 'waiting since before' })
     const got: Mail[] = []
     const stop = watchMail(box, (m) => got.push(m))
     await sendMail(box, { from: '/a', fromBranch: 'a', to: '/b', text: 'hello b' })
 
-    // The rescan delivers it even if the watch event comes late, so allow one sweep.
+    // Give the rescan one sweep in case the watch event is late.
     await vi.waitFor(
       () => expect(got.map((m) => m.text)).toEqual(['waiting since before', 'hello b']),
       { timeout: 5000 }
@@ -23,7 +23,7 @@ describe('mail', () => {
     stop()
   })
 
-  it('refuses empty or oversized messages and drops junk files', async () => {
+  it('rejects empty and oversized messages', async () => {
     const box = dir()
     await expect(
       sendMail(box, { from: '/a', fromBranch: null, to: '/b', text: ' ' })
@@ -31,9 +31,13 @@ describe('mail', () => {
     await expect(
       sendMail(box, { from: '/a', fromBranch: null, to: '/b', text: 'x'.repeat(9000) })
     ).rejects.toThrow('under')
+  })
+
+  it('junk files', async () => {
     expect(parseMail('{"from":"/a"}')).toBeNull()
     expect(parseMail('not json')).toBeNull()
 
+    const box = dir()
     writeFileSync(join(box, '1-junk.json'), '{"nope":true}')
     const got: Mail[] = []
     const stop = watchMail(box, (m) => got.push(m))

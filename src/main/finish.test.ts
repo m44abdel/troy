@@ -25,7 +25,7 @@ function repoWithRemote(): { repo: string; remote: string; git: (...a: string[])
 }
 
 describe('diffAgainst', () => {
-  it('covers commits since the base, uncommitted edits and untracked files', async () => {
+  it('includes uncommitted and untracked changes', async () => {
     const { repo, git } = repoWithRemote()
     const base = git('rev-parse', 'HEAD')
     git('switch', '-qc', 'feat')
@@ -43,19 +43,26 @@ describe('diffAgainst', () => {
     expect(diff).toContain('+fresh')
   })
 
-  it('is empty when nothing changed', async () => {
+  it('empty diff', async () => {
     const { repo, git } = repoWithRemote()
     expect(await diffAgainst(repo, git('rev-parse', 'HEAD'))).toBe('')
   })
 })
 
 describe('commitAll / push', () => {
-  it('commits every change, including new files, and pushes the branch', async () => {
-    const { repo, remote, git } = repoWithRemote()
+  it('needs a message', async () => {
+    const { repo, git } = repoWithRemote()
     git('switch', '-qc', 'feat')
     writeFileSync(join(repo, 'new.txt'), 'fresh\n')
 
     await expect(commitAll(repo, '  ')).rejects.toThrow('commit message')
+  })
+
+  it('commits new files and pushes the branch', async () => {
+    const { repo, remote, git } = repoWithRemote()
+    git('switch', '-qc', 'feat')
+    writeFileSync(join(repo, 'new.txt'), 'fresh\n')
+
     await commitAll(repo, 'add new')
     await push(repo)
 
@@ -68,7 +75,7 @@ describe('commitAll / push', () => {
 })
 
 describe('changedFiles', () => {
-  it('lists committed, edited and untracked files since the base, but not the base moving on', async () => {
+  it('should ignore what main gained after the branch', async () => {
     const { repo, git } = repoWithRemote()
     writeFileSync(join(repo, 'b.txt'), 'b\n')
     git('add', '.')
