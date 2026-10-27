@@ -7,6 +7,7 @@ import type { ReviewComment } from './comments'
 import { commandName } from '../../shared/shell'
 import type { DiffFilter } from './DiffPane'
 import { DocsPane } from './DocsPane'
+import { FilesPane } from './FilesPane'
 import { GitPane } from './GitPane'
 import { KnowledgePane } from './KnowledgePane'
 import { Icon, type IconName } from './icons'
@@ -19,7 +20,7 @@ import { agentId, submitToTerminal } from './terminals'
 import { STATUS_LABELS } from './statusLabels'
 import { AgentBadge } from './WorktreeCard'
 
-export type ColumnTab = 'git' | 'pr' | 'docs' | 'knowledge'
+export type ColumnTab = 'files' | 'git' | 'pr' | 'docs' | 'knowledge'
 
 /** What a worktree created this session still needs on its first launch. */
 export interface FirstRun {
@@ -56,6 +57,8 @@ interface Props {
   onKnowledgeChanged: () => void
   /** Closing the agent's pane or tab closes the session, like the card's ×. */
   onCloseSession: () => void
+  /** Bumped by Cmd-Shift-F. */
+  filesSearch: number
 }
 
 export function Workspace({
@@ -81,7 +84,8 @@ export function Workspace({
   onClearDiffFilter,
   knowledge,
   onKnowledgeChanged,
-  onCloseSession
+  onCloseSession,
+  filesSearch
 }: Props): React.JSX.Element {
   const pending = knowledge && 'proposals' in knowledge ? knowledge.proposals.length : 0
   // Icons only, like Orca's right sidebar; the name and any count are in the label.
@@ -168,10 +172,19 @@ export function Workspace({
       )}
       <div className="column" style={{ display: showColumn ? 'flex' : 'none' }}>
         <div className="tabs">
+          {tabButton('files', 'files', 'Files', { key: '⇧E' })}
           {tabButton('git', 'branch', 'Source control', { count: comments.length, key: '⇧G' })}
           {tabButton('pr', 'listChecks', 'Pull request')}
           {tabButton('docs', 'book', 'Docs')}
           {tabButton('knowledge', 'library', 'Knowledge', { count: pending })}
+        </div>
+        <div className="pane" style={{ display: tab === 'files' ? 'block' : 'none' }}>
+          <FilesPane
+            path={wt.path}
+            visible={sidePanel && tab === 'files'}
+            refreshKey={status ?? 'idle'}
+            searchNonce={filesSearch}
+          />
         </div>
         <div className="pane" style={{ display: tab === 'docs' ? 'block' : 'none' }}>
           <DocsPane path={wt.path} visible={sidePanel && tab === 'docs'} />

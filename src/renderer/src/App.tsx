@@ -74,6 +74,7 @@ function App(): React.JSX.Element {
   const [showBoard, setShowBoard] = useState(false)
   const [showAutomations, setShowAutomations] = useState(false)
   const [tab, setTab] = useState<ColumnTab>('git')
+  const [filesSearch, setFilesSearch] = useState(0)
   const [checks, setChecks] = useState<Record<string, CheckResult>>({})
   // An overlap line narrows that worktree's diff to its files until "Show all".
   const [diffFilters, setDiffFilters] = useState<Record<string, DiffFilter>>({})
@@ -358,6 +359,11 @@ function App(): React.JSX.Element {
         if (!current) return
         if (action === 'archive') return void archive()
         if (action === 'showSourceControl') return showTab('git')
+        if (action === 'showFiles') return showTab('files')
+        if (action === 'findInFiles') {
+          showTab('files')
+          return setFilesSearch((n) => n + 1)
+        }
         if (action === 'sendToAgent') return sendComments(current.path)
         const i = worktrees.indexOf(current)
         const n = worktrees.length
@@ -627,6 +633,7 @@ function App(): React.JSX.Element {
                   knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}
                   onKnowledgeChanged={refreshKnowledge}
                   onCloseSession={() => closeSession(wt.path)}
+                  filesSearch={filesSearch}
                 />
               ))}
           </>

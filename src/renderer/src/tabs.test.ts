@@ -8,6 +8,7 @@ import {
   focusPane,
   initialTabs,
   isTabs,
+  openPreview,
   openTab,
   splitPane,
   stepPane,
@@ -104,6 +105,24 @@ describe('toggleZoom', () => {
     const tabs = splitPane(initialTabs('agent'), 'row', 'shell')
     expect(activeTab(toggleZoom(tabs)).zoomed).toBe('shell')
     expect(activeTab(toggleZoom(toggleZoom(tabs))).zoomed).toBeUndefined()
+  })
+})
+
+describe('openPreview', () => {
+  it('opens a file in a tab of its own', () => {
+    const tabs = openPreview(initialTabs('agent'), 'p1', 'src/app.ts', 3)
+    expect(activeTab(tabs)).toMatchObject({
+      id: 'p1',
+      title: 'app.ts',
+      preview: { file: 'src/app.ts', line: 3 }
+    })
+  })
+
+  it('goes back to the tab a file is already open in, at the new line', () => {
+    const once = openPreview(initialTabs('agent'), 'p1', 'src/app.ts')
+    const twice = openPreview(stepTab(once, 1), 'p2', 'src/app.ts', 9)
+    expect(twice.list.map((t) => t.id)).toEqual([AGENT_TAB, 'p1'])
+    expect(activeTab(twice).preview).toEqual({ file: 'src/app.ts', line: 9 })
   })
 })
 

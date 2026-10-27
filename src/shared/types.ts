@@ -182,3 +182,23 @@ export interface MergeOptions {
   allowed: MergeMethod[]
   preferred: MergeMethod
 }
+
+/** What the Files tab lists: tracked and new files, and what .gitignore hides. */
+export interface FileList {
+  files: string[]
+  /** Ignored folders end in "/". */
+  ignored: string[]
+}
+
+/** A file's text for a preview tab, or why there is none. */
+export interface Preview {
+  text?: string
+  binary?: boolean
+  tooLarge?: boolean
+}
+
+export interface GrepHit {
+  file: string
+  line: number
+  text: string
+}

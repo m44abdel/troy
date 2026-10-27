@@ -21,6 +21,8 @@ export interface Tab {
   zoomed?: string
   /** Panes that run a command instead of a plain shell, e.g. a resumed session. */
   commands?: Record<string, string>
+  /** A read-only file view instead of terminals. */
+  preview?: { file: string; line?: number }
 }
 
 export interface Tabs {
@@ -54,6 +56,18 @@ export const openTab = (tabs: Tabs, tab: Tab): Tabs => ({
   list: [...tabs.list, tab],
   active: tab.id
 })
+
+/** Opens `file` in a preview tab, or goes back to the one it is already open in. */
+export function openPreview(tabs: Tabs, id: string, file: string, line?: number): Tabs {
+  const open = tabs.list.find((t) => t.preview?.file === file)
+  if (open)
+    return {
+      ...withTab(tabs, open.id, (t) => ({ ...t, preview: { file, line } })),
+      active: open.id
+    }
+  const title = file.split('/').pop() ?? file
+  return openTab(tabs, { id, title, root: leaf(id), focus: id, preview: { file, line } })
+}
 
 export function closeTab(tabs: Tabs, id: string): Tabs {
   const list = tabs.list.filter((t) => t.id !== id)
@@ -116,7 +130,8 @@ function isTab(v: unknown): v is Tab {
     typeof tab.id === 'string' &&
     typeof tab.title === 'string' &&
     typeof tab.focus === 'string' &&
-    isPaneNode(tab.root)
+    isPaneNode(tab.root) &&
+    (tab.preview === undefined || typeof (tab.preview as Tab['preview'])?.file === 'string')
   )
 }
 
