@@ -24,3 +24,29 @@ export function submitToTerminal(id: string, text: string): boolean {
   term.input('\r')
   return true
 }
+
+/** A tab some other part of the window wants opened in a worktree's terminal area. */
+export type TabRequest =
+  | { kind: 'preview'; file: string; line?: number }
+  | { kind: 'command'; title: string; command: string }
+
+// Held until that worktree's terminal area mounts, e.g. a session resumed in a worktree not
+// opened yet.
+const tabRequests = new Map<string, TabRequest[]>()
+const tabListeners = new Map<string, (req: TabRequest) => void>()
+
+export function requestTab(path: string, req: TabRequest): void {
+  const listener = tabListeners.get(path)
+  if (listener) return listener(req)
+  tabRequests.set(path, [...(tabRequests.get(path) ?? []), req])
+}
+
+export function onTabRequest(path: string, listener: (req: TabRequest) => void): () => void {
+  tabListeners.set(path, listener)
+  const waiting = tabRequests.get(path) ?? []
+  tabRequests.delete(path)
+  waiting.forEach(listener)
+  return () => {
+    if (tabListeners.get(path) === listener) tabListeners.delete(path)
+  }
+}

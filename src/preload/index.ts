@@ -6,7 +6,10 @@ import type {
   CheckResult,
   Automation,
   Commit,
+  FileList,
+  GrepHit,
   MergeMethod,
+  Preview,
   MergeOptions,
   PrStatus,
   Mail,
@@ -66,6 +69,14 @@ const api = {
     ipcRenderer.invoke('pr:comment', path, n, body),
   openPullRequest: (path: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('worktree:pr', path),
+  files: (path: string): Promise<FileList | { error: string }> =>
+    ipcRenderer.invoke('files:list', path),
+  readFile: (path: string, file: string): Promise<Preview & { error?: string }> =>
+    ipcRenderer.invoke('files:read', path, file),
+  grep: (path: string, query: string): Promise<{ hits?: GrepHit[]; error?: string }> =>
+    ipcRenderer.invoke('files:grep', path, query),
+  openFile: (path: string, file: string): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('files:open', path, file),
   docs: (path: string): Promise<{ files?: string[]; error?: string }> =>
     ipcRenderer.invoke('docs:list', path),
   readDoc: (path: string, file: string): Promise<{ text?: string; error?: string }> =>

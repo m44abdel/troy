@@ -3,10 +3,18 @@ import type { AppAction } from '../../shared/keys'
 import { layout, leaf, leaves, type Divider, type Rect, type SplitDir } from '../../shared/panes'
 import { Icon } from './icons'
 import { MOD } from './platform'
+import { PreviewTab } from './PreviewTab'
 import { Splitter } from './Splitter'
 import * as T from './tabs'
 import { Terminal, type TerminalProps } from './Terminal'
-import { agentId, focusTerminal, focusedPanes, paneId } from './terminals'
+import {
+  agentId,
+  focusTerminal,
+  focusedPanes,
+  onTabRequest,
+  paneId,
+  type TabRequest
+} from './terminals'
 import { useStored } from './useStored'
 
 const SETUP_COMMAND = 'sh .troy/setup.sh\r'
@@ -62,6 +70,8 @@ export function TerminalArea({
     !!firstRun
   )
   const current = T.activeTab(tabs)
+  // Command panes opened this session start at once; restored ones wait for Enter.
+  const [startNow, setStartNow] = useState<string[]>([])
 
   // The cursor follows the focused pane whenever it or the tab changes, but not on mount.
   const focusKey = `${current.id}\0${current.focus}`
@@ -89,7 +99,23 @@ export function TerminalArea({
   const closeTab = (id: string): void =>
     id === T.AGENT_TAB ? onCloseAgent() : setTabs((t) => T.closeTab(t, id))
 
+  const onRequest = useEffectEvent((req: TabRequest) => {
+    const id = req.kind === 'preview' ? crypto.randomUUID() : paneId(path)
+    if (req.kind === 'preview') return setTabs((t) => T.openPreview(t, id, req.file, req.line))
+    const tab = { id: crypto.randomUUID(), title: req.title, root: leaf(id), focus: id }
+    setStartNow((s) => [...s, id])
+    setTabs((t) => T.openTab(t, { ...tab, commands: { [id]: req.command } }))
+  })
+  useEffect(() => onTabRequest(path, onRequest), [path])
+
   const onAction = useEffectEvent((action: AppAction) => {
+    if (current.preview) {
+      if (action === 'closePane' || action === 'closeTab') return closeTab(current.id)
+      if (action === 'newTab') return addTab()
+      if (action === 'prevTab' || action === 'nextTab')
+        return setTabs((t) => T.stepTab(t, action === 'prevTab' ? -1 : 1))
+      return
+    }
     if (action === 'splitRight') return splitAt(current.focus, 'row')
     if (action === 'splitDown') return splitAt(current.focus, 'column')
     if (action === 'closePane') return closeAt(current.focus)
@@ -115,6 +141,21 @@ export function TerminalArea({
 
   // Every pane of every tab renders in one flat list, so a split never remounts a terminal.
   const panes = tabs.list.flatMap((tab) => {
+    if (tab.preview)
+      return [
+        <div
+          key={tab.id}
+          className="pane-slot pane-preview"
+          style={{ ...position(FULL), display: tab.id === tabs.active ? '' : 'none' }}
+        >
+          <PreviewTab
+            path={path}
+            file={tab.preview.file}
+            line={tab.preview.line}
+            visible={visible && tab.id === tabs.active}
+          />
+        </div>
+      ]
     const { rects } = layout(tab.root)
     const split = leaves(tab.root).length > 1
     return leaves(tab.root).map((id) => {
@@ -146,6 +187,7 @@ export function TerminalArea({
               cwd={path}
               port={port}
               command={tab.commands?.[id]}
+              autoStart={startNow.includes(id)}
               initialInput={id === setupPane ? SETUP_COMMAND : undefined}
             />
           )}

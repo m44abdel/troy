@@ -291,6 +291,48 @@ test("source control lists the branch's changes and commits", async () => {
   }
 })
 
+test('files tab lists the worktree and opens previews', async () => {
+  const repo = gitRepo('troy-files-')
+  mkdirSync(join(repo, 'src'))
+  mkdirSync(join(repo, 'out'))
+  writeFileSync(join(repo, 'src', 'app.ts'), 'const port = 3100\n')
+  writeFileSync(join(repo, 'README.md'), '# Hello\n')
+  writeFileSync(join(repo, '.gitignore'), 'out/\n')
+  writeFileSync(join(repo, 'out', 'bundle.js'), 'x')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    const workspace = page.locator('.workspace:visible')
+    await expect(workspace).toBeVisible()
+    await chord(app, 'E', ['meta', 'shift'])
+    const files = workspace.locator('.files-pane')
+    await expect(files.locator('.tree-row')).toHaveText(['out', 'src', '.gitignore', 'README.md'])
+    await expect(files.locator('.tree-row.ignored')).toHaveText(['out'])
+
+    await files.getByRole('button', { name: 'src' }).click()
+    await files.getByRole('button', { name: 'app.ts' }).click()
+    await expect(workspace.getByRole('tab', { name: /^app\.ts/ })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    await expect(workspace.locator('.pane-preview:visible .preview-code')).toContainText(
+      'const port = 3100'
+    )
+
+    // Cmd-Shift-F searches inside files; a hit opens its file.
+    await chord(app, 'F', ['meta', 'shift'])
+    await expect(files.getByLabel('Search in files')).toBeFocused()
+    await page.keyboard.type('hello')
+    await files.locator('.hit-row').click()
+    await expect(workspace.locator('.pane-preview:visible .markdown h1')).toHaveText('Hello')
+  } finally {
+    await app.close()
+  }
+})
+
 test('context meter reads the Claude Code log', async () => {
   const repo = gitRepo('troy-ctx-')
   const claudeHome = tempDir('troy-claude-')
@@ -1373,6 +1415,7 @@ test('splits and tabs keep every shell alive', async () => {
     // Cmd-D puts a shell right of the agent and gives it the cursor.
     await chord(app, 'D', 'meta')
     await expect(shells).toHaveCount(1)
+    await expect(shells.nth(0).locator('.xterm-helper-textarea')).toBeFocused()
     await page.keyboard.type('echo right-$((40+2))')
     await page.keyboard.press('Enter')
     await expect(shells.nth(0).locator('.xterm-rows')).toContainText('right-42', {
@@ -1382,6 +1425,7 @@ test('splits and tabs keep every shell alive', async () => {
     // Cmd-Shift-D splits that shell; the first keeps its output, so it never restarted.
     await chord(app, 'D', ['meta', 'shift'])
     await expect(shells).toHaveCount(2)
+    await expect(shells.nth(1).locator('.xterm-helper-textarea')).toBeFocused()
     await page.keyboard.type('echo down-$((1+1))')
     await page.keyboard.press('Enter')
     await expect(shells.nth(1).locator('.xterm-rows')).toContainText('down-2', { timeout: 15_000 })
