@@ -5,6 +5,10 @@ import type { Overlap } from '../shared/overlap'
 import type {
   CheckResult,
   Automation,
+  Commit,
+  MergeMethod,
+  MergeOptions,
+  PrStatus,
   Mail,
   SpawnRequest,
   ContextUsage,
@@ -50,6 +54,16 @@ const api = {
   commit: (path: string, message: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('worktree:commit', path, message),
   push: (path: string): Promise<{ error?: string }> => ipcRenderer.invoke('worktree:push', path),
+  log: (path: string): Promise<{ commits?: Commit[]; error?: string }> =>
+    ipcRenderer.invoke('worktree:log', path),
+  suggestMessage: (path: string): Promise<{ message?: string; error?: string }> =>
+    ipcRenderer.invoke('worktree:suggestMessage', path),
+  pr: (path: string): Promise<{ pr?: PrStatus | null; merge?: MergeOptions; error?: string }> =>
+    ipcRenderer.invoke('pr:get', path),
+  mergePr: (path: string, n: number, method: MergeMethod): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('pr:merge', path, n, method),
+  commentPr: (path: string, n: number, body: string): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('pr:comment', path, n, body),
   openPullRequest: (path: string): Promise<{ error?: string }> =>
     ipcRenderer.invoke('worktree:pr', path),
   docs: (path: string): Promise<{ files?: string[]; error?: string }> =>

@@ -73,7 +73,7 @@ function App(): React.JSX.Element {
   const [showColumn, setShowColumn] = useState(true)
   const [showBoard, setShowBoard] = useState(false)
   const [showAutomations, setShowAutomations] = useState(false)
-  const [tab, setTab] = useState<ColumnTab>('diff')
+  const [tab, setTab] = useState<ColumnTab>('git')
   const [checks, setChecks] = useState<Record<string, CheckResult>>({})
   // An overlap line narrows that worktree's diff to its files until "Show all".
   const [diffFilters, setDiffFilters] = useState<Record<string, DiffFilter>>({})
@@ -357,7 +357,7 @@ function App(): React.JSX.Element {
         if (action === 'openSettings') return setShowSettings(true)
         if (!current) return
         if (action === 'archive') return void archive()
-        if (action === 'showSourceControl') return showTab('diff')
+        if (action === 'showSourceControl') return showTab('git')
         if (action === 'sendToAgent') return sendComments(current.path)
         const i = worktrees.indexOf(current)
         const n = worktrees.length
@@ -460,7 +460,7 @@ function App(): React.JSX.Element {
       onOverlap={(files, label) => {
         setDiffFilters((f) => ({ ...f, [wt.path]: { files, label } }))
         select(wt.path)
-        showTab('diff')
+        showTab('git')
       }}
     />
   )

@@ -15,7 +15,15 @@ import { readContext, resumeFlag } from './context'
 import { buildGraph, graphDependencies, graphServer } from './graph'
 import { harvest } from './harvest'
 import { listDocs, readDoc } from './docs'
-import { changedFiles, commitAll, diffAgainst, openPullRequest, push } from './finish'
+import {
+  branchCommits,
+  changedFiles,
+  commitAll,
+  diffAgainst,
+  openPullRequest,
+  push,
+  suggestCommitMessage
+} from './finish'
 import { stripInstructions, writeInstructions } from './instructions'
 import { approve, readKnowledge, reject } from './knowledge'
 import { REVIEW_EVENTS, closeReview, listRequested, openReview, submitReview } from './reviews'
@@ -227,7 +235,7 @@ async function archive(
 }
 
 /** Resolves a renderer-supplied path to a worktree of a repo the user added. */
-async function locate(path: unknown): Promise<{ path: string; base: string }> {
+export async function locate(path: unknown): Promise<{ path: string; base: string }> {
   const state = await loadState()
   for (const repo of state.repos) {
     const wt = (await listWorktrees(repo).catch(() => [])).find((w) => w.path === path)
@@ -319,7 +327,9 @@ export async function discardReview(repo: string, n: number): Promise<void> {
   await closeReview(reviewsDir(), await knownRepo(repo), n)
 }
 
-async function attempt<T extends object>(fn: () => Promise<T>): Promise<T | { error: string }> {
+export async function attempt<T extends object>(
+  fn: () => Promise<T>
+): Promise<T | { error: string }> {
   try {
     return await fn()
   } catch (err) {
@@ -347,6 +357,19 @@ export function registerRepos(): void {
     attempt(async () => {
       await commitAll((await locate(path)).path, String(message ?? ''))
       return {}
+    })
+  )
+  ipcMain.handle('worktree:log', (_e, path) =>
+    attempt(async () => {
+      const wt = await locate(path)
+      return { commits: await branchCommits(wt.path, wt.base) }
+    })
+  )
+  ipcMain.handle('worktree:suggestMessage', (_e, path) =>
+    attempt(async () => {
+      const wt = await locate(path)
+      const agent = (await loadState()).worktrees[wt.path]?.agent ?? DEFAULT_AGENT
+      return { message: await suggestCommitMessage(wt.path, agent) }
     })
   )
   ipcMain.handle('worktree:push', (_e, path) =>

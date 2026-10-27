@@ -6,6 +6,7 @@ import { DEFAULT_BINDINGS, routeKey } from '../shared/keys'
 import { registerPty } from './pty'
 import { discardReview, prNumber, registerRepos } from './repos'
 import { registerAutomations } from './automations'
+import { registerGithub } from './github'
 import { watchMail, watchSpawns } from './mail'
 import { mailDir, writeMcpConfig } from './mcp-config'
 import { withoutSessionMarkers } from './env'
@@ -112,6 +113,7 @@ app.whenReady().then(async () => {
   registerSettings()
   registerPty()
   registerRepos()
+  registerGithub()
   registerAutomations()
   // The window asks once it can receive; mail sent before then waits on disk.
   let stopMail: (() => void) | undefined
