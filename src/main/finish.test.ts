@@ -3,7 +3,14 @@ import { execFileSync } from 'child_process'
 import { mkdtempSync, realpathSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { changedFiles, commitAll, diffAgainst, push } from './finish'
+import {
+  branchCommits,
+  changedFiles,
+  commitAll,
+  commitMessagePrompt,
+  diffAgainst,
+  push
+} from './finish'
 
 function repoWithRemote(): { repo: string; remote: string; git: (...a: string[]) => string } {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'troy-finish-')))
@@ -92,5 +99,39 @@ describe('changedFiles', () => {
     writeFileSync(join(repo, 'new.txt'), 'fresh\n')
 
     expect(await changedFiles(repo, 'main')).toEqual(['a.txt', 'b.txt', 'new.txt'])
+  })
+})
+
+describe('branchCommits', () => {
+  it("lists the branch's own commits, newest first", async () => {
+    const { repo, git } = repoWithRemote()
+    const base = git('rev-parse', 'HEAD')
+    git('switch', '-qc', 'feat')
+    writeFileSync(join(repo, 'a.txt'), 'one\ntwo\n')
+    git('commit', '-qam', 'two')
+    writeFileSync(join(repo, 'a.txt'), 'one\ntwo\nthree\n')
+    git('commit', '-qam', 'three')
+
+    const commits = await branchCommits(repo, base)
+
+    expect(commits.map((c) => c.subject)).toEqual(['three', 'two'])
+    expect(commits[0].hash).toBe(git('rev-parse', '--short', 'HEAD'))
+  })
+
+  it('is empty on the branch the worktree started from', async () => {
+    const { repo } = repoWithRemote()
+    expect(await branchCommits(repo, 'HEAD')).toEqual([])
+  })
+})
+
+describe('commitMessagePrompt', () => {
+  it('cuts a long diff short and says so', () => {
+    const prompt = commitMessagePrompt('x'.repeat(100_000))
+    expect(prompt.length).toBeLessThan(70_000)
+    expect(prompt).toContain('[diff cut short]')
+  })
+
+  it('sends a short diff whole', () => {
+    expect(commitMessagePrompt('+two')).toMatch(/\+two$/)
   })
 })

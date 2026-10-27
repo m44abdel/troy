@@ -139,3 +139,46 @@ export interface Automation {
   agent: string
   prompt: string
 }
+
+/** One commit on a worktree's branch, as Source Control lists it. */
+export interface Commit {
+  hash: string
+  subject: string
+  /** Relative, e.g. "2 hours ago". */
+  when: string
+}
+
+export type CheckState = 'pass' | 'fail' | 'pending' | 'skipped'
+
+export interface PrCheck {
+  name: string
+  state: CheckState
+  url?: string
+}
+
+export interface PrComment {
+  author: string
+  body: string
+  createdAt: string
+}
+
+/** The pull request of a worktree's branch. */
+export interface PrStatus {
+  number: number
+  title: string
+  state: 'OPEN' | 'CLOSED' | 'MERGED'
+  url: string
+  updatedAt: string
+  isDraft: boolean
+  /** MERGEABLE, CONFLICTING or UNKNOWN, as GitHub reports it. */
+  mergeable: string
+  checks: PrCheck[]
+  comments: PrComment[]
+}
+
+export type MergeMethod = 'squash' | 'merge' | 'rebase'
+
+export interface MergeOptions {
+  allowed: MergeMethod[]
+  preferred: MergeMethod
+}

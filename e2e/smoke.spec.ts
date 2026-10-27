@@ -235,18 +235,57 @@ test('diff review through to commit', async () => {
     await page.keyboard.type('rename this')
     await page.keyboard.press('Enter')
     await expect(diff.locator('.comment')).toContainText('rename this')
-    await expect(workspace.locator('.tab.active')).toContainText('Diff · 1')
+    await expect(workspace.getByRole('button', { name: 'Source control · 1' })).toHaveClass(
+      /active/
+    )
 
     await chord(app, 'Enter', 'meta')
     await expect(agentRows).toContainText('a.txt:2: rename this')
     await expect(diff.locator('.comment')).toHaveCount(0)
 
     await diff.getByPlaceholder('Commit message').fill('add two')
-    await diff.getByRole('button', { name: 'Commit all' }).click()
+    await diff.getByRole('button', { name: 'Commit', exact: true }).click()
     await expect(diff.locator('.notice')).toHaveText('Committed.')
     await expect(diff.getByText('No changes yet.')).toBeVisible()
     expect(git('log', '-1', '--format=%s')).toBe('add two')
     expect(git('status', '--porcelain')).toBe('')
+  } finally {
+    await app.close()
+  }
+})
+
+test("source control lists the branch's changes and commits", async () => {
+  const repo = gitRepo('troy-scm-')
+  const worktree = `${repo}.feat`
+  const git = (cwd: string, ...args: string[]): Buffer =>
+    execFileSync('git', ['-C', cwd, '-c', 'user.name=t', '-c', 'user.email=t@t', ...args])
+  writeFileSync(join(repo, 'a.txt'), 'one\n')
+  git(repo, 'add', '.')
+  git(repo, 'commit', '-qm', 'init')
+  git(repo, 'worktree', 'add', '-q', '-b', 'feat', worktree)
+  writeFileSync(join(worktree, 'b.txt'), 'bee\n')
+  git(worktree, 'add', '.')
+  git(worktree, 'commit', '-qm', 'add b')
+  writeFileSync(join(worktree, 'a.txt'), 'one\ntwo\n')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(
+    join(userData, 'state.json'),
+    JSON.stringify({
+      repos: [repo],
+      worktrees: { [worktree]: { agent: 'cat', port: 3100, base: 'main' } }
+    })
+  )
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    await page.locator(`.worktree[title="${worktree}"] .card-select`).click()
+    await chord(app, 'G', ['meta', 'shift'])
+    const scm = page.locator('.workspace:visible .pane-diff')
+    await expect(scm.locator('.git-branch')).toContainText('feat')
+    await expect(scm.locator('.change-name')).toHaveText(['a.txt', 'b.txt'])
+    await scm.getByText('Commits').click()
+    await expect(scm.locator('.commit-subject')).toHaveText(['add b'])
   } finally {
     await app.close()
   }
@@ -373,8 +412,8 @@ test('approving a fact an agent proposed over MCP', async () => {
     expect(replies[2]).toContain('out of range')
 
     const workspace = page.locator('.workspace:visible')
-    const tab = workspace.locator('.tab', { hasText: 'Knowledge' })
-    await expect(tab).toContainText('Knowledge · 1', { timeout: 10_000 })
+    const tab = workspace.getByRole('button', { name: 'Knowledge · 1' })
+    await expect(tab).toBeVisible({ timeout: 10_000 })
     await tab.click()
     const pane = workspace.locator('.knowledge-pane')
     await expect(pane.locator('.proposal')).toContainText('ports.txt:1 · ')
@@ -383,7 +422,7 @@ test('approving a fact an agent proposed over MCP', async () => {
     await pane.getByRole('button', { name: 'Approve' }).click()
     await expect(pane.locator('.proposal')).toHaveCount(0)
     await expect(pane.locator('.fact')).toContainText('Ports start at 3100.')
-    await expect(tab).toHaveText('Knowledge')
+    await expect(workspace.getByRole('button', { name: 'Knowledge', exact: true })).toBeVisible()
     expect(readFileSync(join(repo, '.troy', 'knowledge.md'), 'utf8')).toContain(
       '- Ports start at 3100.\n  Source: `ports.txt:1`'
     )

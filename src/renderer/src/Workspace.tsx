@@ -4,18 +4,22 @@ import { HARVEST_PROMPT } from '../../shared/harvest'
 import { isAlive } from '../../shared/status'
 import type { CheckResult, Knowledge, WorktreeView } from '../../shared/types'
 import type { ReviewComment } from './comments'
-import { DiffPane, type DiffFilter } from './DiffPane'
+import { commandName } from '../../shared/shell'
+import type { DiffFilter } from './DiffPane'
 import { DocsPane } from './DocsPane'
+import { GitPane } from './GitPane'
 import { KnowledgePane } from './KnowledgePane'
 import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
+import { PrPane } from './PrPane'
+import { usePr } from './usePr'
 import { Splitter } from './Splitter'
 import { TerminalArea } from './TerminalArea'
 import { agentId, submitToTerminal } from './terminals'
 import { STATUS_LABELS } from './statusLabels'
 import { AgentBadge } from './WorktreeCard'
 
-export type ColumnTab = 'diff' | 'knowledge' | 'docs'
+export type ColumnTab = 'git' | 'pr' | 'docs' | 'knowledge'
 
 /** What a worktree created this session still needs on its first launch. */
 export interface FirstRun {
@@ -80,21 +84,31 @@ export function Workspace({
   onCloseSession
 }: Props): React.JSX.Element {
   const pending = knowledge && 'proposals' in knowledge ? knowledge.proposals.length : 0
+  // Icons only, like Orca's right sidebar; the name and any count are in the label.
   const tabButton = (
     name: ColumnTab,
     icon: IconName,
-    label: string,
-    key?: string
-  ): React.JSX.Element => (
-    <button className={`tab ${tab === name ? 'active' : ''}`} onClick={() => onTab(name)}>
-      <Icon name={icon} size={14} />
-      {label}
-      {key && <kbd>{`${MOD}${key}`}</kbd>}
-    </button>
-  )
+    title: string,
+    { count = 0, key }: { count?: number; key?: string } = {}
+  ): React.JSX.Element => {
+    const label = count ? `${title} · ${count}` : title
+    return (
+      <button
+        className={`tab icon-tab ${tab === name ? 'active' : ''}`}
+        onClick={() => onTab(name)}
+        aria-label={label}
+        title={key ? `${label} (${MOD}${key})` : label}
+      >
+        <Icon name={icon} size={15} />
+        {count > 0 && <span className="tab-count">{count}</span>}
+      </button>
+    )
+  }
   const branch = wt.branch ?? 'detached'
   const state = status ?? 'idle'
   const root = useRef<HTMLDivElement>(null)
+  const sidePanel = active && showColumn
+  const [pr, refreshPr] = usePr(wt.path, sidePanel && (tab === 'git' || tab === 'pr'))
 
   return (
     <div className="workspace" ref={root} style={{ display: active ? 'flex' : 'none' }}>
@@ -154,12 +168,13 @@ export function Workspace({
       )}
       <div className="column" style={{ display: showColumn ? 'flex' : 'none' }}>
         <div className="tabs">
-          {tabButton('diff', 'diff', comments.length ? `Diff · ${comments.length}` : 'Diff', '⇧G')}
+          {tabButton('git', 'branch', 'Source control', { count: comments.length, key: '⇧G' })}
+          {tabButton('pr', 'listChecks', 'Pull request')}
           {tabButton('docs', 'book', 'Docs')}
-          {tabButton('knowledge', 'library', pending ? `Knowledge · ${pending}` : 'Knowledge')}
+          {tabButton('knowledge', 'library', 'Knowledge', { count: pending })}
         </div>
         <div className="pane" style={{ display: tab === 'docs' ? 'block' : 'none' }}>
-          <DocsPane path={wt.path} visible={active && showColumn && tab === 'docs'} />
+          <DocsPane path={wt.path} visible={sidePanel && tab === 'docs'} />
         </div>
         <div className="pane" style={{ display: tab === 'knowledge' ? 'block' : 'none' }}>
           <KnowledgePane
@@ -181,10 +196,16 @@ export function Workspace({
             }}
           />
         </div>
-        <div className="pane pane-diff" style={{ display: tab === 'diff' ? 'flex' : 'none' }}>
-          <DiffPane
+        <div className="pane" style={{ display: tab === 'pr' ? 'block' : 'none' }}>
+          <PrPane path={wt.path} state={pr} onRefresh={refreshPr} />
+        </div>
+        <div className="pane pane-diff" style={{ display: tab === 'git' ? 'flex' : 'none' }}>
+          <GitPane
             path={wt.path}
-            visible={active && showColumn && tab === 'diff'}
+            branch={branch}
+            canSuggest={commandName(wt.agent) === 'claude'}
+            pr={pr.pr}
+            visible={sidePanel && tab === 'git'}
             refreshKey={status ?? 'idle'}
             comments={comments}
             onComments={(c) => onComments(wt.path, c)}
