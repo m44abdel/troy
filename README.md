@@ -1,4 +1,8 @@
-# Troy
+<p align="center">
+  <img src="resources/icon.png" alt="" width="112">
+</p>
+
+<h1 align="center">Troy</h1>
 
 Run coding agents (Claude Code, Codex, Gemini or whatever else is on your PATH) side by side, each in its own git worktree, in a desktop app that leaves your terminal shortcuts alone.
 
