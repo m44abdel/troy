@@ -2,7 +2,7 @@
 
 Run coding agents (Claude Code, Codex, Gemini or whatever else is on your PATH) side by side, each in its own git worktree, in a desktop app that leaves your terminal shortcuts alone.
 
-![Creating a worktree, reviewing the agent's diff and committing it](docs/demo.gif)
+![Creating a worktree, running the tests in a split, sending the agent a review comment and committing](docs/demo.gif)
 
 > Early development, macOS only.
 
@@ -60,7 +60,7 @@ Click a repo's name to fold it; the header still counts agents waiting on you. *
 
 Claude Code reports its own state through hooks that Troy passes with `--settings` (merged with yours; nothing is written to the repo). A long tool run shows as working and a permission prompt shows as waiting the moment Claude asks. Other agents get the output-based guess. After a restart, a worktree with a Claude Code conversation on disk shows **Press Enter to resume claude**, which runs `claude --continue`. Troy notifies you when an agent starts waiting, finishes or fails while you're elsewhere, and the dock icon counts waiting agents; guessed waits don't notify.
 
-<img src="docs/agent-status.png" alt="Sidebar with one agent waiting and one working" width="720">
+<img src="docs/agent-status.png" alt="Sidebar with one agent waiting and two working, beside the Agent sessions panel" width="720">
 
 When two agents are working at the same time on the same files, both cards say so (**2 files shared with feat-b**, hover for the list), and if you're not looking at Troy you get a notification. A worktree whose agent isn't running doesn't count, since its edits can't clash with anything anymore. While two or more agents are live Troy checks every 10 seconds, which is soon enough to stop one of them before the merge gets ugly. Changes count from where each worktree left its base: commits, uncommitted edits and new files. Click a line to open that worktree's diff showing only those files. **Show all** brings the rest back.
 
@@ -84,6 +84,8 @@ The middle of the window holds tabs of terminals, the agent's tab first. **⌘D*
 
 Hidden tabs keep running, so a dev server in one keeps serving while you work in another, and every shell gets the worktree's `PORT_BASE`. Each worktree remembers its tabs and splits; after a restart the shells start fresh in the same layout.
 
+<img src="docs/terminals.png" alt="The agent's tab split into a test run on the right and the branch's log below it, beside the Pull request tab" width="720">
+
 ### Side panel
 
 The panel on the right (**⌘L**) has a strip of icons, like Orca's right sidebar:
@@ -94,9 +96,13 @@ The panel on the right (**⌘L**) has a strip of icons, like Orca's right sideba
 - **Pull request** reads the branch's PR through `gh`: its state, CI checks and comments, with a box to add a comment and a merge button offering the methods the repo allows. Merging always asks first.
 - **Docs** and **Knowledge**, described below.
 
+<img src="docs/files.png" alt="The Files tab with src open, and cart.ts previewed in a middle tab" width="720">
+
 ### Search and Tasks
 
 **Search** (**⌘J**) at the top of the sidebar jumps to any worktree by its title, branch or repo. **Tasks** lists each repo's open GitHub issues and pull requests along with the PRs waiting on your review; **Start** on an issue opens the new-worktree dialog with a branch named after it and the issue as the first prompt.
+
+<img src="docs/tasks.png" alt="Tasks: the repo's open issues with Start buttons, and its open pull requests" width="720">
 
 ### Status bar
 
