@@ -546,6 +546,7 @@ function App(): React.JSX.Element {
       onSelect={() => {
         select(wt.path)
         setShowBoard(false)
+        setShowTasks(false)
       }}
       onClose={() => closeSession(wt.path)}
       onMoveHere={(from) => move(from, wt.path)}
@@ -613,16 +614,6 @@ function App(): React.JSX.Element {
         )}
 
         <main className="workspaces">
-          {showBoard && (
-            <Board items={worktrees} status={(wt) => statuses[wt.path] ?? 'idle'} card={cardFor} />
-          )}
-          {showTasks && (
-            <TasksPage
-              repos={repos.map((r) => r.path)}
-              onStart={startIssue}
-              onClose={() => setShowTasks(false)}
-            />
-          )}
           {repos.length === 0 ? (
             <div className="empty">
               <p>Add a git repository to start.</p>
@@ -683,6 +674,27 @@ function App(): React.JSX.Element {
                   />
                 ))}
             </>
+          )}
+          {/* After the workspaces: a later element wins over the tab strip's window-drag area. */}
+          {sidebarHidden && (
+            <button
+              className="icon-button show-sidebar"
+              onClick={() => setSidebarHidden(false)}
+              title={`Show sidebar (${MOD}B)`}
+              aria-label="Show sidebar"
+            >
+              <Icon name="sidebar" />
+            </button>
+          )}
+          {showBoard && (
+            <Board items={worktrees} status={(wt) => statuses[wt.path] ?? 'idle'} card={cardFor} />
+          )}
+          {showTasks && (
+            <TasksPage
+              repos={repos.map((r) => r.path)}
+              onStart={startIssue}
+              onClose={() => setShowTasks(false)}
+            />
           )}
         </main>
       </div>

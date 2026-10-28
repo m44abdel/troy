@@ -35,7 +35,7 @@ export function TasksPage({ repos, onStart, onClose }: Props): React.JSX.Element
     !needle || title.toLowerCase().includes(needle) || `#${n}` === needle
 
   return (
-    <div className="tasks-page">
+    <div className="tasks-page" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
       <header className="tasks-head">
         <h2>Tasks</h2>
         <input
