@@ -3,7 +3,7 @@ import { execFileSync } from 'child_process'
 import { mkdirSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { grep, insideWorktree, listFiles, parseGrep, readPreview } from './files'
+import { grep, insideWorktree, launches, listFiles, parseGrep, readPreview } from './files'
 
 function repo(): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'troy-files-')))
@@ -76,5 +76,15 @@ describe('grep', () => {
 
   it('keeps NUL-free text whole even when it holds colons', () => {
     expect(parseGrep('a.ts\u00002\u0000x: y\n')).toEqual([{ file: 'a.ts', line: 2, text: 'x: y' }])
+  })
+})
+
+describe('launches', () => {
+  it('tells files that would run when opened from ones that would just open', () => {
+    expect(launches('src/app.ts', 0o644)).toBe(false)
+    expect(launches('logo.png', 0o644)).toBe(false)
+    expect(launches('setup.command', 0o644)).toBe(true)
+    expect(launches('Tool.APP', 0o644)).toBe(true)
+    expect(launches('bin/deploy', 0o755)).toBe(true)
   })
 })

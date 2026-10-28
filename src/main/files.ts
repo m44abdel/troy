@@ -1,6 +1,6 @@
 import { ipcMain, shell } from 'electron'
 import { readFile, realpath, stat } from 'fs/promises'
-import { isAbsolute, join, sep } from 'path'
+import { extname, isAbsolute, join, sep } from 'path'
 import type { FileList, GrepHit, Preview } from '../shared/types'
 import { attempt, locate } from './repos'
 import { git } from './worktrees'
@@ -9,6 +9,28 @@ import { git } from './worktrees'
 const MAX_PREVIEW_BYTES = 2 * 1024 * 1024
 const MAX_HITS = 500
 const GREP_TIMEOUT_MS = 15_000
+
+// Opening these runs them (or installs, or follows a link) instead of showing them.
+const LAUNCHERS = new Set([
+  '.app',
+  '.command',
+  '.tool',
+  '.terminal',
+  '.workflow',
+  '.scpt',
+  '.applescript',
+  '.pkg',
+  '.mpkg',
+  '.dmg',
+  '.jar',
+  '.webloc',
+  '.inetloc',
+  '.fileloc'
+])
+
+/** Whether the OS would run `file` when asked to open it, from its name and permission bits. */
+export const launches = (file: string, mode: number): boolean =>
+  (mode & 0o111) !== 0 || LAUNCHERS.has(extname(file).toLowerCase())
 
 const nulSplit = (out: string): string[] => out.split('\0').filter(Boolean)
 
@@ -68,9 +90,16 @@ export function registerFiles(): void {
   ipcMain.handle('files:grep', (_e, path, query) =>
     attempt(async () => ({ hits: await grep((await locate(path)).path, String(query ?? '')) }))
   )
+  // A repo can hold scripts and apps; those are shown in Finder rather than run.
   ipcMain.handle('files:open', (_e, path, rel) =>
     attempt(async () => {
-      const failed = await shell.openPath(await insideWorktree((await locate(path)).path, rel))
+      const file = await insideWorktree((await locate(path)).path, rel)
+      const info = await stat(file)
+      if (!info.isFile() || launches(file, info.mode)) {
+        shell.showItemInFolder(file)
+        return {}
+      }
+      const failed = await shell.openPath(file)
       if (failed) throw new Error(failed)
       return {}
     })

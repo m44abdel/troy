@@ -131,6 +131,8 @@ function isTab(v: unknown): v is Tab {
     typeof tab.title === 'string' &&
     typeof tab.focus === 'string' &&
     isPaneNode(tab.root) &&
+    leaves(tab.root).includes(tab.focus as string) &&
+    (tab.zoomed === undefined || leaves(tab.root).includes(tab.zoomed as string)) &&
     (tab.preview === undefined || typeof (tab.preview as Tab['preview'])?.file === 'string')
   )
 }

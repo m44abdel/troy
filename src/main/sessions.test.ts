@@ -130,4 +130,20 @@ describe('scanSessions', () => {
     ])
     expect(sessions[1]).toMatchObject({ agent: 'claude', cwd: '/work/shop', updatedAt: 1_000_000 })
   })
+
+  it('starts over when the cache file is cut short', async () => {
+    const home = realpathSync(mkdtempSync(join(tmpdir(), 'troy-sessions-')))
+    const project = join(home, 'claude', 'projects', '-work-shop')
+    mkdirSync(project, { recursive: true })
+    writeFileSync(join(project, 'a-1.jsonl'), jsonl(user('Task')))
+    writeFileSync(join(home, 'cache.json'), '{"half":')
+
+    const { sessions } = await scanSessions({
+      claudeHome: join(home, 'claude'),
+      codexHome: join(home, 'codex'),
+      cacheFile: join(home, 'cache.json')
+    })
+
+    expect(sessions.map((s) => s.id)).toEqual(['a-1'])
+  })
 })
