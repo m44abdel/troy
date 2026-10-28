@@ -188,8 +188,14 @@ async function logFiles({
 
 type Cache = Record<string, { key: string; summary: SessionSummary | null }>
 
-const loadCache = async (file: string): Promise<Cache> =>
-  JSON.parse(await readFile(file, 'utf8').catch(() => '{}'))
+// A missing or half-written cache (Troy quit mid-write) just means reading every log again.
+async function loadCache(file: string): Promise<Cache> {
+  try {
+    return JSON.parse(await readFile(file, 'utf8'))
+  } catch {
+    return {}
+  }
+}
 
 /** Every session in the agents' logs. Only logs that changed since the last scan are read. */
 export async function scanSessions(

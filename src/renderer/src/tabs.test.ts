@@ -132,5 +132,8 @@ describe('isTabs', () => {
     expect(isTabs({ list: [], active: AGENT_TAB })).toBe(false)
     expect(isTabs({ list: [{ id: 'x' }], active: 'x' })).toBe(false)
     expect(isTabs({ list: threeTabs().list, active: 'gone' })).toBe(false)
+    const [agentTab] = threeTabs().list
+    expect(isTabs({ list: [{ ...agentTab, focus: 'gone' }], active: AGENT_TAB })).toBe(false)
+    expect(isTabs({ list: [{ ...agentTab, zoomed: 'gone' }], active: AGENT_TAB })).toBe(false)
   })
 })
