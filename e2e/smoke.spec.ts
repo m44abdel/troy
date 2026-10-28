@@ -1492,6 +1492,10 @@ test('Cmd-B hides the sidebar and it stays hidden', async () => {
     const page = await app.firstWindow()
     await expect(page.locator('.workspace:visible')).toBeVisible()
     await expect(page.locator('.sidebar')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Show sidebar' }).click()
+    await expect(page.locator('.sidebar')).toBeVisible()
+    await chord(app, 'B', 'meta')
+    await expect(page.locator('.sidebar')).toHaveCount(0)
     await chord(app, 'B', 'meta')
     await expect(page.locator('.sidebar')).toBeVisible()
   } finally {
@@ -1557,6 +1561,8 @@ test('status bar counts terminals and finds a dev server port', async () => {
     await bar.getByRole('button', { name: 'Keep awake: Off' }).click()
     await expect(bar.getByRole('button', { name: 'Keep awake: Auto' })).toBeVisible()
 
+    // The status bar can be up before the worktree's terminals are listening for Cmd-T.
+    await expect(page.locator('.workspace:visible .pane-agent')).toBeVisible()
     await chord(app, 'T', 'meta')
     await expect(
       page.locator('.workspace:visible .pane-shell:visible .xterm-helper-textarea')

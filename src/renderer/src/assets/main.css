@@ -1419,9 +1419,37 @@ html[data-platform='mac'] .sidebar-footer {
   border: 1px solid var(--border-strong);
 }
 
-/* With the sidebar hidden, the middle tabs make room for the macOS traffic lights. */
+/* With the sidebar hidden, a button brings it back from the top-left corner, beside the macOS
+   traffic lights; the middle tabs, Tasks and the Board make room for both. */
+.show-sidebar {
+  position: absolute;
+  top: 17px;
+  left: 16px;
+  z-index: 6;
+}
+
+html[data-platform='mac'] .show-sidebar {
+  left: 84px;
+}
+
+.app.sidebar-hidden .terminal-area .tab-strip {
+  padding-left: 40px;
+}
+
 html[data-platform='mac'] .app.sidebar-hidden .terminal-area .tab-strip {
-  padding-left: 80px;
+  padding-left: 112px;
+}
+
+.app.sidebar-hidden .tasks-page,
+.app.sidebar-hidden .board {
+  padding-top: 56px;
+}
+
+/* Tasks and the Board cover the tab strip, whose window-drag area would otherwise take their
+   clicks; they come after it in the page, so this wins. */
+.tasks-page,
+.board {
+  -webkit-app-region: no-drag;
 }
 
 /* Cmd-J worktree switcher */
