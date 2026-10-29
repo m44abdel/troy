@@ -976,11 +976,13 @@ html[data-platform='mac'] .sidebar-footer {
 }
 
 .terminal-area {
-  flex: var(--agent-share, 55);
+  flex: 1;
 }
 
-.column {
-  flex: calc(100 - var(--agent-share, 55));
+/* A fixed width like Orca's right sidebar, though never so wide the agent gets under 320px. */
+.workspace > .column {
+  flex: 0 0 var(--column-width, 350px);
+  max-width: calc(100% - 320px);
 }
 
 /* Sits in the gap between two panes; the visible line appears on hover or focus. */
@@ -1595,6 +1597,10 @@ html[data-platform='mac'] .app.sidebar-hidden .terminal-area .tab-strip {
 .icon-tab {
   position: relative;
   padding: 7px 9px;
+}
+
+.tabs-hide {
+  margin-left: auto;
 }
 
 .tab-count {
@@ -3006,6 +3012,16 @@ html[data-platform='mac'] .app.sidebar-hidden .terminal-area .tab-strip {
 .review > .workspace {
   flex: 1;
   min-height: 0;
+}
+
+/* A review splits by share: the diff matters as much as the agent there. */
+.review .terminal-area {
+  flex: var(--agent-share, 45);
+}
+
+.review .workspace > .column {
+  flex: calc(100 - var(--agent-share, 45));
+  max-width: none;
 }
 
 .review-submit {
