@@ -21,6 +21,7 @@ import type { DiffFilter } from './DiffPane'
 import { NewWorktree, type NewWorktreeRequest } from './NewWorktree'
 import { clamp } from './clamp'
 import { Icon } from './icons'
+import { COLUMN } from './layout'
 import { MOD } from './platform'
 import { Settings } from './Settings'
 import { STATUS_LABELS } from './statusLabels'
@@ -55,7 +56,6 @@ const PR_ICON_POLL_MS = 2 * 60_000
 const SESSION_POLL_MS = 30_000
 
 const SIDEBAR = { initial: 272, min: 200, max: 480 }
-const AGENT_SHARE = { initial: 55, min: 20, max: 80 }
 
 const omit = <T,>(record: Record<string, T>, key: string): Record<string, T> => {
   const next = { ...record }
@@ -72,8 +72,7 @@ function App(): React.JSX.Element {
   const [closed, setClosed] = useStored('troy.closedSessions', [], isStringList)
   const [folded, setFolded] = useStored('troy.foldedRepos', [], isStringList)
   const [sidebarWidth, setSidebarWidth] = useStored('troy.sidebarWidth', SIDEBAR.initial, isNumber)
-  // Agent pane width, in percent.
-  const [agentShare, setAgentShare] = useStored('troy.agentShare', AGENT_SHARE.initial, isNumber)
+  const [columnWidth, setColumnWidth] = useStored('troy.columnWidth', COLUMN.initial, isNumber)
   const [order, setOrder] = useStored('troy.worktreeOrder', [], isStringList)
   // Repos with their closed list expanded.
   const [showClosed, setShowClosed] = useState<string[]>([])
@@ -110,6 +109,7 @@ function App(): React.JSX.Element {
   const currentPath = useRef<string | undefined>(undefined)
   // Vim navigation sets this to keep focus in the sidebar.
   const keepSidebarFocus = useRef(false)
+  const app = useRef<HTMLDivElement>(null)
 
   const sorted = useMemo(
     () => repos.map((r) => ({ ...r, worktrees: applyOrder(r.worktrees, order, (w) => w.path) })),
@@ -558,13 +558,21 @@ function App(): React.JSX.Element {
     />
   )
 
+  // A drag writes the size straight to the CSS variable; the state, and the re-render of
+  // everything under App, waits for the release.
+  const resize = (name: string, size: number, done: boolean, set: (size: number) => void): void => {
+    if (done) set(size)
+    else app.current?.style.setProperty(name, `${size}px`)
+  }
+
   return (
     <div
+      ref={app}
       className={sidebarHidden ? 'app sidebar-hidden' : 'app'}
       style={
         {
           '--sidebar-width': `${clamp(sidebarWidth, SIDEBAR)}px`,
-          '--agent-share': clamp(agentShare, AGENT_SHARE)
+          '--column-width': `${clamp(columnWidth, COLUMN)}px`
         } as React.CSSProperties
       }
     >
@@ -608,7 +616,9 @@ function App(): React.JSX.Element {
             min={SIDEBAR.min}
             max={SIDEBAR.max}
             // The sidebar starts at the window's left edge, so the pointer's x is its width.
-            onMove={(x) => setSidebarWidth(clamp(x, SIDEBAR))}
+            onMove={(x, done) =>
+              resize('--sidebar-width', clamp(x, SIDEBAR), done, setSidebarWidth)
+            }
             onReset={() => setSidebarWidth(SIDEBAR.initial)}
           />
         )}
@@ -660,9 +670,11 @@ function App(): React.JSX.Element {
                     check={checks[wt.path]}
                     onRunCheck={runCheck}
                     onSendCheck={sendCheck}
-                    agentShare={clamp(agentShare, AGENT_SHARE)}
-                    onAgentShare={(share) => setAgentShare(clamp(share, AGENT_SHARE))}
-                    onResetAgentShare={() => setAgentShare(AGENT_SHARE.initial)}
+                    columnWidth={clamp(columnWidth, COLUMN)}
+                    onColumnWidth={(width, done) =>
+                      resize('--column-width', clamp(width, COLUMN), done, setColumnWidth)
+                    }
+                    onResetColumnWidth={() => setColumnWidth(COLUMN.initial)}
                     diffFilter={diffFilters[wt.path]}
                     onClearDiffFilter={() => setDiffFilters((f) => omit(f, wt.path))}
                     knowledge={knowledge[repos.find((r) => r.worktrees.includes(wt))?.path ?? '']}

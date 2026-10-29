@@ -1051,6 +1051,12 @@ test('pane sizes stick', async () => {
     await drag(page, 'Resize sidebar', 360)
     await expect.poll(() => width(page, '.sidebar')).toBe(360)
 
+    await expect.poll(() => width(page, '.workspace:visible .column')).toBe(350)
+    await page.getByRole('button', { name: 'Hide side panel' }).click()
+    await expect(page.locator('.workspace:visible .column')).toBeHidden()
+    await page.getByRole('button', { name: 'Toggle side panel' }).click()
+    await expect(page.locator('.workspace:visible .column')).toBeVisible()
+
     agentBefore = await width(page, '.workspace:visible .terminal-area')
     const column = (await page.locator('.workspace:visible .column').boundingBox())!
     await drag(page, 'Resize agent and side panel', column.x + column.width / 2)
@@ -1070,6 +1076,8 @@ test('pane sizes stick', async () => {
       .toBeGreaterThan(agentBefore)
     await page.getByRole('separator', { name: 'Resize sidebar' }).dblclick()
     await expect.poll(() => width(page, '.sidebar')).toBe(272)
+    await page.getByRole('separator', { name: 'Resize agent and side panel' }).dblclick()
+    await expect.poll(() => width(page, '.workspace:visible .column')).toBe(350)
   } finally {
     await app.close()
   }
