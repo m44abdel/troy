@@ -12,11 +12,12 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   writeFileSync
 } from 'fs'
-import { tmpdir } from 'os'
+import { homedir, tmpdir } from 'os'
 import { join } from 'path'
 
 function tempDir(prefix: string): string {
@@ -90,12 +91,77 @@ test('no repos yet', async () => {
   }
 })
 
+test('floating window: a shell in the home folder and a note on disk', async () => {
+  const repo = gitRepo('troy-float-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+  const notes = (): string[] => {
+    const dir = join(userData, 'notes')
+    return existsSync(dir) ? readdirSync(dir).map((f) => readFileSync(join(dir, f), 'utf8')) : []
+  }
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.workspace:visible')).toBeVisible()
+    const floating = page.locator('.floating')
+    await page.getByRole('button', { name: 'Floating window' }).click()
+    await floating.getByRole('button', { name: /New Terminal/ }).click()
+
+    await floating.locator('.xterm').click()
+    await page.keyboard.type('echo "cwd=$PWD"')
+    await page.keyboard.press('Enter')
+    await expect(floating.locator('.xterm-rows')).toContainText(`cwd=${homedir()}`, {
+      timeout: 15_000
+    })
+
+    // The floating window keeps the keyboard: Cmd-T opens its tab, and typing lands there.
+    const worktreeTabs = page.locator('.workspace:visible .term-tab')
+    await chord(app, 'T', 'meta')
+    await expect(floating.locator('.term-tab')).toHaveCount(2)
+    await expect(worktreeTabs).toHaveCount(1)
+    await page.keyboard.type('echo second-tab')
+    await page.keyboard.press('Enter')
+    await expect(floating.locator('.floating-slot:visible .xterm-rows')).toContainText('second-tab')
+
+    // A click behind it hands the keyboard back, and a click in it takes it again.
+    // Its top-left corner, which the floating window leaves uncovered.
+    await page
+      .locator('.workspace:visible .pane-agent .xterm')
+      .click({ position: { x: 20, y: 10 } })
+    await chord(app, 'T', 'meta')
+    await expect(worktreeTabs).toHaveCount(2)
+    await expect(floating.locator('.term-tab')).toHaveCount(2)
+    await floating.locator('.floating-slot:visible .xterm').click()
+    await chord(app, 'T', 'meta')
+    await expect(floating.locator('.term-tab')).toHaveCount(3)
+    await expect(worktreeTabs).toHaveCount(2)
+
+    await chord(app, 'W', 'meta')
+    await chord(app, 'W', 'meta')
+    await chord(app, 'W', 'meta')
+    await expect(floating.getByRole('button', { name: /New Terminal/ })).toBeVisible()
+    // None of the Cmd-Ws reached the worktree's tabs.
+    await expect(worktreeTabs).toHaveCount(2)
+
+    await chord(app, 'M', ['meta', 'shift'])
+    await expect(floating.locator('.note-editor')).toBeFocused()
+    await page.keyboard.type('# Scratch\nacross repos')
+    await expect.poll(notes).toEqual(['# Scratch\nacross repos'])
+
+    await chord(app, 'A', ['meta', 'alt'])
+    await expect(floating).toBeHidden()
+  } finally {
+    await app.close()
+  }
+})
+
 // Playwright's keyboard bypasses before-input-event, so chords go through
 // sendInputEvent, which takes the same path as a real keypress.
 function chord(
   app: ElectronApplication,
   keyCode: string,
-  modifier: 'meta' | 'control' | Array<'meta' | 'control' | 'shift'>
+  modifier: 'meta' | 'control' | Array<'meta' | 'control' | 'shift' | 'alt'>
 ): Promise<void> {
   return app.evaluate(
     ({ BrowserWindow }, [k, m]) => {
@@ -1052,9 +1118,11 @@ test('pane sizes stick', async () => {
     await expect.poll(() => width(page, '.sidebar')).toBe(360)
 
     await expect.poll(() => width(page, '.workspace:visible .column')).toBe(350)
+    // One button at a time: the panel's own hides it, and only then does a show button appear.
+    await expect(page.getByRole('button', { name: 'Show side panel' })).toHaveCount(0)
     await page.getByRole('button', { name: 'Hide side panel' }).click()
     await expect(page.locator('.workspace:visible .column')).toBeHidden()
-    await page.getByRole('button', { name: 'Toggle side panel' }).click()
+    await page.getByRole('button', { name: 'Show side panel' }).click()
     await expect(page.locator('.workspace:visible .column')).toBeVisible()
 
     agentBefore = await width(page, '.workspace:visible .terminal-area')

@@ -11,6 +11,10 @@ import { terminals } from './terminals'
 // that off every frame, so the terminal refits once the size holds still this long.
 const FIT_DELAY_MS = 100
 
+// A terminal remade under the same id while it had the cursor, e.g. by React's StrictMode,
+// which mounts every new component twice in development. The new one takes the cursor back.
+let refocus: string | null = null
+
 // The background matches --surface in main.css.
 const THEME = {
   background: '#0f0f0f',
@@ -95,9 +99,14 @@ export function Terminal({
     // which shifts their cursor moves and scrambles the screen as they redraw.
     xterm.loadAddon(new Unicode11Addon())
     xterm.unicode.activeVersion = '11'
-    xterm.open(host.current!)
+    const el = host.current!
+    xterm.open(el)
     fitAddon.fit()
     terminals.set(id, xterm)
+    if (refocus === id) {
+      refocus = null
+      xterm.focus()
+    }
 
     const env = port ? { PORT_BASE: String(port) } : undefined
     const tracker = command ? trackStatus(reportStatus) : null
@@ -181,6 +190,8 @@ export function Terminal({
       unsubscribe.forEach((fn) => fn())
       if (ptyId) window.api.ptyKill(ptyId)
       terminals.delete(id)
+      // A pane that closed is gone from the page by now, so this only catches a remake.
+      if (el.contains(document.activeElement)) refocus = id
       xterm.dispose()
     }
   }, [id, cwd, port, command, prompt, args, initialInput, autoStart])

@@ -7,6 +7,7 @@ import { registerPty } from './pty'
 import { discardReview, prNumber, registerRepos } from './repos'
 import { registerAutomations } from './automations'
 import { registerFiles } from './files'
+import { registerNotes } from './notes'
 import { registerGithub } from './github'
 import { registerSessions } from './sessions'
 import { registerStats } from './stats'
@@ -119,6 +120,7 @@ app.whenReady().then(async () => {
   registerRepos()
   registerGithub()
   registerFiles()
+  registerNotes()
   registerSessions()
   registerStats()
   registerUsage()

@@ -10,7 +10,8 @@ import type {
   WorktreeView
 } from '../../shared/types'
 import { ContextRing } from './ContextRing'
-import { Icon, type IconName } from './icons'
+import { agentLogo } from './agentLogos'
+import { FilledIcon, Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { STATUS_LABELS } from './statusLabels'
 import { timeAgo } from './timeAgo'
@@ -19,11 +20,19 @@ import { timeAgo } from './timeAgo'
 const agentHue = (agent: string): number =>
   [...agent].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7)
 
+/** The agent's mark where Troy has one (Claude, Codex), its command name otherwise. */
 export function AgentBadge({ agent }: { agent: string }): React.JSX.Element {
   const name = commandName(agent)
+  const logo = agentLogo(name)
   return (
-    <span className="agent-badge" style={{ '--hue': agentHue(name) } as React.CSSProperties}>
-      {name}
+    <span
+      className={logo ? 'agent-badge agent-logo' : 'agent-badge'}
+      style={{ '--hue': agentHue(name) } as React.CSSProperties}
+      title={logo ? name : undefined}
+      role={logo ? 'img' : undefined}
+      aria-label={logo ? name : undefined}
+    >
+      {logo ? <FilledIcon path={logo} /> : name}
     </span>
   )
 }

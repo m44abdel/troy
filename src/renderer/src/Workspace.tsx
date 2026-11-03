@@ -151,15 +151,17 @@ export function Workspace({
               </span>
             )}
             <AgentBadge agent={wt.agent} />
-            <button
-              className={`icon-button ${showColumn ? 'on' : ''}`}
-              onClick={onToggleColumn}
-              title={`Toggle side panel (${MOD}L)`}
-              aria-label="Toggle side panel"
-              aria-pressed={showColumn}
-            >
-              <Icon name="panel" />
-            </button>
+            {/* The panel's own strip hides it; this brings it back. */}
+            {!showColumn && (
+              <button
+                className="icon-button"
+                onClick={onToggleColumn}
+                title={`Show side panel (${MOD}L)`}
+                aria-label="Show side panel"
+              >
+                <Icon name="panel" />
+              </button>
+            )}
           </>
         }
       />

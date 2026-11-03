@@ -1,8 +1,25 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { chmodSync, mkdtempSync, writeFileSync } from 'fs'
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { delimiter, join } from 'path'
-import { installedAgents } from './settings'
+import { DEFAULT_BINDINGS } from '../shared/keys'
+import { installedAgents, loadBindings } from './settings'
+
+describe('loadBindings', () => {
+  it('creates an empty file, so later changes to the defaults still reach you', async () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'troy-keys-')), 'keybindings.json')
+    expect(await loadBindings(path)).toEqual(DEFAULT_BINDINGS)
+    expect(readFileSync(path, 'utf8')).toBe('{}\n')
+  })
+
+  it('lays the file over the defaults', async () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'troy-keys-')), 'keybindings.json')
+    writeFileSync(path, JSON.stringify({ KeyK: 'newWorktree' }))
+    const bindings = await loadBindings(path)
+    expect(bindings.KeyK).toBe('newWorktree')
+    expect(bindings.KeyW).toBe('closePane')
+  })
+})
 
 describe('installedAgents', () => {
   const originalPath = process.env.PATH
