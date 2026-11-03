@@ -198,7 +198,7 @@ Shortcuts live in `keybindings.json` in Troy's app data folder (**Settings → O
 
 ## Releasing
 
-Bump `version` in `package.json`, then push a `v<version>` tag. GitHub Actions builds the arm64 and x64 DMG and zip and attaches them to a draft release; publish the draft for `install.sh` to pick it up. Then bump `version` and the two `sha256` values (`shasum -a 256` of each zip) in `packaging/troy.rb` and copy it to the `m44abdel/homebrew-tap` repo as `Casks/troy.rb`.
+Bump `version` in `package.json`, then push a `v<version>` tag. GitHub Actions builds the arm64 and x64 DMG and zip and attaches them to a draft release; publish the draft for `install.sh` to pick it up. Publishing also runs the Cask workflow, which fills the version and both zips' checksums into `packaging/troy.rb` and pushes it to the `m44abdel/homebrew-tap` repo as `Casks/troy.rb`, so `brew upgrade` finds the release. It needs a `TAP_TOKEN` secret in this repo: a fine-grained token with read and write access to the contents of `homebrew-tap` only. If the workflow fails (say the secret was missing), re-run it from the Actions tab.
 
 ## Development
 

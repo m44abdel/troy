@@ -1,0 +1,49 @@
+name: Cask
+
+# Publishing a release writes its Homebrew cask into m44abdel/homebrew-tap, so `brew upgrade`
+# finds it. Drafts don't count: their files can't be downloaded without a token. A release
+# published from another workflow's GITHUB_TOKEN doesn't start this one, so publish it by
+# hand or with gh.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  cask:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      # The template from the default branch, so a fix to it applies to the next release.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Fill in the cask
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${TAG#v}"
+          gh release download "$TAG" --pattern "Troy-$version-mac-*.zip" --dir zips
+          scripts/cask.sh "$version" "zips/Troy-$version-mac-arm64.zip" "zips/Troy-$version-mac-x64.zip" > troy.rb
+      # TAP_TOKEN: a fine-grained token with Contents read and write on homebrew-tap only.
+      - uses: actions/checkout@v4
+        with:
+          repository: m44abdel/homebrew-tap
+          token: ${{ secrets.TAP_TOKEN }}
+          path: tap
+      - name: Push it to the tap
+        run: |
+          cp troy.rb tap/Casks/troy.rb
+          cd tap
+          if git diff --quiet; then
+            echo "The tap already has this cask."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -qam "troy ${TAG#v}"
+          git push
