@@ -3,9 +3,9 @@
 cask "troy" do
   arch arm: "arm64", intel: "x64"
 
-  version "1.0.0"
-  sha256 arm:   "85ab5bfa7a7a8b162b432de463b9198f14f2a38bfe35cc6beaa376773a4959c1",
-         intel: "d457abab5468ee4187691f13b12b55285c9a485daa598397ce6ead2e92b54877"
+  version "1.0.1"
+  sha256 arm:   "058c8dd852a0f413d75520a6ca3b184bc0fe353313bde4fb242c1810641eac51",
+         intel: "0deaaf34ba7bc7959a7ccb6a83ed4fafba09265987b93204824425c3c1939645"
 
   url "https://github.com/m44abdel/troy/releases/download/v#{version}/Troy-#{version}-mac-#{arch}.zip"
   name "Troy"
