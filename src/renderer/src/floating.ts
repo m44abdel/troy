@@ -36,8 +36,15 @@ export interface Anchored extends Point {
   bottom: boolean
 }
 
-/** Whether keyboard focus is inside the floating window, which then owns the tab shortcuts. */
-export const focusInFloating = (): boolean => !!document.activeElement?.closest('.floating')
+// The floating window has the keyboard from when it opens, or is clicked, until it closes or
+// a click lands behind it. While it does, the tab and pane shortcuts are its own.
+let hasKeys = false
+
+export const floatingHasKeys = (): boolean => hasKeys
+
+export const giveFloatingKeys = (yes: boolean): void => {
+  hasKeys = yes
+}
 
 export const activeFloatTab = (tabs: FloatTabs): FloatTab | undefined =>
   tabs.list.find((t) => t.id === tabs.active)

@@ -208,12 +208,14 @@ export function FloatingWindow({ onHidden }: { onHidden: () => void }): React.JS
   if (open && !mounted) setMounted(true)
 
   const hide = (): void => {
+    F.giveFloatingKeys(false)
     setOpen(false)
     onHidden()
   }
   // Each way in clears the last error, which is about whatever was tried before, and leaves
   // the notes list, so closing what it opens goes back to the menu.
   const show = (): void => {
+    F.giveFloatingKeys(true)
     setOpen(true)
     setError(null)
     setPicking(false)
@@ -251,7 +253,7 @@ export function FloatingWindow({ onHidden }: { onHidden: () => void }): React.JS
     if (action === 'toggleFloating') return open ? hide() : show()
     if (action === 'newNote') return void newNote()
     if (action === 'openNote') return pickNote()
-    if (!open || !F.focusInFloating()) return
+    if (!open || !F.floatingHasKeys()) return
     if (action === 'newTab') return newTerminal()
     // The tab active now, which a key pressed just before may have changed since the render.
     if (action === 'closePane' || action === 'closeTab')
@@ -278,6 +280,37 @@ export function FloatingWindow({ onHidden }: { onHidden: () => void }): React.JS
     lastFocus.current = focusKey
     if (open && active?.kind === 'terminal') focusTerminal(active.id)
   })
+
+  // Puts the cursor back in the tab that shows: its terminal, its note's editor, or else the
+  // window itself (the menu, a note still loading).
+  const refocus = useEffectEvent((): void => {
+    if (active?.kind === 'terminal') return focusTerminal(active.id)
+    const slot = active && win.current?.querySelector(`[data-tab="${CSS.escape(active.id)}"]`)
+    const editor = slot?.querySelector<HTMLElement>('textarea')
+    ;(editor ?? win.current)?.focus()
+  })
+
+  // Open at launch, it has the keyboard as it did before. A click behind it takes the keyboard
+  // back there; anything else that moves the cursor behind it (Cmd-1 switching worktrees, a
+  // worktree focusing its agent as it loads) is undone. Dialogs are left alone.
+  useEffect(() => {
+    if (!open) return
+    F.giveFloatingKeys(true)
+    const onPointerDown = (e: PointerEvent): void => {
+      const target = e.target as Element
+      if (target.closest('.floating')) F.giveFloatingKeys(true)
+      else if (!target.closest('.floating-toggle, dialog')) F.giveFloatingKeys(false)
+    }
+    const onFocusIn = (e: FocusEvent): void => {
+      if (F.floatingHasKeys() && (e.target as Element).closest('.app-body')) refocus()
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    document.addEventListener('focusin', onFocusIn)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true)
+      document.removeEventListener('focusin', onFocusIn)
+    }
+  }, [open])
 
   // Only a resize from the corner is saved, not the squeeze from a smaller app window.
   useEffect(() => {
@@ -409,6 +442,7 @@ export function FloatingWindow({ onHidden }: { onHidden: () => void }): React.JS
             {tabs.list.map((tab) => (
               <div
                 key={tab.id}
+                data-tab={tab.id}
                 className="floating-slot"
                 style={{ display: tab.id === tabs.active ? '' : 'none' }}
               >

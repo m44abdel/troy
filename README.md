@@ -112,7 +112,7 @@ The panel on the right (**⌘L**, or the button at the end of its icon strip, hi
 
 The round button in the bottom-right corner (**⌘⌥A** on macOS) opens a window that floats above everything else, like Orca's floating workspace, for work that isn't tied to one worktree. Its terminals start in your home folder, so an agent there can work across repos. Its Markdown notes are a scratchpad: plain `.md` files in a `notes` folder in Troy's app data, saved as you type, which an agent can read too. **Open Markdown Note** lists them, newest first, and opens the folder in Finder for renaming or deleting.
 
-Drag the button anywhere; it keeps to its corner as the window resizes. Drag the window by the empty part of its tab strip, resize it from its bottom-right corner, and maximize it with the button or a double-click on the strip. With the floating window focused, **⌘T** opens a terminal in it and **⌘W** closes its tab (or hides it once none are left), leaving the worktree behind it alone. Hiding it keeps its shells running, and its place, size and tabs come back after a restart.
+Drag the button anywhere; it keeps to its corner as the window resizes. Drag the window by the empty part of its tab strip, resize it from its bottom-right corner, and maximize it with the button or a double-click on the strip. While it's open it keeps the keyboard, until you click behind it or close it: **⌘T** opens a terminal in it, **⌘W** closes its tab (or hides it once none are left), and switching worktrees with ⌘1–9 leaves the cursor where it is. Hiding it keeps its shells running, and its place, size and tabs come back after a restart.
 
 ### Status bar
 

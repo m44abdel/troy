@@ -115,14 +115,34 @@ test('floating window: a shell in the home folder and a note on disk', async () 
       timeout: 15_000
     })
 
-    // With the floating window focused, Cmd-T and Cmd-W work its tabs, not the worktree's.
+    // The floating window keeps the keyboard: Cmd-T opens its tab, and typing lands there.
+    const worktreeTabs = page.locator('.workspace:visible .term-tab')
     await chord(app, 'T', 'meta')
     await expect(floating.locator('.term-tab')).toHaveCount(2)
-    await expect(page.locator('.workspace:visible .term-tab')).toHaveCount(1)
+    await expect(worktreeTabs).toHaveCount(1)
+    await page.keyboard.type('echo second-tab')
+    await page.keyboard.press('Enter')
+    await expect(floating.locator('.floating-slot:visible .xterm-rows')).toContainText('second-tab')
+
+    // A click behind it hands the keyboard back, and a click in it takes it again.
+    // Its top-left corner, which the floating window leaves uncovered.
+    await page
+      .locator('.workspace:visible .pane-agent .xterm')
+      .click({ position: { x: 20, y: 10 } })
+    await chord(app, 'T', 'meta')
+    await expect(worktreeTabs).toHaveCount(2)
+    await expect(floating.locator('.term-tab')).toHaveCount(2)
+    await floating.locator('.floating-slot:visible .xterm').click()
+    await chord(app, 'T', 'meta')
+    await expect(floating.locator('.term-tab')).toHaveCount(3)
+    await expect(worktreeTabs).toHaveCount(2)
+
+    await chord(app, 'W', 'meta')
     await chord(app, 'W', 'meta')
     await chord(app, 'W', 'meta')
     await expect(floating.getByRole('button', { name: /New Terminal/ })).toBeVisible()
-    await expect(page.locator('.workspace:visible .pane-agent')).toBeVisible()
+    // None of the Cmd-Ws reached the worktree's tabs.
+    await expect(worktreeTabs).toHaveCount(2)
 
     await chord(app, 'M', ['meta', 'shift'])
     await expect(floating.locator('.note-editor')).toBeFocused()
