@@ -1118,9 +1118,11 @@ test('pane sizes stick', async () => {
     await expect.poll(() => width(page, '.sidebar')).toBe(360)
 
     await expect.poll(() => width(page, '.workspace:visible .column')).toBe(350)
+    // One button at a time: the panel's own hides it, and only then does a show button appear.
+    await expect(page.getByRole('button', { name: 'Show side panel' })).toHaveCount(0)
     await page.getByRole('button', { name: 'Hide side panel' }).click()
     await expect(page.locator('.workspace:visible .column')).toBeHidden()
-    await page.getByRole('button', { name: 'Toggle side panel' }).click()
+    await page.getByRole('button', { name: 'Show side panel' }).click()
     await expect(page.locator('.workspace:visible .column')).toBeVisible()
 
     agentBefore = await width(page, '.workspace:visible .terminal-area')
