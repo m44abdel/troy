@@ -80,6 +80,29 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }): Re
   )
 }
 
+/** A filled 24×24 mark, such as an agent's logo, in the current text colour. */
+export function FilledIcon({
+  path,
+  size = 12
+}: {
+  path: string
+  size?: number
+}): React.JSX.Element {
+  return (
+    <svg
+      className="icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      fillRule="evenodd"
+      aria-hidden="true"
+    >
+      <path d={path} />
+    </svg>
+  )
+}
+
 /** Troy's mark: a T whose stem forks into a second branch, one worktree per task. */
 export function Logo({ size = 28 }: { size?: number }): React.JSX.Element {
   return (

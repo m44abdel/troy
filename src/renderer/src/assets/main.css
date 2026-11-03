@@ -811,6 +811,12 @@ html[data-platform='mac'] .sidebar-footer {
   border: 1px solid hsl(var(--hue) 10% 60% / 24%);
 }
 
+.agent-badge.agent-logo {
+  display: inline-grid;
+  place-items: center;
+  padding: 3px 6px;
+}
+
 .dot {
   position: relative;
   width: 8px;
