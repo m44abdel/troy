@@ -7,6 +7,10 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { trackStatus, type StatusListener } from '../../shared/status'
 import { terminals } from './terminals'
 
+// Each refit resizes the pty, and the agent's TUI redraws its whole screen; a drag would set
+// that off every frame, so the terminal refits once the size holds still this long.
+const FIT_DELAY_MS = 100
+
 // The background matches --surface in main.css.
 const THEME = {
   background: '#0f0f0f',
@@ -157,13 +161,18 @@ export function Terminal({
       window.api.ptyResize(ptyId, cols, rows)
     })
 
+    let fitTimer: ReturnType<typeof setTimeout> | undefined
     const observer = new ResizeObserver(() => {
-      if (host.current?.offsetParent) fitAddon.fit()
+      clearTimeout(fitTimer)
+      fitTimer = setTimeout(() => {
+        if (host.current?.offsetParent) fitAddon.fit()
+      }, FIT_DELAY_MS)
     })
     observer.observe(host.current!)
 
     return () => {
       disposed = true
+      clearTimeout(fitTimer)
       observer.disconnect()
       input.dispose()
       bell.dispose()

@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+
 const KEY_STEP = 16
 
 interface Props {
@@ -6,8 +8,11 @@ interface Props {
   value: number
   min: number
   max: number
-  /** Called with the pointer's x (y when horizontal) while dragging, or ± a step from the keyboard. */
-  onMove: (client: number) => void
+  /**
+   * Called with the pointer's x (y when horizontal) while dragging, then again with `done` once it
+   * lets go; a keyboard step is `done` at once.
+   */
+  onMove: (client: number, done: boolean) => void
   onReset: () => void
   /** A horizontal divider sits between panes stacked top to bottom. */
   horizontal?: boolean
@@ -23,6 +28,7 @@ export function Splitter({
   onReset,
   horizontal = false
 }: Props): React.JSX.Element {
+  const last = useRef<number | null>(null)
   const center = (el: HTMLElement): number => {
     const box = el.getBoundingClientRect()
     return horizontal ? box.top + box.height / 2 : box.left + box.width / 2
@@ -45,15 +51,21 @@ export function Splitter({
         e.currentTarget.setPointerCapture(e.pointerId)
       }}
       onPointerMove={(e) => {
-        if (e.currentTarget.hasPointerCapture(e.pointerId))
-          onMove(horizontal ? e.clientY : e.clientX)
+        if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+        last.current = horizontal ? e.clientY : e.clientX
+        onMove(last.current, false)
+      }}
+      // Pointer up and pointer cancel both end here.
+      onLostPointerCapture={() => {
+        if (last.current !== null) onMove(last.current, true)
+        last.current = null
       }}
       onDoubleClick={onReset}
       onKeyDown={(e) => {
         const step = steps[e.key]
         if (!step) return
         e.preventDefault()
-        onMove(center(e.currentTarget) + step)
+        onMove(center(e.currentTarget) + step, true)
       }}
     />
   )

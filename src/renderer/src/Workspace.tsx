@@ -10,6 +10,7 @@ import { DocsPane } from './DocsPane'
 import { FilesPane } from './FilesPane'
 import { GitPane } from './GitPane'
 import { KnowledgePane } from './KnowledgePane'
+import { COLUMN } from './layout'
 import { Icon, type IconName } from './icons'
 import { MOD } from './platform'
 import { PrPane } from './PrPane'
@@ -47,10 +48,10 @@ interface Props {
   check?: CheckResult
   onRunCheck: (path: string) => Promise<CheckResult | null>
   onSendCheck: (path: string) => void
-  /** The agent pane's share of the width, in percent. */
-  agentShare: number
-  onAgentShare: (share: number) => void
-  onResetAgentShare: () => void
+  columnWidth: number
+  /** `done` once the drag ends. */
+  onColumnWidth: (width: number, done: boolean) => void
+  onResetColumnWidth: () => void
   diffFilter?: DiffFilter
   onClearDiffFilter: () => void
   /** Shared by every worktree of the repo. */
@@ -80,9 +81,9 @@ export function Workspace({
   check,
   onRunCheck,
   onSendCheck,
-  agentShare,
-  onAgentShare,
-  onResetAgentShare,
+  columnWidth,
+  onColumnWidth,
+  onResetColumnWidth,
   diffFilter,
   onClearDiffFilter,
   knowledge,
@@ -115,12 +116,12 @@ export function Workspace({
   }
   const branch = wt.branch ?? 'detached'
   const state = status ?? 'idle'
-  const root = useRef<HTMLDivElement>(null)
+  const column = useRef<HTMLDivElement>(null)
   const sidePanel = active && showColumn
   const [pr, refreshPr] = usePr(wt.path, sidePanel && (tab === 'git' || tab === 'pr'))
 
   return (
-    <div className="workspace" ref={root} style={{ display: active ? 'flex' : 'none' }}>
+    <div className="workspace" style={{ display: active ? 'flex' : 'none' }}>
       <TerminalArea
         path={wt.path}
         port={wt.port}
@@ -165,17 +166,17 @@ export function Workspace({
       {showColumn && (
         <Splitter
           label="Resize agent and side panel"
-          value={agentShare}
-          min={20}
-          max={80}
-          onMove={(x) => {
-            const box = root.current?.getBoundingClientRect()
-            if (box?.width) onAgentShare(((x - box.left) / box.width) * 100)
+          value={columnWidth}
+          min={COLUMN.min}
+          max={COLUMN.max}
+          onMove={(x, done) => {
+            const right = column.current?.getBoundingClientRect().right
+            if (right) onColumnWidth(right - x, done)
           }}
-          onReset={onResetAgentShare}
+          onReset={onResetColumnWidth}
         />
       )}
-      <div className="column" style={{ display: showColumn ? 'flex' : 'none' }}>
+      <div className="column" ref={column} style={{ display: showColumn ? 'flex' : 'none' }}>
         <div className="tabs">
           {tabButton('files', 'files', 'Files', { key: '⇧E' })}
           {tabButton('sessions', 'grid', 'Agent sessions')}
@@ -183,6 +184,14 @@ export function Workspace({
           {tabButton('pr', 'listChecks', 'Pull request')}
           {tabButton('docs', 'book', 'Docs')}
           {tabButton('knowledge', 'library', 'Knowledge', { count: pending })}
+          <button
+            className="icon-button tabs-hide"
+            onClick={onToggleColumn}
+            title={`Hide side panel (${MOD}L)`}
+            aria-label="Hide side panel"
+          >
+            <Icon name="panel" />
+          </button>
         </div>
         <div className="pane" style={{ display: tab === 'files' ? 'block' : 'none' }}>
           <FilesPane

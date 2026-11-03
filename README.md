@@ -92,7 +92,7 @@ Hidden tabs keep running, so a dev server in one keeps serving while you work in
 
 ### Side panel
 
-The panel on the right (**⌘L**) has a strip of icons, like Orca's right sidebar:
+The panel on the right (**⌘L**, or the button at the end of its icon strip, hides it) opens 350px wide like Orca's right sidebar; drag its edge to resize and double-click to reset. Its strip of icons:
 
 - **Files** (**⌘⇧E**) shows the worktree as a tree, with what `.gitignore` hides dimmed. Type to filter by name, or switch to **Contents** (**⌘⇧F**) to search inside the files with `git grep`. A file or a match opens read-only in a middle tab, scrolled to the line, with a button to open it in your editor.
 - **Agent sessions** lists past Claude Code and Codex conversations from the agents' own logs (for this worktree, its repo or everything), each with its name, the last thing said and how many messages and subagents it had. Click one to resume it in a new tab of its worktree.
