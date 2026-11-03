@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { AppAction } from '../../shared/keys'
 import { layout, leaf, leaves, type Divider, type Rect, type SplitDir } from '../../shared/panes'
+import { focusInFloating } from './floating'
 import { Icon } from './icons'
 import { MOD } from './platform'
 import { PreviewTab } from './PreviewTab'
@@ -109,6 +110,8 @@ export function TerminalArea({
   useEffect(() => onTabRequest(path, onRequest), [path])
 
   const onAction = useEffectEvent((action: AppAction) => {
+    // The floating window has tabs of its own; while it has focus, the keys are its.
+    if (focusInFloating()) return
     if (current.preview) {
       if (action === 'closePane' || action === 'closeTab') return closeTab(current.id)
       if (action === 'newTab') return addTab()

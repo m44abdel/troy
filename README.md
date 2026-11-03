@@ -108,6 +108,12 @@ The panel on the right (**⌘L**, or the button at the end of its icon strip, hi
 
 <img src="docs/tasks.png" alt="Tasks: the repo's open issues with Start buttons, and its open pull requests" width="720">
 
+### Floating window
+
+The round button in the bottom-right corner (**⌘⌥A** on macOS) opens a window that floats above everything else, like Orca's floating workspace, for work that isn't tied to one worktree. Its terminals start in your home folder, so an agent there can work across repos. Its Markdown notes are a scratchpad: plain `.md` files in a `notes` folder in Troy's app data, saved as you type, which an agent can read too. **Open Markdown Note** lists them, newest first, and opens the folder in Finder for renaming or deleting.
+
+Drag the button anywhere; it keeps to its corner as the window resizes. Drag the window by the empty part of its tab strip, resize it from its bottom-right corner, and maximize it with the button or a double-click on the strip. With the floating window focused, **⌘T** opens a terminal in it and **⌘W** closes its tab (or hides it once none are left), leaving the worktree behind it alone. Hiding it keeps its shells running, and its place, size and tabs come back after a restart.
+
 ### Status bar
 
 The bar along the bottom shows Claude's 5-hour usage and when it resets, a keep-awake switch (off, while an agent works, or always), the memory Troy and its terminals use, how many terminals are live and the ports something in a worktree's terminals listens on. Click the port count for the list, with links.
@@ -159,7 +165,7 @@ The **Docs** tab renders the worktree's markdown files (README first), including
 
 ## Keyboard
 
-App shortcuts use **⌘** on macOS (**Ctrl+Shift** on Linux/Windows), and the second layer adds Shift (**Ctrl+Shift+Alt** on Linux/Windows). Where Orca has the same action, Troy uses Orca's key. Every Ctrl and Alt chord goes straight to the terminal, so Ctrl-P, Ctrl-T, Ctrl-O, Alt-f and friends keep working inside your shell and agent.
+App shortcuts use **⌘** on macOS (**Ctrl+Shift** on Linux/Windows), and the second layer adds Shift (**Ctrl+Shift+Alt** on Linux/Windows). macOS has a third layer, **⌘⌥**; on Linux/Windows that would take Ctrl+Alt from the terminal, so the floating window has its button there instead. Where Orca has the same action, Troy uses Orca's key. Every Ctrl and Alt chord goes straight to the terminal, so Ctrl-P, Ctrl-T, Ctrl-O, Alt-f and friends keep working inside your shell and agent.
 
 | Shortcut        | Action                                   |
 | --------------- | ---------------------------------------- |
@@ -182,9 +188,11 @@ App shortcuts use **⌘** on macOS (**Ctrl+Shift** on Linux/Windows), and the se
 | ⌘L              | Toggle the side panel                    |
 | ⌘B              | Toggle the sidebar                       |
 | ⌘⇧B             | Show the board                           |
+| ⌘⌥A             | Show / hide the floating window (macOS)  |
+| ⌘⇧M / ⌘⇧O       | New / open a note in the floating window |
 | ⌘,              | Settings                                 |
 
-Shortcuts live in `keybindings.json` in Troy's app data folder (**Settings → Open keybindings.json**). It maps key codes to actions, for example `"KeyK": "newWorktree"`; prefix a code with `Shift+` for the shifted layer (`"Shift+KeyD": "splitDown"`), and set a key to `null` to give it back to the terminal. Edits apply as soon as you save. Entries naming an action Troy no longer has (`showDiff`, `toggleTerminal`, `focusShell` and `focusAgent` went with the new layout) are skipped.
+Shortcuts live in `keybindings.json` in Troy's app data folder (**Settings → Open keybindings.json**). It maps key codes to actions, for example `"KeyK": "newWorktree"`; prefix a code with `Shift+` for the shifted layer (`"Shift+KeyD": "splitDown"`) or, on macOS, `Alt+` for ⌘⌥ (`"Alt+KeyA": "toggleFloating"`), and set a key to `null` to give it back to the terminal. Edits apply as soon as you save. Entries naming an action Troy no longer has (`showDiff`, `toggleTerminal`, `focusShell` and `focusAgent` went with the new layout) are skipped.
 
 **Vim navigation** is off by default; turn it on in Settings. Then `j`/`k`, `gg`/`G` and `Enter` move through the sidebar, and in the diff `j`/`k` and `gg`/`G` scroll while `]c`/`[c` jump between hunks. They're ignored while a terminal or text field has focus.
 

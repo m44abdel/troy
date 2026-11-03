@@ -47,7 +47,7 @@ const withActive = (tabs: Tabs, change: (tab: Tab) => Tab): Tabs =>
   withTab(tabs, activeTab(tabs).id, change)
 
 // The item that slides into the place of the one removed, or the one before it at the end.
-const successor = <T>(list: T[], gone: T): T | undefined => {
+export const successor = <T>(list: T[], gone: T): T | undefined => {
   const rest = list.filter((x) => x !== gone)
   return rest[Math.min(list.indexOf(gone), rest.length - 1)]
 }

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { homedir } from 'os'
 import type { AppAction } from '../shared/keys'
 import type { AgentStatus } from '../shared/status'
 import type { Overlap } from '../shared/overlap'
@@ -18,6 +19,7 @@ import type {
   SessionSummary,
   Stats,
   MergeOptions,
+  NoteInfo,
   PrStatus,
   Mail,
   SpawnRequest,
@@ -143,6 +145,16 @@ const api = {
   setBadge: (count: number): void => ipcRenderer.send('app:badge', count),
   stats: (): Promise<Stats | null> => ipcRenderer.invoke('stats:get'),
   usage: (): Promise<ClaudeUsage | null> => ipcRenderer.invoke('usage:get'),
+  /** Where the floating window's terminals start. */
+  homeDir: homedir(),
+  listNotes: (): Promise<{ notes?: NoteInfo[]; error?: string }> =>
+    ipcRenderer.invoke('notes:list'),
+  readNote: (name: string): Promise<{ text?: string; error?: string }> =>
+    ipcRenderer.invoke('notes:read', name),
+  writeNote: (name: string, text: string): Promise<{ error?: string }> =>
+    ipcRenderer.invoke('notes:write', name, text),
+  createNote: (): Promise<{ name?: string; error?: string }> => ipcRenderer.invoke('notes:create'),
+  revealNotes: (): Promise<{ error?: string }> => ipcRenderer.invoke('notes:reveal'),
   setAwake: (mode: AwakeMode, working: boolean): void =>
     ipcRenderer.send('awake:set', mode, working),
   watchMail: (): Promise<void> => ipcRenderer.invoke('mail:watch'),

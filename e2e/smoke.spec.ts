@@ -12,11 +12,12 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   writeFileSync
 } from 'fs'
-import { tmpdir } from 'os'
+import { homedir, tmpdir } from 'os'
 import { join } from 'path'
 
 function tempDir(prefix: string): string {
@@ -90,12 +91,57 @@ test('no repos yet', async () => {
   }
 })
 
+test('floating window: a shell in the home folder and a note on disk', async () => {
+  const repo = gitRepo('troy-float-')
+  const userData = tempDir('troy-profile-')
+  writeFileSync(join(userData, 'state.json'), JSON.stringify({ repos: [repo] }))
+  const notes = (): string[] => {
+    const dir = join(userData, 'notes')
+    return existsSync(dir) ? readdirSync(dir).map((f) => readFileSync(join(dir, f), 'utf8')) : []
+  }
+
+  const app = await launchTroy({ ...shellEnv, TROY_USER_DATA: userData })
+  try {
+    const page = await app.firstWindow()
+    await expect(page.locator('.workspace:visible')).toBeVisible()
+    const floating = page.locator('.floating')
+    await page.getByRole('button', { name: 'Floating window' }).click()
+    await floating.getByRole('button', { name: /New Terminal/ }).click()
+
+    await floating.locator('.xterm').click()
+    await page.keyboard.type('echo "cwd=$PWD"')
+    await page.keyboard.press('Enter')
+    await expect(floating.locator('.xterm-rows')).toContainText(`cwd=${homedir()}`, {
+      timeout: 15_000
+    })
+
+    // With the floating window focused, Cmd-T and Cmd-W work its tabs, not the worktree's.
+    await chord(app, 'T', 'meta')
+    await expect(floating.locator('.term-tab')).toHaveCount(2)
+    await expect(page.locator('.workspace:visible .term-tab')).toHaveCount(1)
+    await chord(app, 'W', 'meta')
+    await chord(app, 'W', 'meta')
+    await expect(floating.getByRole('button', { name: /New Terminal/ })).toBeVisible()
+    await expect(page.locator('.workspace:visible .pane-agent')).toBeVisible()
+
+    await chord(app, 'M', ['meta', 'shift'])
+    await expect(floating.locator('.note-editor')).toBeFocused()
+    await page.keyboard.type('# Scratch\nacross repos')
+    await expect.poll(notes).toEqual(['# Scratch\nacross repos'])
+
+    await chord(app, 'A', ['meta', 'alt'])
+    await expect(floating).toBeHidden()
+  } finally {
+    await app.close()
+  }
+})
+
 // Playwright's keyboard bypasses before-input-event, so chords go through
 // sendInputEvent, which takes the same path as a real keypress.
 function chord(
   app: ElectronApplication,
   keyCode: string,
-  modifier: 'meta' | 'control' | Array<'meta' | 'control' | 'shift'>
+  modifier: 'meta' | 'control' | Array<'meta' | 'control' | 'shift' | 'alt'>
 ): Promise<void> {
   return app.evaluate(
     ({ BrowserWindow }, [k, m]) => {

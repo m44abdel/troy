@@ -261,3 +261,10 @@ export interface ClaudeUsage {
 }
 
 export type AwakeMode = 'off' | 'auto' | 'on'
+
+/** A Markdown note in the floating window's notes folder. */
+export interface NoteInfo {
+  name: string
+  /** ms since the epoch. */
+  modified: number
+}

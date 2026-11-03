@@ -57,7 +57,7 @@ describe('routeKey on macOS', () => {
     expect(routeKey(shifted('BracketLeft'), 'darwin')).toBe('prevTab')
     expect(routeKey(shifted('BracketRight'), 'darwin')).toBe('nextTab')
     // Unbound Cmd-Shift keys (and digits) stay with the OS and the page.
-    expect(routeKey(shifted('KeyO'), 'darwin')).toBeNull()
+    expect(routeKey(shifted('KeyK'), 'darwin')).toBeNull()
     expect(routeKey(shifted('Digit1'), 'darwin')).toBeNull()
   })
 
@@ -83,9 +83,23 @@ describe('routeKey on macOS', () => {
     expect(new Set(actions).size).toBe(actions.length)
   })
 
-  it('ignores Cmd with Ctrl or Alt held', () => {
-    expect(routeKey(key('KeyO', { meta: true, alt: true }), 'darwin')).toBeNull()
+  it('ignores Cmd with Ctrl held', () => {
     expect(routeKey(key('KeyO', { meta: true, control: true }), 'darwin')).toBeNull()
+  })
+
+  it('Cmd-Alt-A toggles the floating window like Orca', () => {
+    expect(routeKey(key('KeyA', { meta: true, alt: true }), 'darwin')).toBe('toggleFloating')
+  })
+
+  it('Cmd-Alt reaches only its own bindings', () => {
+    expect(routeKey(key('KeyO', { meta: true, alt: true }), 'darwin')).toBeNull()
+    expect(routeKey(key('KeyA', { meta: true, alt: true, shift: true }), 'darwin')).toBeNull()
+    expect(routeKey(key('KeyA', { meta: true, alt: true, control: true }), 'darwin')).toBeNull()
+  })
+
+  it('Cmd-Shift-M and Cmd-Shift-O make and open notes', () => {
+    expect(routeKey(key('KeyM', { meta: true, shift: true }), 'darwin')).toBe('newNote')
+    expect(routeKey(key('KeyO', { meta: true, shift: true }), 'darwin')).toBe('openNote')
   })
 
   it('keyUp', () => {
@@ -102,6 +116,10 @@ describe('routeKey on Linux/Windows', () => {
   it('adds Alt for the shifted layer', () => {
     const input = key('KeyD', { control: true, shift: true, alt: true })
     expect(routeKey(input, 'linux')).toBe('splitDown')
+  })
+
+  it('leaves Ctrl+Alt to the terminal, so the floating window has no key here', () => {
+    expect(routeKey(key('KeyA', { control: true, alt: true }), 'linux')).toBeNull()
   })
 
   it('passes plain Ctrl through to the terminal', () => {

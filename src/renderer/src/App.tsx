@@ -34,9 +34,7 @@ import {
 } from './terminals'
 import { applyOrder, moveTo } from './order'
 import { Splitter } from './Splitter'
-import { isNumber, isStringList, useStored } from './useStored'
-
-const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean'
+import { isBoolean, isNumber, isStringList, useStored } from './useStored'
 import { useVimKeys } from './useVimKeys'
 import { Workspace, type ColumnTab, type FirstRun } from './Workspace'
 import { WorktreeCard } from './WorktreeCard'
@@ -46,6 +44,7 @@ import { StatusBar } from './StatusBar'
 import { issueBranch, issuePrompt } from './tasks'
 import { TasksPage } from './TasksPage'
 import { Board } from './Board'
+import { FloatingWindow } from './FloatingWindow'
 import { Automations } from './Automations'
 
 // Polls the session logs. Move to fs.watch in main if it shows up in a profile.
@@ -711,6 +710,8 @@ function App(): React.JSX.Element {
         </main>
       </div>
       <StatusBar working={worktrees.some((wt) => statuses[wt.path] === 'running')} />
+      {/* After the workspaces, so it wins over the tab strip's window-drag area too. */}
+      <FloatingWindow onHidden={() => current && focusWorktree(current.path)} />
 
       {dialogRepo && (
         <NewWorktree

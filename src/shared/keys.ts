@@ -1,6 +1,7 @@
 // App shortcuts live on Cmd (macOS) or Ctrl+Shift (elsewhere) so that every
 // Ctrl and Alt chord reaches the terminal untouched. Adding Shift (Alt elsewhere)
-// gives a second layer, bound as "Shift+<code>".
+// gives a second layer, bound as "Shift+<code>". macOS has a third, Cmd+Alt, bound as
+// "Alt+<code>"; elsewhere Ctrl+Alt belongs to the terminal, so there is none.
 
 export const ACTIONS = [
   'addRepo',
@@ -28,7 +29,10 @@ export const ACTIONS = [
   'next',
   'moveUp',
   'moveDown',
-  'openSettings'
+  'openSettings',
+  'toggleFloating',
+  'newNote',
+  'openNote'
 ] as const
 
 export type AppAction = (typeof ACTIONS)[number] | `jump:${number}`
@@ -72,7 +76,10 @@ export const DEFAULT_BINDINGS: Bindings = {
   'Shift+ArrowDown': 'next',
   ArrowUp: 'moveUp',
   ArrowDown: 'moveDown',
-  Comma: 'openSettings'
+  Comma: 'openSettings',
+  'Alt+KeyA': 'toggleFloating',
+  'Shift+KeyM': 'newNote',
+  'Shift+KeyO': 'openNote'
 }
 
 const isAction = (v: unknown): v is AppAction => (ACTIONS as readonly unknown[]).includes(v)
@@ -90,10 +97,11 @@ export function parseBindings(raw: unknown): { bindings: Bindings; ignored: stri
   return { bindings, ignored }
 }
 
-/** 'base' for the app modifier alone, 'shift' for its second layer, null for neither. */
-function appLayer(input: KeyInput, platform: string): 'base' | 'shift' | null {
+/** 'base' for the app modifier alone, 'shift' and 'alt' for the other layers, null for none. */
+function appLayer(input: KeyInput, platform: string): 'base' | 'shift' | 'alt' | null {
   if (platform === 'darwin') {
-    if (!input.meta || input.control || input.alt) return null
+    if (!input.meta || input.control) return null
+    if (input.alt) return input.shift ? null : 'alt'
     return input.shift ? 'shift' : 'base'
   }
   if (!input.control || !input.shift || input.meta) return null
@@ -108,6 +116,7 @@ export function routeKey(
   if (input.type !== 'keyDown') return null
   const layer = appLayer(input, platform)
   if (layer === 'shift') return bindings[`Shift+${input.code}`] ?? null
+  if (layer === 'alt') return bindings[`Alt+${input.code}`] ?? null
   if (layer !== 'base') return null
   const digit = /^Digit([1-9])$/.exec(input.code)
   if (digit) return `jump:${Number(digit[1])}`
