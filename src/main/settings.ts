@@ -26,14 +26,15 @@ export async function loadSettings(): Promise<Settings> {
   return { vim: typeof raw?.vim === 'boolean' ? raw.vim : DEFAULT_SETTINGS.vim }
 }
 
-/** Reads keybindings.json, first writing the defaults so there is a file to edit. */
-export async function loadBindings(): Promise<Bindings> {
-  const path = keybindingsPath()
+/**
+ * Reads keybindings.json over the defaults, first making an empty one so there is a file to
+ * edit. It holds only your changes: a copy of every default would keep those keys after
+ * Troy's defaults move on, as Cmd-W did when it went from archiving to closing the pane.
+ */
+export async function loadBindings(path = keybindingsPath()): Promise<Bindings> {
   const raw = await readJson(path)
   if (raw === undefined) {
-    await writeFile(path, JSON.stringify(DEFAULT_BINDINGS, null, 2) + '\n', { flag: 'wx' }).catch(
-      () => undefined
-    )
+    await writeFile(path, '{}\n', { flag: 'wx' }).catch(() => undefined)
     return DEFAULT_BINDINGS
   }
   const { bindings, ignored } = parseBindings(raw)
