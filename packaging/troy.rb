@@ -1,11 +1,11 @@
 # Cask for the personal tap: copy to github.com/m44abdel/homebrew-tap as Casks/troy.rb
-# and bump `version` for each release. Install with: brew install m44abdel/tap/troy
+# and bump `version` and both `sha256` values (`shasum -a 256` of each zip) for each release. Install with: brew install m44abdel/tap/troy
 cask "troy" do
   arch arm: "arm64", intel: "x64"
 
-  version "1.0.1"
-  # No checksum while releases keep getting rebuilt. Pin a sha256 per arch once they settle.
-  sha256 :no_check
+  version "1.0.0"
+  sha256 arm:   "85ab5bfa7a7a8b162b432de463b9198f14f2a38bfe35cc6beaa376773a4959c1",
+         intel: "d457abab5468ee4187691f13b12b55285c9a485daa598397ce6ead2e92b54877"
 
   url "https://github.com/m44abdel/troy/releases/download/v#{version}/Troy-#{version}-mac-#{arch}.zip"
   name "Troy"

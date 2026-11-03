@@ -22,6 +22,11 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npx electron-vite build
+      # Both arches upload at once and each would create the release, leaving two drafts that
+      # split the files between them. A draft made up front is the one both find.
+      - run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Troy ${GITHUB_REF_NAME#v}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npx electron-builder --mac --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
