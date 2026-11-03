@@ -1,6 +1,6 @@
 {
   "name": "troy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Run coding agents side by side in git worktrees",
   "main": "./out/main/index.js",
   "author": "Moheb",

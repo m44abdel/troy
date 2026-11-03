@@ -3,7 +3,7 @@
 cask "troy" do
   arch arm: "arm64", intel: "x64"
 
-  version "1.0.0"
+  version "1.0.1"
   # No checksum while releases keep getting rebuilt. Pin a sha256 per arch once they settle.
   sha256 :no_check
 
